@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Mapa</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+  :root {
+    --ocean-deep: #0D3D42; --ocean: #1A6B72; --sun: #F5C840;
+    --coral: #D45F3C; --sand-light: #F5EFE3; --white: #FDFAF5;
+    --text-dark: #1A1A1A; --text-light: #8A8A8A; --text-mid: #4A4A4A;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  .header { background: var(--ocean-deep); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; z-index: 1000; flex-shrink: 0; }
+  .header-logo { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 20px; color: white; letter-spacing: -0.5px; }
+  .header-logo span { color: var(--sun); }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .live-badge { display: flex; align-items: center; gap: 5px; background: rgba(212,95,60,0.2); border: 1px solid rgba(212,95,60,0.4); border-radius: 20px; padding: 4px 10px; font-size: 12px; font-weight: 600; color: #D45F3C; font-family: 'Syne', sans-serif; }
+  .live-dot { width: 6px; height: 6px; background: #D45F3C; border-radius: 50%; animation: blink 1.2s infinite; }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  #user-info { display: none; font-size: 12px; color: rgba(255,255,255,0.6); cursor: pointer; font-family: 'Syne', sans-serif; font-weight: 600; }
+  #btn-login-nav { background: var(--coral); color: white; border: none; border-radius: 12px; padding: 6px 12px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; cursor: pointer; }
+
+  .map-container { flex: 1; position: relative; overflow: hidden; }
+  #map { height: 100%; width: 100%; }
+  .loc-btn { position: absolute; top: 12px; right: 12px; z-index: 500; width: 40px; height: 40px; background: white; border: none; border-radius: 10px; font-size: 18px; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.15); }
+
+  #ficha { display: none; position: absolute; bottom: 70px; left: 12px; right: 12px; max-width: 420px; margin: 0 auto; background: var(--white); border-radius: 20px; padding: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); z-index: 500; flex-direction: column; gap: 12px; }
+  .ficha-header { display: flex; justify-content: space-between; align-items: flex-start; }
+  .ficha-nombre { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; color: var(--text-dark); }
+  .ficha-ubicacion { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+  .ficha-close { background: var(--sand-light); border: none; border-radius: 50%; width: 28px; height: 28px; font-size: 14px; cursor: pointer; flex-shrink: 0; }
+  .ficha-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .fstat { background: var(--ocean-deep); border-radius: 12px; padding: 10px 8px; text-align: center; }
+  .fstat-icon { font-size: 16px; margin-bottom: 2px; }
+  .fstat-value { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: white; }
+  .fstat-label { font-size: 9px; color: rgba(255,255,255,0.5); text-transform: uppercase; }
+  .ficha-tags { display: flex; gap: 6px; }
+  .ftag { background: var(--sand-light); border-radius: 8px; padding: 4px 10px; font-size: 11px; color: var(--text-mid); font-weight: 500; }
+  .ftag.green { background: #e8f4ec; color: #4A7C59; font-weight: 700; }
+  #btn-checkin { width: 100%; background: var(--coral); color: white; border: none; border-radius: 14px; padding: 13px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: 0 4px 16px rgba(212,95,60,0.3); transition: all 0.2s; }
+
+  .bottom-nav { background: var(--white); border-top: 1px solid rgba(0,0,0,0.08); display: flex; justify-content: space-around; padding: 8px 0 12px; flex-shrink: 0; z-index: 1000; }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; opacity: 0.4; text-decoration: none; }
+  .nav-item.active { opacity: 1; }
+  .nav-icon { font-size: 20px; }
+  .nav-label { font-size: 10px; font-weight: 600; color: var(--ocean); font-family: 'Syne', sans-serif; }
+
+  .nudisol-pin { background: #1A6B72; border-radius: 14px; padding: 5px 11px; color: white; font-size: 13px; white-space: nowrap; box-shadow: 0 3px 10px rgba(0,0,0,0.3); font-family: 'Syne', sans-serif; font-weight: 700; cursor: pointer; border: 2px solid rgba(255,255,255,0.3); }
+  .nudisol-pin.camping { background: #4A7C59; }
+  .nudisol-pin.resort { background: #D45F3C; }
+  .nudisol-pin.activo { background: #E8A020; color: #0D3D42; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { box-shadow: 0 3px 10px rgba(232,160,32,0.4); } 50% { box-shadow: 0 3px 20px rgba(232,160,32,0.8); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">nudi<span>sol</span></div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div><span id="total-checkins">0</span> ahora</div>
+    <span id="user-info" onclick="cerrarSesion()">Salir</span>
+    <button id="btn-login-nav" onclick="window.location.href='nudisol-login.html'">Entrar</button>
+  </div>
+</div>
+
+<div class="map-container">
+  <div id="map"></div>
+  <button class="loc-btn" onclick="miUbicacion()">📍</button>
+  <div id="ficha">
+    <div class="ficha-header">
+      <div>
+        <div class="ficha-nombre" id="ficha-nombre">Lugar</div>
+        <div class="ficha-ubicacion" id="ficha-ubicacion"></div>
+      </div>
+      <button class="ficha-close" onclick="cerrarFicha()">✕</button>
+    </div>
+    <div class="ficha-stats">
+      <div class="fstat"><div class="fstat-icon">👥</div><div class="fstat-value" id="ficha-checkins">0</div><div class="fstat-label">Ahora</div></div>
+      <div class="fstat"><div class="fstat-icon">👔</div><div class="fstat-value">0</div><div class="fstat-label">Textiles</div></div>
+      <div class="fstat"><div class="fstat-icon">☀️</div><div class="fstat-value">28°</div><div class="fstat-label">Temp.</div></div>
+    </div>
+    <div class="ficha-tags">
+      <span class="ftag green">✓ Verificado</span>
+      <span class="ftag" id="ficha-tipo">Playa</span>
+    </div>
+    <button id="btn-checkin" onclick="hacerCheckin()">📍 Estoy aquí ahora</button>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <a class="nav-item active" href="nudisol-mapa.html"><div class="nav-icon">🗺️</div><div class="nav-label">Mapa</div></a>
+  <a class="nav-item" href="#"><div class="nav-icon">🔍</div><div class="nav-label">Buscar</div></a>
+  <a class="nav-item" href="#"><div class="nav-icon">🏨</div><div class="nav-label">Alojamiento</div></a>
+  <a class="nav-item" href="nudisol-login.html"><div class="nav-icon">👤</div><div class="nav-label">Perfil</div></a>
+</div>
+
+<script>
+// Lugares nudistas de España
+const lugares = [
+  { id: 'vera-playa', nombre: 'Playa de Vera', tipo: 'playa', lat: 37.234, lng: -1.834, provincia: 'Almería' },
+  { id: 'ses-illetes', nombre: 'Ses Illetes', tipo: 'playa', lat: 38.671, lng: 1.393, provincia: 'Formentera' },
+  { id: 'es-trenc', nombre: 'Es Trenc', tipo: 'playa', lat: 39.339, lng: 2.993, provincia: 'Mallorca' },
+  { id: 'costa-natura', nombre: 'Costa Natura', tipo: 'resort', lat: 36.421, lng: -5.148, provincia: 'Málaga' },
+  { id: 'cala-comte', nombre: 'Cala Comte', tipo: 'playa', lat: 38.979, lng: 1.225, provincia: 'Ibiza' },
+  { id: 'maspalomas', nombre: 'Playa de Maspalomas', tipo: 'playa', lat: 27.740, lng: -15.586, provincia: 'Gran Canaria' },
+  { id: 'portus', nombre: 'El Portús', tipo: 'camping', lat: 37.584, lng: -0.989, provincia: 'Murcia' },
+  { id: 'templo-sol', nombre: 'El Templo del Sol', tipo: 'camping', lat: 41.127, lng: 1.248, provincia: 'Tarragona' },
+  { id: 'papagayo', nombre: 'Playa Papagayo', tipo: 'playa', lat: 28.845, lng: -13.763, provincia: 'Lanzarote' },
+  { id: 'cala-pregonda', nombre: 'Cala Pregonda', tipo: 'playa', lat: 40.056, lng: 3.946, provincia: 'Menorca' },
+];
+
+const tipoIcono = { playa: '🏖️', camping: '⛺', resort: '🏨', club: '🏊' };
+let selectedPlace = null;
+let currentUser = null;
+
+// Inicializar mapa
+const map = L.map('map', { zoomControl: false }).setView([39.5, -3.5], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+// Añadir pins inmediatamente
+function añadirPins(conteos) {
+  for (const lugar of lugares) {
+    const checkins = conteos[lugar.id] || 0;
+    const icono = tipoIcono[lugar.tipo] || '📍';
+    const texto = checkins > 0 ? `👥 ${checkins} — ${lugar.nombre}` : `${icono} ${lugar.nombre}`;
+    const claseExtra = checkins > 0 ? ' activo' : (lugar.tipo === 'camping' ? ' camping' : lugar.tipo === 'resort' ? ' resort' : '');
+
+    const pin = L.divIcon({
+      html: `<div class="nudisol-pin${claseExtra}">${texto}</div>`,
+      className: '',
+      iconSize: null,
+      iconAnchor: [60, 20],
+    });
+
+    const marker = L.marker([lugar.lat, lugar.lng], { icon: pin }).addTo(map);
+    marker.on('click', () => mostrarFicha(lugar, checkins));
+  }
+}
+
+// Cargar pins inmediatamente sin esperar Firebase
+añadirPins({});
+
+// Mostrar ficha
+function mostrarFicha(lugar, checkins) {
+  selectedPlace = lugar;
+  document.getElementById('ficha-nombre').textContent = lugar.nombre;
+  document.getElementById('ficha-ubicacion').textContent = `📍 ${lugar.provincia}`;
+  document.getElementById('ficha-tipo').textContent = `${tipoIcono[lugar.tipo] || '📍'} ${lugar.tipo}`;
+  document.getElementById('ficha-checkins').textContent = checkins;
+  document.getElementById('ficha').style.display = 'flex';
+  map.setView([lugar.lat, lugar.lng], 11);
+}
+
+window.cerrarFicha = () => {
+  document.getElementById('ficha').style.display = 'none';
+  selectedPlace = null;
+  map.setView([39.5, -3.5], 6);
+};
+
+window.miUbicacion = () => {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      map.setView([pos.coords.latitude, pos.coords.longitude], 10);
+      L.circleMarker([pos.coords.latitude, pos.coords.longitude], {
+        radius: 8, fillColor: '#1A6B72', color: 'white', weight: 2, fillOpacity: 1
+      }).addTo(map);
+    });
+  }
+};
+
+window.hacerCheckin = async () => {
+  if (!currentUser) { window.location.href = 'nudisol-login.html'; return; }
+  alert('Check-in registrado en ' + selectedPlace.nombre + ' ✅');
+};
+
+window.cerrarSesion = () => { window.location.href = 'nudisol-login.html'; };
+</script>
+
+<!-- Firebase para auth y checkins -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, collection, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+    authDomain: "nudisol.firebaseapp.com",
+    projectId: "nudisol",
+    storageBucket: "nudisol.firebasestorage.app",
+    messagingSenderId: "222881387953",
+    appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  onAuthStateChanged(auth, (user) => {
+    currentUser = user;
+    if (user) {
+      document.getElementById('user-info').textContent = user.email.split('@')[0];
+      document.getElementById('user-info').style.display = 'block';
+      document.getElementById('btn-login-nav').style.display = 'none';
+    }
+  });
+
+  window.cerrarSesion = async () => { await signOut(auth); window.location.href = 'nudisol-login.html'; };
+
+  // Checkin real con Firebase
+  window.hacerCheckin = async () => {
+    if (!currentUser) { window.location.href = 'nudisol-login.html'; return; }
+    if (!selectedPlace) return;
+    const btn = document.getElementById('btn-checkin');
+    btn.disabled = true;
+    btn.textContent = '⏳ Registrando...';
+    try {
+      await setDoc(doc(db, 'checkins', `${currentUser.uid}_${selectedPlace.id}`), {
+        usuarioId: currentUser.uid,
+        lugarId: selectedPlace.id,
+        lugarNombre: selectedPlace.nombre,
+        fecha: serverTimestamp(),
+        textiles: 0
+      });
+      btn.textContent = '✅ ¡Check-in hecho!';
+      btn.style.background = '#4A7C59';
+      setTimeout(() => { btn.disabled = false; btn.textContent = '📍 Estoy aquí ahora'; btn.style.background = ''; }, 3000);
+    } catch (e) {
+      btn.textContent = '❌ Error'; btn.disabled = false;
+    }
+  };
+
+  // Checkins en tiempo real
+  onSnapshot(collection(db, 'checkins'), (snapshot) => {
+    const conteos = {};
+    snapshot.forEach((d) => {
+      const data = d.data();
+      if (data.lugarId) conteos[data.lugarId] = (conteos[data.lugarId] || 0) + 1;
+    });
+    document.getElementById('total-checkins').textContent = Object.values(conteos).reduce((a, b) => a + b, 0);
+  });
+</script>
+
+</body>
+</html>
