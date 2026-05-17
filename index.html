@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — siente el sol en tu piel</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nudisol">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="theme-color" content="#0D3D42">
+<meta http-equiv="refresh" content="0;url=/nudisol-login.html">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0D3D42;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Arial', sans-serif;
+    gap: 16px;
+  }
+  .logo { font-size: 36px; font-weight: 900; color: white; letter-spacing: -1px; }
+  .logo span { color: #F5C840; }
+  .tagline { font-size: 14px; color: rgba(255,255,255,0.5); font-style: italic; }
+  .spinner { width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.2); border-top-color: #F5C840; border-radius: 50%; animation: spin 0.8s linear infinite; margin-top: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+  <div class="logo">nudi<span>sol</span></div>
+  <div class="tagline">siente el sol en tu piel</div>
+  <div class="spinner"></div>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js');
+    }
+    setTimeout(() => { window.location.href = '/nudisol-login.html'; }, 500);
+  </script>
+</body>
+</html>
