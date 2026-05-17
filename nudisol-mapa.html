@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Mapa</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+  :root {
+    --ocean-deep: #0D3D42; --ocean: #1A6B72; --sun: #F5C840;
+    --coral: #D45F3C; --sand-light: #F5EFE3; --white: #FDFAF5;
+    --text-dark: #1A1A1A; --text-light: #8A8A8A; --text-mid: #4A4A4A;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  .header { background: var(--ocean-deep); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; z-index: 1000; flex-shrink: 0; }
+  .header-logo { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 20px; color: white; letter-spacing: -0.5px; }
+  .header-logo span { color: var(--sun); }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .live-badge { display: flex; align-items: center; gap: 5px; background: rgba(212,95,60,0.2); border: 1px solid rgba(212,95,60,0.4); border-radius: 20px; padding: 4px 10px; font-size: 12px; font-weight: 600; color: #D45F3C; font-family: 'Syne', sans-serif; }
+  .live-dot { width: 6px; height: 6px; background: #D45F3C; border-radius: 50%; animation: blink 1.2s infinite; }
+  .lang-selector-map { display: flex; gap: 4px; }
+  .lang-btn-map { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); border: none; border-radius: 6px; padding: 3px 8px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 11px; cursor: pointer; }
+  .lang-btn-map.active { background: var(--sun); color: var(--ocean-deep); }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  #user-btn { background: rgba(255,255,255,0.15); color: white; border: none; border-radius: 12px; padding: 6px 12px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; cursor: pointer; }
+
+  .map-container { flex: 1; position: relative; overflow: hidden; }
+  #map { height: 100%; width: 100%; }
+  .loc-btn { position: absolute; top: 12px; right: 12px; z-index: 500; width: 40px; height: 40px; background: white; border: none; border-radius: 10px; font-size: 18px; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.15); }
+
+  #ficha { display: none; position: absolute; bottom: 70px; left: 12px; right: 12px; max-width: 420px; margin: 0 auto; background: var(--white); border-radius: 20px; padding: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); z-index: 500; flex-direction: column; gap: 12px; }
+  .ficha-header { display: flex; justify-content: space-between; align-items: flex-start; }
+  .ficha-nombre { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; color: var(--text-dark); }
+  .ficha-ubicacion { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+  .ficha-close { background: var(--sand-light); border: none; border-radius: 50%; width: 28px; height: 28px; font-size: 14px; cursor: pointer; flex-shrink: 0; }
+  .ficha-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .fstat { background: var(--ocean-deep); border-radius: 12px; padding: 10px 8px; text-align: center; }
+  .fstat-icon { font-size: 16px; margin-bottom: 2px; }
+  .fstat-value { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: white; }
+  .fstat-label { font-size: 9px; color: rgba(255,255,255,0.5); text-transform: uppercase; }
+  .ficha-tags { display: flex; gap: 6px; }
+  .ftag { background: var(--sand-light); border-radius: 8px; padding: 4px 10px; font-size: 11px; color: var(--text-mid); font-weight: 500; }
+  .ftag.green { background: #e8f4ec; color: #4A7C59; font-weight: 700; }
+  .ficha-btns { display: flex; gap: 8px; }
+  #btn-checkout { background: var(--sand-light); color: var(--text-dark); border: none; border-radius: 14px; padding: 13px 14px; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; display: none; }
+  #btn-checkin { flex: 1; background: var(--coral); color: white; border: none; border-radius: 14px; padding: 13px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  #btn-aloj { background: var(--sand-light); color: var(--text-dark); border: none; border-radius: 14px; padding: 13px 14px; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap; }
+
+  #toast { display: none; position: absolute; top: 70px; left: 50%; transform: translateX(-50%); background: #4A7C59; color: white; border-radius: 12px; padding: 10px 20px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; z-index: 600; white-space: nowrap; }
+
+  .bottom-nav { background: var(--white); border-top: 1px solid rgba(0,0,0,0.08); display: flex; justify-content: space-around; padding: 8px 0 12px; flex-shrink: 0; z-index: 1000; }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; opacity: 0.4; text-decoration: none; cursor: pointer; }
+  .nav-item.active { opacity: 1; }
+  .nav-icon { font-size: 20px; }
+  .nav-label { font-size: 10px; font-weight: 600; color: var(--ocean); font-family: 'Syne', sans-serif; }
+  .nudisol-pin { border-radius: 14px; padding: 5px 11px; color: white; font-size: 12px; white-space: nowrap; box-shadow: 0 3px 10px rgba(0,0,0,0.25); font-family: 'Syne', sans-serif; font-weight: 700; cursor: pointer; border: 2px solid rgba(255,255,255,0.3); }
+
+  /* WIDGET UV */
+  .uv-widget { position: absolute; top: 12px; left: 12px; z-index: 500; background: var(--ocean-deep); border-radius: 16px; padding: 10px 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.35); min-width: 190px; cursor: pointer; border: 1px solid rgba(255,255,255,0.08); max-width: 200px; }
+  .uv-widget-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .uv-loc { font-size: 10px; color: rgba(255,255,255,0.45); font-family: 'Syne', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .uv-hora { font-size: 10px; color: rgba(255,255,255,0.3); }
+  .uv-main { display: flex; align-items: center; gap: 10px; }
+  .uv-sol { font-size: 26px; line-height: 1; }
+  .uv-info { flex: 1; }
+  .uv-numero { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: white; line-height: 1; }
+  .uv-nivel { font-size: 11px; font-weight: 700; margin-top: 1px; }
+  .uv-mensaje { font-size: 10px; color: rgba(255,255,255,0.6); margin-top: 4px; line-height: 1.35; }
+  .uv-barra { height: 3px; border-radius: 2px; background: rgba(255,255,255,0.1); margin-top: 8px; overflow: hidden; }
+  .uv-barra-fill { height: 100%; border-radius: 2px; transition: width 0.6s, background 0.6s; }
+
+  /* PANEL VITAMINA D */
+  #vitd-panel { display: none; position: absolute; bottom: 70px; left: 12px; right: 12px; max-width: 420px; margin: 0 auto; background: var(--ocean-deep); border-radius: 20px; padding: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 500; flex-direction: column; gap: 12px; }
+  .vitd-header { display: flex; justify-content: space-between; align-items: center; }
+  .vitd-titulo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 16px; color: white; }
+  .vitd-close { background: rgba(255,255,255,0.1); border: none; border-radius: 50%; width: 28px; height: 28px; color: white; font-size: 14px; cursor: pointer; }
+  .vitd-uv-grande { display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,0.08); border-radius: 14px; padding: 14px; }
+  .vitd-sol-grande { font-size: 44px; }
+  .vitd-uv-info { flex: 1; }
+  .vitd-uv-num { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 36px; color: white; line-height: 1; }
+  .vitd-uv-nivel { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; margin-top: 2px; }
+  .vitd-uv-loc { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 4px; }
+  .vitd-barra { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.1); margin-top: 10px; overflow: hidden; }
+  .vitd-barra-fill { height: 100%; border-radius: 3px; transition: width 0.6s; }
+  .vitd-consejo { background: rgba(255,255,255,0.08); border-radius: 14px; padding: 12px 14px; }
+  .vitd-consejo-titulo { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; color: white; margin-bottom: 6px; }
+  .vitd-consejo-texto { font-size: 12px; color: rgba(255,255,255,0.65); line-height: 1.5; }
+  .vitd-datos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .vitd-dato { background: rgba(255,255,255,0.06); border-radius: 10px; padding: 10px 12px; }
+  .vitd-dato-label { font-size: 10px; color: rgba(255,255,255,0.4); text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
+  .vitd-dato-val { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: white; }
+</style>
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Nudisol">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <meta name="theme-color" content="#0D3D42">
+  <meta name="mobile-web-app-capable" content="yes">
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">nudi<span>sol</span></div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div><span id="total-checkins">0</span> <span id="txt-ahora">ahora</span></div>
+    <div class="lang-selector-map">
+      <button class="lang-btn-map active" onclick="setLangMap('es')">ES</button>
+      <button class="lang-btn-map" onclick="setLangMap('en')">EN</button>
+    </div>
+    <button id="user-btn" onclick="accionUsuario()">Entrar</button>
+  </div>
+</div>
+
+<div class="map-container">
+  <div id="map"></div>
+
+  <!-- WIDGET UV -->
+  <div class="uv-widget" onclick="actualizarUV()" title="Toca para actualizar">
+    <div class="uv-widget-top">
+      <div class="uv-loc" id="uv-loc">📍 Buscando...</div>
+      <div class="uv-hora" id="uv-hora"></div>
+    </div>
+    <div class="uv-main">
+      <div class="uv-sol" id="uv-sol">🌤️</div>
+      <div class="uv-info">
+        <div class="uv-numero" id="uv-numero">—</div>
+        <div class="uv-nivel" id="uv-nivel" style="color:rgba(255,255,255,0.5);">Calculando UV...</div>
+        <div class="uv-mensaje" id="uv-mensaje">Obteniendo índice solar</div>
+      </div>
+    </div>
+    <div class="uv-barra"><div class="uv-barra-fill" id="uv-barra-fill" style="width:0%;background:#4A7C59;"></div></div>
+  </div>
+  <button class="loc-btn" onclick="miUbicacion()">📍</button>
+  <div id="toast">✅ ¡Check-in registrado!</div>
+
+  <div id="ficha">
+    <div class="ficha-header">
+      <div>
+        <div class="ficha-nombre" id="ficha-nombre">Lugar</div>
+        <div class="ficha-ubicacion" id="ficha-ubicacion"></div>
+      </div>
+      <button class="ficha-close" onclick="cerrarFicha()">✕</button>
+    </div>
+    <div class="ficha-stats">
+      <div class="fstat"><div class="fstat-icon">👥</div><div class="fstat-value" id="ficha-checkins">0</div><div class="fstat-label" id="lbl-ahora">Ahora</div></div>
+      <div class="fstat"><div class="fstat-icon">👔</div><div class="fstat-value">0</div><div class="fstat-label" id="lbl-textiles">Textiles</div></div>
+      <div class="fstat" id="fstat-uv" onclick="abrirVitD()" style="cursor:pointer;" title="Ver vitamina D"><div class="fstat-icon" id="fstat-uv-sol">☀️</div><div class="fstat-value" id="fstat-uv-num">—</div><div class="fstat-label" id="lbl-uvplaya">UV · VitD</div></div>
+      <input type="hidden" id="place-lat" value="">
+      <input type="hidden" id="place-lng" value="">
+      <input type="hidden" id="place-nombre" value="">
+      <input type="hidden" id="place-provincia" value="">
+    </div>
+    <div class="ficha-tags">
+      <span class="ftag green" id="lbl-verificado">✓ Verificado</span>
+      <span class="ftag" id="ficha-tipo">Playa</span>
+    </div>
+    <div class="ficha-btns">
+      <button id="btn-checkin" onclick="hacerCheckin()">📍 Estoy aquí ahora</button>
+      <button id="btn-checkout" onclick="hacerCheckout()">🚪 Ya me voy</button>
+      <button id="btn-aloj" onclick="irAlojamiento()">🏨 Alojamiento</button>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL VITAMINA D -->
+<div id="vitd-panel">
+  <div class="vitd-header">
+    <div class="vitd-titulo">☀️ Índice UV · Vitamina D</div>
+    <button class="vitd-close" onclick="cerrarVitD()">✕</button>
+  </div>
+  <div class="vitd-uv-grande">
+    <div class="vitd-sol-grande" id="vitd-sol">🌤️</div>
+    <div class="vitd-uv-info">
+      <div class="vitd-uv-num" id="vitd-num">—</div>
+      <div class="vitd-uv-nivel" id="vitd-nivel">Calculando...</div>
+      <div class="vitd-uv-loc" id="vitd-loc">📍 Tu ubicación</div>
+    </div>
+  </div>
+  <div class="vitd-barra"><div class="vitd-barra-fill" id="vitd-barra" style="width:0%"></div></div>
+  <div class="vitd-consejo">
+    <div class="vitd-consejo-titulo" id="vitd-consejo-titulo">⏳ Tiempo recomendado</div>
+    <div class="vitd-consejo-texto" id="vitd-consejo-texto">Calculando exposición óptima para sintetizar vitamina D...</div>
+  </div>
+  <div class="vitd-datos">
+    <div class="vitd-dato"><div class="vitd-dato-label">Exposición óptima</div><div class="vitd-dato-val" id="vitd-tiempo">— min</div></div>
+    <div class="vitd-dato"><div class="vitd-dato-label">Protección recomendada</div><div class="vitd-dato-val" id="vitd-proteccion">—</div></div>
+    <div class="vitd-dato"><div class="vitd-dato-label">Mejor hora hoy</div><div class="vitd-dato-val">12:00 — 14:00</div></div>
+    <div class="vitd-dato"><div class="vitd-dato-label">Actualizado</div><div class="vitd-dato-val" id="vitd-hora">—</div></div>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <div class="nav-item active"><div class="nav-icon">🗺️</div><div class="nav-label">Mapa</div></div>
+  <div class="nav-item"><div class="nav-icon">🔍</div><div class="nav-label">Buscar</div></div>
+  <div class="nav-item" onclick="window.location.href='nudisol-alojamiento.html?v=9'"><div class="nav-icon">🏨</div><div class="nav-label">Alojamiento</div></div>
+  <div class="nav-item" onclick="accionUsuario()"><div class="nav-icon">👤</div><div class="nav-label">Perfil</div></div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const app = initializeApp({
+    apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+    authDomain: "nudisol.firebaseapp.com",
+    projectId: "nudisol",
+    storageBucket: "nudisol.firebasestorage.app",
+    messagingSenderId: "222881387953",
+    appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+  });
+
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  const map = L.map('map', { zoomControl: false }).setView([39.5, -3.5], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  const lugares = [
+    { id: 'vera-playa', nombre: 'Playa de Vera', tipo: 'playa', lat: 37.234, lng: -1.834, provincia: 'Almería', zona: 'Almería' },
+    { id: 'ses-illetes', nombre: 'Ses Illetes', tipo: 'playa', lat: 38.671, lng: 1.393, provincia: 'Formentera', zona: 'Formentera' },
+    { id: 'es-trenc', nombre: 'Es Trenc', tipo: 'playa', lat: 39.339, lng: 2.993, provincia: 'Mallorca', zona: 'Mallorca' },
+    { id: 'costa-natura', nombre: 'Costa Natura', tipo: 'resort', lat: 36.421, lng: -5.148, provincia: 'Málaga', zona: 'Málaga' },
+    { id: 'cala-comte', nombre: 'Cala Comte', tipo: 'playa', lat: 38.979, lng: 1.225, provincia: 'Ibiza', zona: 'Ibiza' },
+    { id: 'maspalomas', nombre: 'Playa de Maspalomas', tipo: 'playa', lat: 27.740, lng: -15.586, provincia: 'Gran Canaria', zona: 'Gran Canaria' },
+    { id: 'portus', nombre: 'El Portús', tipo: 'camping', lat: 37.584, lng: -0.989, provincia: 'Murcia', zona: 'Murcia' },
+    { id: 'templo-sol', nombre: 'El Templo del Sol', tipo: 'camping', lat: 41.127, lng: 1.248, provincia: 'Tarragona', zona: 'Tarragona' },
+    { id: 'papagayo', nombre: 'Playa Papagayo', tipo: 'playa', lat: 28.845, lng: -13.763, provincia: 'Lanzarote', zona: 'Lanzarote' },
+    { id: 'cala-pregonda', nombre: 'Cala Pregonda', tipo: 'playa', lat: 40.056, lng: 3.946, provincia: 'Menorca', zona: 'Mallorca' },
+    { id: 'area-longa', nombre: 'Praia de Area Longa', tipo: 'playa', lat: 43.771, lng: -7.682, provincia: 'Lugo, Galicia', zona: 'Galicia' },
+    { id: 'frouxeira', nombre: 'Praia de Frouxeira', tipo: 'playa', lat: 43.658, lng: -8.117, provincia: 'A Coruña, Galicia', zona: 'Galicia' },
+    { id: 'verdicio', nombre: 'Playa de Verdicio', tipo: 'playa', lat: 43.623, lng: -5.935, provincia: 'Asturias', zona: 'Asturias' },
+    { id: 'bolonia', nombre: 'Playa de Bolonia', tipo: 'playa', lat: 36.079, lng: -5.760, provincia: 'Tarifa, Cádiz', zona: 'Cádiz' },
+    { id: 'canos-meca', nombre: 'Los Caños de Meca', tipo: 'playa', lat: 36.193, lng: -6.030, provincia: 'Barbate, Cádiz', zona: 'Cádiz' },
+    { id: 'zahara', nombre: 'Zahara de los Atunes', tipo: 'playa', lat: 36.133, lng: -5.849, provincia: 'Barbate, Cádiz', zona: 'Cádiz' },
+    { id: 'cantarrijan', nombre: 'Playa de Cantarriján', tipo: 'playa', lat: 36.730, lng: -3.859, provincia: 'Almuñécar, Granada', zona: 'Granada' },
+    { id: 'cabopino', nombre: 'Cabopino · Dunas de Artola', tipo: 'playa', lat: 36.494, lng: -4.730, provincia: 'Marbella, Málaga', zona: 'Málaga' },
+    { id: 'almayate', nombre: 'Playa de Almayate', tipo: 'playa', lat: 36.720, lng: -4.122, provincia: 'Vélez-Málaga, Málaga', zona: 'Málaga' },
+    { id: 'nueva-umbria', nombre: 'Nueva Umbría', tipo: 'playa', lat: 37.204, lng: -7.017, provincia: 'Lepe, Huelva', zona: 'Huelva' },
+    { id: 'cuesta-maneli', nombre: 'Cuesta Maneli', tipo: 'playa', lat: 37.117, lng: -6.817, provincia: 'Almonte, Huelva', zona: 'Huelva' },
+    { id: 'carabasi', nombre: 'Playa Carabassí', tipo: 'playa', lat: 38.198, lng: -0.618, provincia: 'Elche, Alicante', zona: 'Alicante' },
+    { id: 'ambolo', nombre: 'Playa El Ambolo', tipo: 'playa', lat: 38.741, lng: 0.182, provincia: 'Jávea, Alicante', zona: 'Alicante' },
+    { id: 'cala-medico', nombre: 'Cala del Médico', tipo: 'playa', lat: 38.607, lng: -0.078, provincia: "L'Alfàs del Pi, Alicante", zona: 'Alicante' },
+    { id: 'ahuir', nombre: "Playa l'Ahuir", tipo: 'playa', lat: 38.935, lng: -0.137, provincia: 'Gandía, Valencia', zona: 'Valencia' },
+    { id: 'saler', nombre: 'Playa El Saler', tipo: 'playa', lat: 39.328, lng: -0.330, provincia: 'Valencia', zona: 'Valencia' },
+    { id: 'platgetes-bellver', nombre: 'Platgetes de Bellver', tipo: 'playa', lat: 40.076, lng: 0.107, provincia: 'Oropesa del Mar, Castellón', zona: 'Castellón' },
+    { id: 'riu-senia', nombre: 'Playa Riu de la Sénia', tipo: 'playa', lat: 40.481, lng: 0.471, provincia: 'Vinaròs, Castellón', zona: 'Castellón' },
+    { id: 'mar-bella', nombre: 'Playa Mar Bella', tipo: 'playa', lat: 41.398, lng: 2.207, provincia: 'Barcelona', zona: 'Barcelona' },
+    { id: 'home-mort', nombre: "Platja de l'Home Mort", tipo: 'playa', lat: 41.199, lng: 1.784, provincia: 'Sitges, Barcelona', zona: 'Barcelona' },
+    { id: 'punta-tordera', nombre: 'Punta de la Tordera', tipo: 'playa', lat: 41.654, lng: 2.764, provincia: 'Malgrat de Mar, Barcelona', zona: 'Barcelona' },
+    { id: 'sa-boadella', nombre: 'Cala Sa Boadella', tipo: 'playa', lat: 41.696, lng: 2.851, provincia: 'Lloret de Mar, Girona', zona: 'Girona' },
+    { id: 'illa-roja', nombre: 'Platja de la Illa Roja', tipo: 'playa', lat: 42.049, lng: 3.178, provincia: 'Begur, Girona', zona: 'Girona' },
+    { id: 'cala-murtra', nombre: 'Cala Murtra', tipo: 'playa', lat: 42.239, lng: 3.167, provincia: 'Roses, Girona', zona: 'Girona' },
+    { id: 'sant-pere-pescador', nombre: 'Playa Sant Pere Pescador', tipo: 'playa', lat: 42.183, lng: 3.099, provincia: 'Sant Pere Pescador, Girona', zona: 'Girona' },
+  ];
+
+  const tipoColor = { playa: '#1A6B72', camping: '#4A7C59', resort: '#D45F3C' };
+  const tipoIcono = { playa: '🏖️', camping: '⛺', resort: '🏨' };
+  let markers = [];
+  let selectedPlace = null;
+  let currentUser = null;
+  let conteos = {};
+
+  function renderPins() {
+    markers.forEach(m => m.remove());
+    markers = [];
+    for (const l of lugares) {
+      const n = conteos[l.id] || 0;
+      const color = n > 0 ? '#E8A020' : (tipoColor[l.tipo] || '#1A6B72');
+      const tc = n > 0 ? '#0D3D42' : 'white';
+      const txt = n > 0 ? `👥 ${n} · ${l.nombre}` : `${tipoIcono[l.tipo]||'📍'} ${l.nombre}`;
+      const pin = L.divIcon({
+        html: `<div class="nudisol-pin" style="background:${color};color:${tc};">${txt}</div>`,
+        className: '', iconSize: null, iconAnchor: [60, 20],
+      });
+      const m = L.marker([l.lat, l.lng], { icon: pin }).addTo(map);
+      m.on('click', () => mostrarFicha(l, n));
+      markers.push(m);
+    }
+  }
+
+  renderPins();
+
+  onSnapshot(collection(db, 'checkins'), (snap) => {
+    conteos = {};
+    const ahora = Date.now();
+    const limite24h = 24 * 60 * 60 * 1000;
+    snap.forEach(d => {
+      const data = d.data();
+      if (!data.lugarId) return;
+      // Ignorar checkins de más de 24 horas
+      const fechaMs = data.fecha?.toMillis ? data.fecha.toMillis() : 0;
+      if (ahora - fechaMs > limite24h) return;
+      conteos[data.lugarId] = (conteos[data.lugarId] || 0) + 1;
+    });
+    renderPins();
+    document.getElementById('total-checkins').textContent = Object.values(conteos).reduce((a, b) => a + b, 0);
+    // Actualizar botón checkout si hay ficha abierta
+    if (window.selectedPlace && window.currentUser) {
+      const miCheckin = snap.docs.find(d => d.id === `${window.currentUser.uid}_${window.selectedPlace.id}`);
+      const btnIn = document.getElementById('btn-checkin');
+      const btnOut = document.getElementById('btn-checkout');
+      if (miCheckin) {
+        const fechaMs = miCheckin.data().fecha?.toMillis ? miCheckin.data().fecha.toMillis() : 0;
+        const activo = (ahora - fechaMs) < limite24h;
+        if (btnIn) btnIn.style.display = activo ? 'none' : 'block';
+        if (btnOut) btnOut.style.display = activo ? 'block' : 'none';
+      }
+    }
+  });
+
+  window.obtenerUVPlaya = async function(lat, lng) {
+    try {
+      const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=uv_index&timezone=auto`);
+      const data = await res.json();
+      return data?.current?.uv_index ?? null;
+    } catch(e) { return null; }
+  };
+
+  async function mostrarFicha(l, n) {
+    selectedPlace = l;
+    window.selectedPlace = l;
+    // Resetear botones
+    const btnIn = document.getElementById('btn-checkin');
+    const btnOut = document.getElementById('btn-checkout');
+    const tr = mapT[mapLang];
+    if (btnIn) { btnIn.style.display = 'block'; btnIn.disabled = false; btnIn.textContent = tr.checkinBtn; btnIn.style.background = ''; }
+    if (btnOut) { btnOut.style.display = 'none'; btnOut.textContent = tr.checkoutBtn; }
+    document.getElementById('ficha-nombre').textContent = l.nombre;
+    document.getElementById('ficha-ubicacion').textContent = `📍 ${l.provincia}`;
+    const tipoTraducido = mapLang === 'en' ? 
+      {'playa':'beach','camping':'campsite','resort':'resort','club':'club'}[l.tipo] || l.tipo : l.tipo;
+    document.getElementById('ficha-tipo').textContent = `${tipoIcono[l.tipo]||'📍'} ${tipoTraducido}`;
+    document.getElementById('ficha-checkins').textContent = n;
+    // Guardar coordenadas de la playa para el panel UV
+    document.getElementById('place-lat').value = l.lat;
+    document.getElementById('place-lng').value = l.lng;
+    document.getElementById('place-nombre').value = l.nombre;
+    document.getElementById('place-provincia').value = l.provincia;
+
+    // UV de la playa — mostrar "..." mientras carga
+    const fstatSol = document.getElementById('fstat-uv-sol');
+    const fstatNum = document.getElementById('fstat-uv-num');
+    const fstatLab = document.getElementById('fstat-uv-lab');
+    if (fstatSol) fstatSol.textContent = '🌤️';
+    if (fstatNum) { fstatNum.textContent = '...'; fstatNum.style.color = 'white'; }
+    if (fstatLab) fstatLab.textContent = 'UV playa';
+
+    document.getElementById('ficha').style.display = 'flex';
+    map.setView([l.lat, l.lng], 11);
+    applyLangMap(); // Aplicar idioma a la ficha
+
+    // Obtener UV real de la playa
+    const uvPlaya = await obtenerUVPlaya(l.lat, l.lng);
+    if (uvPlaya !== null) {
+      const uvR = Math.round(uvPlaya * 10) / 10;
+      let sol, nivel, color;
+      if (uvPlaya < 1) { sol = '🌙'; nivel = 'Sin UVB'; color = '#666'; }
+      else if (uvPlaya < 3) { sol = '🌥️'; nivel = 'Bajo'; color = '#4A7C59'; }
+      else if (uvPlaya < 6) { sol = '⛅'; nivel = 'Moderado'; color = '#E8A020'; }
+      else if (uvPlaya < 8) { sol = '☀️'; nivel = '¡Ideal!'; color = '#F5C840'; }
+      else if (uvPlaya < 11) { sol = '🌞'; nivel = 'Muy alto'; color = '#D45F3C'; }
+      else { sol = '🔥'; nivel = 'Extremo'; color = '#C00'; }
+
+      if (fstatSol) fstatSol.textContent = sol;
+      if (fstatNum) { fstatNum.textContent = uvR; fstatNum.style.color = color; }
+      if (fstatLab) fstatLab.textContent = 'UV playa';
+
+      // Actualizar panel vitamina D con datos de la playa
+      window.uvPlayaActual = { uv: uvR, sol, nivel, color, lat: l.lat, lng: l.lng, nombre: l.nombre };
+    }
+  }
+
+  window.cerrarFicha = () => {
+    document.getElementById('ficha').style.display = 'none';
+    selectedPlace = null;
+    map.setView([39.5, -3.5], 6);
+  };
+
+  // Ir al alojamiento filtrado por zona
+  window.irAlojamiento = () => {
+    if (selectedPlace && selectedPlace.zona) {
+      window.location.href = `nudisol-alojamiento.html?zona=${encodeURIComponent(selectedPlace.zona)}&v=9`;
+    } else {
+      window.location.href = 'nudisol-alojamiento.html?v=9';
+    }
+  };
+
+  window.hacerCheckin = async () => {
+    if (!currentUser) { window.location.href = 'nudisol-login.html'; return; }
+    if (!selectedPlace) return;
+    const btn = document.getElementById('btn-checkin');
+    const btnOut = document.getElementById('btn-checkout');
+    btn.disabled = true; btn.textContent = '⏳ Registrando...';
+    try {
+      await setDoc(doc(db, 'checkins', `${currentUser.uid}_${selectedPlace.id}`), {
+        usuarioId: currentUser.uid, lugarId: selectedPlace.id,
+        lugarNombre: selectedPlace.nombre, fecha: serverTimestamp(), textiles: 0
+      });
+      btn.textContent = '✅ ¡Check-in hecho!'; btn.style.background = '#4A7C59';
+      // Mostrar botón checkout
+      setTimeout(() => {
+        btn.style.display = 'none'; btn.style.background = '';
+        if (btnOut) btnOut.style.display = 'block';
+        const t = document.getElementById('toast'); t.style.display = 'block';
+        setTimeout(() => { t.style.display = 'none'; }, 3000);
+      }, 1500);
+    } catch (e) {
+      btn.textContent = '❌ Error'; btn.disabled = false;
+    }
+  };
+
+  window.hacerCheckout = async () => {
+    if (!currentUser || !selectedPlace) return;
+    const btnOut = document.getElementById('btn-checkout');
+    const btnIn = document.getElementById('btn-checkin');
+    btnOut.disabled = true; btnOut.textContent = '⏳ Saliendo...';
+    try {
+      const { deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      await deleteDoc(doc(db, 'checkins', `${currentUser.uid}_${selectedPlace.id}`));
+      btnOut.style.display = 'none';
+      btnIn.style.display = 'block';
+      btnIn.disabled = false;
+      btnIn.textContent = '📍 Estoy aquí ahora';
+      const t = document.getElementById('toast');
+      t.textContent = '👋 ¡Hasta pronto!';
+      t.style.display = 'block';
+      setTimeout(() => { t.style.display = 'none'; t.textContent = '✅ ¡Check-in registrado!'; }, 2500);
+    } catch (e) {
+      btnOut.textContent = '🚪 Ya me voy'; btnOut.disabled = false;
+    }
+  };
+
+  window.miUbicacion = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(p => {
+        map.setView([p.coords.latitude, p.coords.longitude], 10);
+        L.circleMarker([p.coords.latitude, p.coords.longitude], { radius: 8, fillColor: '#1A6B72', color: 'white', weight: 2, fillOpacity: 1 }).addTo(map);
+      });
+    }
+  };
+
+  onAuthStateChanged(auth, async user => {
+    currentUser = user;
+    const btn = document.getElementById('user-btn');
+    if (user) {
+      try {
+        const snap = await getDoc(doc(db, 'usuarios', user.uid));
+        const nombre = snap.exists() ? snap.data().nombre : user.email.split('@')[0];
+        btn.textContent = `👤 ${nombre}`;
+      } catch { btn.textContent = `👤 ${user.email.split('@')[0]}`; }
+    } else {
+      btn.textContent = 'Entrar';
+    }
+  });
+
+  window.accionUsuario = async () => {
+    if (currentUser) {
+      if (confirm('¿Quieres cerrar sesión?')) await signOut(auth);
+    } else {
+      window.location.href = 'nudisol-login.html';
+    }
+  };
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js")
+      .then(r => console.log("SW ok"))
+      .catch(e => console.log("SW error", e));
+  });
+}
+</script>
+<script>
+const mapT = {
+  es: {
+    ahora: 'ahora', entrar: 'Entrar', salir: 'Salir',
+    lblAhora: 'Ahora', lblTextiles: 'Textiles', lblUV: 'UV · VitD',
+    lblVerificado: '✓ Verificado',
+    navMapa: 'Mapa', navBuscar: 'Buscar', navAloj: 'Alojamiento', navPerfil: 'Perfil',
+    checkinBtn: '📍 Estoy aquí ahora', checkoutBtn: '🚪 Ya me voy',
+    alojBtn: '🏨 Alojamiento', verificado: '✓ Verificado',
+    checkinHecho: '✅ ¡Check-in hecho!', registrando: '⏳ Registrando...',
+    error: '❌ Error', toastCheckin: '✅ ¡Check-in registrado!', toastCheckout: '👋 ¡Hasta pronto!',
+    uvNiveles: { sinuvb: 'Sin UVB', bajo: 'Bajo', moderado: 'Moderado', ideal: '¡Momento ideal!', muyalto: 'Muy alto', extremo: 'Extremo' },
+    uvMensajes: {
+      sinuvb: 'Sin vitamina D ahora · Espera al sol de mediodía',
+      bajo: 'Poca vitamina D · Necesitas +60 min de exposición',
+      moderado: '🟡 Algo de vitamina D · 30-40 min recomendados',
+      ideal: '🟢 Vitamina D óptima · 15 min de exposición bastan',
+      muyalto: '⚠️ Potente · Máx 10 min · Protege cara y hombros',
+      extremo: '🔴 Peligroso · Evita exposición prolongada'
+    },
+    vitdTitulo: '☀️ Índice UV · Vitamina D',
+    expOptima: 'Exposición óptima', proteccion: 'Protección recomendada',
+    mejorHora: 'Mejor hora hoy', actualizado: 'Actualizado',
+    cerrarSesion: '¿Quieres cerrar sesión?'
+  },
+  en: {
+    ahora: 'now', entrar: 'Sign in', salir: 'Sign out',
+    lblAhora: 'Now', lblTextiles: 'Textiles', lblUV: 'UV · VitD',
+    lblVerificado: '✓ Verified',
+    navMapa: 'Map', navBuscar: 'Search', navAloj: 'Accommodation', navPerfil: 'Profile',
+    checkinBtn: '📍 I am here now', checkoutBtn: '🚪 I am leaving',
+    alojBtn: '🏨 Accommodation', verificado: '✓ Verified',
+    checkinHecho: '✅ Check-in done!', registrando: '⏳ Checking in...',
+    error: '❌ Error', toastCheckin: '✅ Check-in registered!', toastCheckout: '👋 See you soon!',
+    uvNiveles: { sinuvb: 'No UVB', bajo: 'Low', moderado: 'Moderate', ideal: 'Ideal moment!', muyalto: 'Very high', extremo: 'Extreme' },
+    uvMensajes: {
+      sinuvb: 'No vitamin D now · Wait for midday sun',
+      bajo: 'Low vitamin D · Need +60 min exposure',
+      moderado: '🟡 Some vitamin D · 30-40 min recommended',
+      ideal: '🟢 Optimal vitamin D · 15 min exposure is enough',
+      muyalto: '⚠️ Strong · Max 10 min · Protect face and shoulders',
+      extremo: '🔴 Dangerous · Avoid prolonged exposure'
+    },
+    vitdTitulo: '☀️ UV Index · Vitamin D',
+    expOptima: 'Optimal exposure', proteccion: 'Recommended protection',
+    mejorHora: 'Best time today', actualizado: 'Updated',
+    cerrarSesion: 'Do you want to sign out?'
+  }
+};
+
+let mapLang = localStorage.getItem('nudisol_lang') || 'es';
+
+function setLangMap(l) {
+  mapLang = l;
+  localStorage.setItem('nudisol_lang', l);
+  document.querySelectorAll('.lang-btn-map').forEach(b => b.classList.toggle('active', b.textContent === l.toUpperCase()));
+  applyLangMap();
+}
+
+function applyLangMap() {
+  const tr = mapT[mapLang];
+  const txtAhora = document.getElementById('txt-ahora');
+  if (txtAhora) txtAhora.textContent = tr.ahora;
+  const btnCheckin = document.getElementById('btn-checkin');
+  if (btnCheckin && !btnCheckin.disabled) btnCheckin.textContent = tr.checkinBtn;
+  const btnCheckout = document.getElementById('btn-checkout');
+  if (btnCheckout) btnCheckout.textContent = tr.checkoutBtn;
+  const btnAloj = document.getElementById('btn-aloj');
+  if (btnAloj) btnAloj.textContent = tr.alojBtn;
+  const userBtn = document.getElementById('user-btn');
+  if (userBtn && (userBtn.textContent === 'Entrar' || userBtn.textContent === 'Sign in')) {
+    userBtn.textContent = tr.entrar;
+  }
+  // Labels de la ficha
+  const lblAhora = document.getElementById('lbl-ahora');
+  if (lblAhora) lblAhora.textContent = tr.lblAhora;
+  const lblTextiles = document.getElementById('lbl-textiles');
+  if (lblTextiles) lblTextiles.textContent = tr.lblTextiles;
+  const lblUV = document.getElementById('lbl-uvplaya');
+  if (lblUV) lblUV.textContent = tr.lblUV;
+  const lblVerificado = document.getElementById('lbl-verificado');
+  if (lblVerificado) lblVerificado.textContent = tr.lblVerificado;
+  // Vitamina D
+  const vitdTit = document.querySelector('.vitd-titulo');
+  if (vitdTit) vitdTit.textContent = tr.vitdTitulo;
+  const vitdExpOptima = document.querySelector('.vitd-dato-label');
+  // Nav labels
+  const navLabels = document.querySelectorAll('.nav-label');
+  if (navLabels.length >= 4) {
+    navLabels[0].textContent = tr.navMapa;
+    navLabels[1].textContent = tr.navBuscar;
+    navLabels[2].textContent = tr.navAloj;
+    navLabels[3].textContent = tr.navPerfil;
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  setLangMap(mapLang);
+});
+
+// Override accionUsuario para usar traducción
+const _accionUsuario = window.accionUsuario;
+window.accionUsuario = async () => {
+  const tr = mapT[mapLang];
+  if (window.currentUser) {
+    if (confirm(tr.cerrarSesion)) {
+      const { getAuth, signOut } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+    }
+  } else {
+    window.location.href = 'nudisol-login.html';
+  }
+};
+</script>
+</body>
+</html>
+<script>
+// === SISTEMA UV NUDISOL ===
+
+let uvLat = null, uvLng = null;
+
+function actualizarUV() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      uvLat = pos.coords.latitude;
+      uvLng = pos.coords.longitude;
+
+      // Nombre aproximado de la ubicación
+      try {
+        const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${uvLat}&lon=${uvLng}&format=json`);
+        const geoData = await geo.json();
+        const ciudad = geoData.address?.city || geoData.address?.town || geoData.address?.village || geoData.address?.county || 'Tu ubicación';
+        document.getElementById('uv-loc').textContent = `📍 ${ciudad}`;
+      } catch(e) {
+        document.getElementById('uv-loc').textContent = '📍 Tu ubicación';
+      }
+
+      // Obtener UV de Open-Meteo
+      try {
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${uvLat}&longitude=${uvLng}&current=uv_index&timezone=auto`);
+        const data = await res.json();
+        const uv = data?.current?.uv_index ?? 0;
+        renderizarUV(uv);
+      } catch(e) {
+        document.getElementById('uv-nivel').textContent = 'Sin datos UV';
+      }
+
+    }, () => {
+      document.getElementById('uv-loc').textContent = '📍 Activa ubicación';
+      document.getElementById('uv-mensaje').textContent = 'Toca para dar permiso de ubicación';
+    });
+  }
+}
+
+function renderizarUV(uv) {
+  const uvR = Math.round(uv * 10) / 10;
+  document.getElementById('uv-numero').textContent = uvR;
+
+  const ahora = new Date();
+  const horaStr = ahora.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
+  document.getElementById('uv-hora').textContent = horaStr;
+
+  let sol, nivel, mensaje, color, pct, tiempo, proteccion, consejo;
+
+  if (uv < 1) {
+    sol = '🌙'; nivel = 'Sin UVB'; color = '#666'; pct = 2; tiempo = 'Sin efecto'; proteccion = 'No necesaria';
+    mensaje = 'Sin vitamina D ahora · Espera al sol de mediodía';
+    consejo = 'El sol no está produciendo radiación UVB suficiente para sintetizar vitamina D. Esto ocurre en invierno en latitudes altas o fuera de las horas centrales del día.';
+  } else if (uv < 3) {
+    sol = '🌥️'; nivel = 'Bajo'; color = '#4A7C59'; pct = 18; tiempo = '+60 min'; proteccion = 'Opcional';
+    mensaje = 'Poca vitamina D · Necesitas +60 min de exposición';
+    consejo = 'Radiación UVB baja. Necesitarás más de una hora de exposición para sintetizar una dosis útil de vitamina D. Ideal para pieles sensibles.';
+  } else if (uv < 6) {
+    sol = '⛅'; nivel = 'Moderado'; color = '#E8A020'; pct = 42; tiempo = '30-40 min'; proteccion = 'SPF 15+';
+    mensaje = '🟡 Algo de vitamina D · 30-40 min recomendados';
+    consejo = 'Buena radiación UVB. Entre 30 y 40 minutos de exposición son suficientes para sintetizar vitamina D. Protege la cara si te expones más tiempo.';
+  } else if (uv < 8) {
+    sol = '☀️'; nivel = '¡Momento ideal!'; color = '#F5C840'; pct = 65; tiempo = '15 min'; proteccion = 'SPF 30+';
+    mensaje = '🟢 Vitamina D óptima · 15 min de exposición bastan';
+    consejo = '¡Este es el momento perfecto! Con solo 15 minutos de exposición directa sintetizas la vitamina D que necesitas para el día. Aprovecha el sol nudista ahora.';
+  } else if (uv < 11) {
+    sol = '🌞'; nivel = 'Muy alto'; color = '#D45F3C'; pct = 85; tiempo = '10 min máx'; proteccion = 'SPF 50+';
+    mensaje = '⚠️ Potente · Máx 10 min · Protege cara y hombros';
+    consejo = 'Radiación muy alta. En 10 minutos ya tienes suficiente vitamina D. Protege cara, hombros y pecho si continúas tomando el sol. Hidratación constante.';
+  } else {
+    sol = '🔥'; nivel = 'Extremo'; color = '#C00'; pct = 100; tiempo = '5 min máx'; proteccion = 'SPF 50+ total';
+    mensaje = '🔴 Peligroso · Evita exposición prolongada';
+    consejo = 'Índice UV extremo. Sintetizas vitamina D en 5 minutos pero el riesgo de quemadura es muy alto. Busca la sombra y usa protección total en zonas sensibles.';
+  }
+
+  // Widget pequeño en el mapa
+  document.getElementById('uv-sol').textContent = sol;
+  document.getElementById('uv-nivel').textContent = nivel;
+  document.getElementById('uv-nivel').style.color = color;
+  document.getElementById('uv-mensaje').textContent = mensaje;
+  document.getElementById('uv-barra-fill').style.width = pct + '%';
+  document.getElementById('uv-barra-fill').style.background = color;
+
+  // Stat en la ficha del lugar
+  const fstatSol = document.getElementById('fstat-uv-sol');
+  const fstatNum = document.getElementById('fstat-uv-num');
+  const fstatLab = document.getElementById('fstat-uv-lab');
+  if (fstatSol) fstatSol.textContent = sol;
+  if (fstatNum) { fstatNum.textContent = uvR; fstatNum.style.color = color; }
+  if (fstatLab) fstatLab.textContent = 'UV · VitD';
+
+  // Panel vitamina D
+  const vp = document.getElementById('vitd-sol');
+  if (vp) {
+    document.getElementById('vitd-sol').textContent = sol;
+    document.getElementById('vitd-num').textContent = uvR;
+    document.getElementById('vitd-nivel').textContent = nivel;
+    document.getElementById('vitd-nivel').style.color = color;
+    document.getElementById('vitd-loc').textContent = `📍 ${document.getElementById('uv-loc').textContent.replace('📍 ', '')}`;
+    document.getElementById('vitd-barra').style.width = pct + '%';
+    document.getElementById('vitd-barra').style.background = color;
+    document.getElementById('vitd-consejo-titulo').textContent = mensaje;
+    document.getElementById('vitd-consejo-texto').textContent = consejo;
+    document.getElementById('vitd-tiempo').textContent = tiempo;
+    document.getElementById('vitd-proteccion').textContent = proteccion;
+    document.getElementById('vitd-hora').textContent = horaStr;
+  }
+
+  // Guardar UV global para uso en la ficha
+  window.uvActual = { uv: uvR, sol, nivel, color, tiempo, proteccion, consejo, mensaje };
+}
+
+window.abrirVitD = async () => {
+  const panel = document.getElementById('vitd-panel');
+  panel.style.display = 'flex';
+
+  // Leer coordenadas de la playa desde campos hidden
+  const lat = parseFloat(document.getElementById('place-lat').value);
+  const lng = parseFloat(document.getElementById('place-lng').value);
+  const nombre = document.getElementById('place-nombre').value;
+  const provincia = document.getElementById('place-provincia').value;
+
+  if (lat && lng && nombre) {
+    const l = { lat, lng, nombre, provincia };
+    document.getElementById('vitd-loc').textContent = `📍 ${l.nombre}, ${l.provincia}`;
+    document.getElementById('vitd-num').textContent = '...';
+    document.getElementById('vitd-nivel').textContent = 'Obteniendo UV de la playa...';
+
+    const uvPlaya = await obtenerUVPlaya(l.lat, l.lng);
+    if (uvPlaya !== null) {
+      const uvR = Math.round(uvPlaya * 10) / 10;
+      let sol, nivel, color, pct, tiempo, proteccion, consejo;
+
+      if (uvPlaya < 1) {
+        sol = '🌙'; nivel = 'Sin UVB'; color = '#666'; pct = 2; tiempo = 'Sin efecto'; proteccion = 'No necesaria';
+        consejo = 'El sol no produce radiación UVB suficiente para sintetizar vitamina D en esta playa ahora mismo. Prueba a las horas centrales del día.';
+      } else if (uvPlaya < 3) {
+        sol = '🌥️'; nivel = 'Bajo'; color = '#4A7C59'; pct = 18; tiempo = '+60 min'; proteccion = 'Opcional';
+        consejo = 'Radiación UVB baja en esta playa. Necesitarás más de una hora de exposición para sintetizar vitamina D. Ideal para pieles sensibles.';
+      } else if (uvPlaya < 6) {
+        sol = '⛅'; nivel = 'Moderado'; color = '#E8A020'; pct = 42; tiempo = '30-40 min'; proteccion = 'SPF 15+';
+        consejo = `Buena radiación en ${l.nombre}. Entre 30 y 40 minutos de exposición son suficientes para sintetizar vitamina D. Protege la cara si te expones más tiempo.`;
+      } else if (uvPlaya < 8) {
+        sol = '☀️'; nivel = '¡Momento ideal!'; color = '#F5C840'; pct = 65; tiempo = '15 min'; proteccion = 'SPF 30+';
+        consejo = `¡Momento perfecto en ${l.nombre}! Con solo 15 minutos de exposición directa sintetizas toda la vitamina D que necesitas para el día. ¡Aprovecha el sol nudista ahora!`;
+      } else if (uvPlaya < 11) {
+        sol = '🌞'; nivel = 'Muy alto'; color = '#D45F3C'; pct = 85; tiempo = '10 min máx'; proteccion = 'SPF 50+';
+        consejo = `Radiación muy alta en ${l.nombre}. En 10 minutos ya tienes suficiente vitamina D. Protege cara, hombros y pecho si continúas expuesto.`;
+      } else {
+        sol = '🔥'; nivel = 'Extremo'; color = '#C00'; pct = 100; tiempo = '5 min máx'; proteccion = 'SPF 50+ total';
+        consejo = `Índice UV extremo en ${l.nombre}. Sintetizas vitamina D en 5 minutos pero el riesgo de quemadura es muy alto. Busca la sombra.`;
+      }
+
+      document.getElementById('vitd-sol').textContent = sol;
+      document.getElementById('vitd-num').textContent = uvR;
+      document.getElementById('vitd-nivel').textContent = nivel;
+      document.getElementById('vitd-nivel').style.color = color;
+      document.getElementById('vitd-barra').style.width = pct + '%';
+      document.getElementById('vitd-barra').style.background = color;
+      document.getElementById('vitd-consejo-titulo').textContent = nivel + ' · ' + tiempo + ' recomendados';
+      document.getElementById('vitd-consejo-texto').textContent = consejo;
+      document.getElementById('vitd-tiempo').textContent = tiempo;
+      document.getElementById('vitd-proteccion').textContent = proteccion;
+      const ahora = new Date();
+      document.getElementById('vitd-hora').textContent = ahora.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
+    }
+  }
+};
+
+window.cerrarVitD = () => {
+  document.getElementById('vitd-panel').style.display = 'none';
+};
+
+// Actualizar UV al cargar y cada 15 minutos
+window.addEventListener('load', () => {
+  setTimeout(actualizarUV, 1500);
+  setInterval(actualizarUV, 15 * 60 * 1000);
+});
+</script>
