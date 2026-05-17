@@ -55,6 +55,20 @@
   .nav-icon { font-size: 20px; }
   .nav-label { font-size: 10px; font-weight: 600; color: var(--ocean); font-family: 'Syne', sans-serif; }
   .nudisol-pin { border-radius: 14px; padding: 5px 11px; color: white; font-size: 12px; white-space: nowrap; box-shadow: 0 3px 10px rgba(0,0,0,0.25); font-family: 'Syne', sans-serif; font-weight: 700; cursor: pointer; border: 2px solid rgba(255,255,255,0.3); }
+
+  /* WIDGET UV */
+  .uv-widget { position: absolute; top: 12px; left: 12px; z-index: 500; background: var(--ocean-deep); border-radius: 16px; padding: 10px 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.35); min-width: 190px; cursor: pointer; border: 1px solid rgba(255,255,255,0.08); }
+  .uv-widget-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .uv-loc { font-size: 10px; color: rgba(255,255,255,0.45); font-family: 'Syne', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .uv-hora { font-size: 10px; color: rgba(255,255,255,0.3); }
+  .uv-main { display: flex; align-items: center; gap: 10px; }
+  .uv-sol { font-size: 26px; line-height: 1; }
+  .uv-info { flex: 1; }
+  .uv-numero { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: white; line-height: 1; }
+  .uv-nivel { font-size: 11px; font-weight: 700; margin-top: 1px; }
+  .uv-mensaje { font-size: 10px; color: rgba(255,255,255,0.6); margin-top: 4px; line-height: 1.35; }
+  .uv-barra { height: 3px; border-radius: 2px; background: rgba(255,255,255,0.1); margin-top: 8px; overflow: hidden; }
+  .uv-barra-fill { height: 100%; border-radius: 2px; transition: width 0.6s, background 0.6s; }
 </style>
   <!-- PWA -->
   <link rel="manifest" href="/manifest.json">
@@ -77,6 +91,23 @@
 
 <div class="map-container">
   <div id="map"></div>
+
+  <!-- WIDGET UV -->
+  <div class="uv-widget" onclick="actualizarUV()" title="Toca para actualizar">
+    <div class="uv-widget-top">
+      <div class="uv-loc" id="uv-loc">📍 Buscando...</div>
+      <div class="uv-hora" id="uv-hora"></div>
+    </div>
+    <div class="uv-main">
+      <div class="uv-sol" id="uv-sol">🌤️</div>
+      <div class="uv-info">
+        <div class="uv-numero" id="uv-numero">—</div>
+        <div class="uv-nivel" id="uv-nivel" style="color:rgba(255,255,255,0.5);">Calculando UV...</div>
+        <div class="uv-mensaje" id="uv-mensaje">Obteniendo índice solar</div>
+      </div>
+    </div>
+    <div class="uv-barra"><div class="uv-barra-fill" id="uv-barra-fill" style="width:0%;background:#4A7C59;"></div></div>
+  </div>
   <button class="loc-btn" onclick="miUbicacion()">📍</button>
   <div id="toast">✅ ¡Check-in registrado!</div>
 
@@ -292,3 +323,84 @@ if ("serviceWorker" in navigator) {
 </script>
 </body>
 </html>
+<script>
+// === SISTEMA UV NUDISOL ===
+
+let uvLat = null, uvLng = null;
+
+function actualizarUV() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      uvLat = pos.coords.latitude;
+      uvLng = pos.coords.longitude;
+
+      // Nombre aproximado de la ubicación
+      try {
+        const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${uvLat}&lon=${uvLng}&format=json`);
+        const geoData = await geo.json();
+        const ciudad = geoData.address?.city || geoData.address?.town || geoData.address?.village || geoData.address?.county || 'Tu ubicación';
+        document.getElementById('uv-loc').textContent = `📍 ${ciudad}`;
+      } catch(e) {
+        document.getElementById('uv-loc').textContent = '📍 Tu ubicación';
+      }
+
+      // Obtener UV de Open-Meteo
+      try {
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${uvLat}&longitude=${uvLng}&current=uv_index&timezone=auto`);
+        const data = await res.json();
+        const uv = data?.current?.uv_index ?? 0;
+        renderizarUV(uv);
+      } catch(e) {
+        document.getElementById('uv-nivel').textContent = 'Sin datos UV';
+      }
+
+    }, () => {
+      document.getElementById('uv-loc').textContent = '📍 Activa ubicación';
+      document.getElementById('uv-mensaje').textContent = 'Toca para dar permiso de ubicación';
+    });
+  }
+}
+
+function renderizarUV(uv) {
+  const uvR = Math.round(uv * 10) / 10;
+  document.getElementById('uv-numero').textContent = uvR;
+
+  const ahora = new Date();
+  document.getElementById('uv-hora').textContent = ahora.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
+
+  let sol, nivel, mensaje, color, pct;
+
+  if (uv < 1) {
+    sol = '🌙'; nivel = 'Sin UVB'; color = '#666'; pct = 2;
+    mensaje = 'Sin vitamina D ahora · Espera al sol de mediodía';
+  } else if (uv < 3) {
+    sol = '🌥️'; nivel = 'Bajo'; color = '#4A7C59'; pct = 18;
+    mensaje = 'Poca vitamina D · Necesitas +60 min de exposición';
+  } else if (uv < 6) {
+    sol = '⛅'; nivel = 'Moderado'; color = '#E8A020'; pct = 42;
+    mensaje = '🟡 Algo de vitamina D · 30-40 min recomendados';
+  } else if (uv < 8) {
+    sol = '☀️'; nivel = '¡Momento ideal!'; color = '#F5C840'; pct = 65;
+    mensaje = '🟢 Vitamina D óptima · 15 min de exposición bastan';
+  } else if (uv < 11) {
+    sol = '🌞'; nivel = 'Muy alto'; color = '#D45F3C'; pct = 85;
+    mensaje = '⚠️ Potente · Máx 10 min · Protege cara y hombros';
+  } else {
+    sol = '🔥'; nivel = 'Extremo'; color = '#C00'; pct = 100;
+    mensaje = '🔴 Peligroso · Evita exposición prolongada';
+  }
+
+  document.getElementById('uv-sol').textContent = sol;
+  document.getElementById('uv-nivel').textContent = nivel;
+  document.getElementById('uv-nivel').style.color = color;
+  document.getElementById('uv-mensaje').textContent = mensaje;
+  document.getElementById('uv-barra-fill').style.width = pct + '%';
+  document.getElementById('uv-barra-fill').style.background = color;
+}
+
+// Actualizar UV al cargar y cada 15 minutos
+window.addEventListener('load', () => {
+  setTimeout(actualizarUV, 1500);
+  setInterval(actualizarUV, 15 * 60 * 1000);
+});
+</script>
