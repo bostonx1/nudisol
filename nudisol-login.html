@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Accede</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const app = initializeApp({
+    apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+    authDomain: "nudisol.firebaseapp.com",
+    projectId: "nudisol",
+    storageBucket: "nudisol.firebasestorage.app",
+    messagingSenderId: "222881387953",
+    appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+  });
+
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      // Si ya hay sesión, redirigir al mapa
+      window.location.href = 'nudisol-mapa.html';
+    }
+  });
+
+  window.registrar = async () => {
+    const nombre = document.getElementById('reg-nombre').value.trim();
+    const email = document.getElementById('reg-email').value.trim();
+    const password = document.getElementById('reg-password').value;
+    const tipo = document.getElementById('reg-tipo').value;
+    if (!nombre || !email || !password) { showError('Por favor rellena todos los campos.'); return; }
+    if (password.length < 6) { showError('La contraseña debe tener al menos 6 caracteres.'); return; }
+    setLoading(true);
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, 'usuarios', cred.user.uid), {
+        nombre, email, tipo, verificado: false, fechaRegistro: new Date(), checkins: 0
+      });
+      window.location.href = 'nudisol-mapa.html';
+    } catch (e) {
+      showError(e.code === 'auth/email-already-in-use' ? 'Este email ya está registrado.' : 'Error al registrarse.');
+      setLoading(false);
+    }
+  };
+
+  window.login = async () => {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) { showError('Por favor rellena email y contraseña.'); return; }
+    setLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      window.location.href = 'nudisol-mapa.html';
+    } catch (e) {
+      showError('Email o contraseña incorrectos.');
+      setLoading(false);
+    }
+  };
+
+  window.showError = (msg) => {
+    const el = document.getElementById('error-msg');
+    el.textContent = msg; el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 4000);
+  };
+
+  window.setLoading = (state) => {
+    document.getElementById('btn-registrar').disabled = state;
+    document.getElementById('btn-login').disabled = state;
+    document.getElementById('btn-registrar').textContent = state ? 'Cargando...' : '🌞 Crear mi cuenta';
+    document.getElementById('btn-login').textContent = state ? 'Cargando...' : 'Entrar';
+  };
+
+  window.showTab = (tab) => {
+    document.getElementById('tab-registro').style.display = tab === 'registro' ? 'flex' : 'none';
+    document.getElementById('tab-login').style.display = tab === 'login' ? 'flex' : 'none';
+    document.getElementById('nav-registro').classList.toggle('active', tab === 'registro');
+    document.getElementById('nav-login').classList.toggle('active', tab === 'login');
+    document.getElementById('error-msg').style.display = 'none';
+  };
+</script>
+
+<style>
+  :root {
+    --ocean-deep: #0D3D42; --ocean: #1A6B72; --ocean-light: #2A9BA5;
+    --sun: #E8A020; --coral: #D45F3C; --sand-light: #F5EFE3;
+    --white: #FDFAF5; --text-dark: #1A1A1A; --text-mid: #4A4A4A; --text-light: #8A8A8A;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: linear-gradient(160deg, #1a0808 0%, #3d1200 40%, #6B2000 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .wrapper { width: 100%; max-width: 400px; display: flex; flex-direction: column; align-items: center; gap: 24px; }
+
+  .logo-block { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .logo-icon { width: 70px; height: 70px; border-radius: 50%; background: linear-gradient(135deg, #E8A020, #F5C840); box-shadow: 0 0 30px rgba(232,160,32,0.6); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+  .logo-wordmark { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 36px; color: white; letter-spacing: -1.5px; }
+  .logo-wordmark span { color: #F5C840; }
+  .logo-tagline { font-style: italic; font-weight: 300; font-size: 13px; color: rgba(255,200,150,0.6); letter-spacing: 1px; }
+
+  .auth-card { width: 100%; background: var(--white); border-radius: 28px; overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,0.4); }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid rgba(0,0,0,0.08); }
+  .tab-btn { padding: 16px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; color: var(--text-light); background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .tab-btn.active { color: var(--coral); border-bottom-color: var(--coral); }
+  .tab-content { padding: 24px; flex-direction: column; gap: 14px; }
+  .form-label { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 11px; color: var(--text-dark); letter-spacing: 0.5px; text-transform: uppercase; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-input { background: var(--sand-light); border: 1.5px solid transparent; border-radius: 12px; padding: 12px 14px; font-size: 14px; color: var(--text-dark); font-family: 'DM Sans', sans-serif; outline: none; width: 100%; transition: border-color 0.2s; }
+  .form-input:focus { border-color: var(--ocean); background: white; }
+  .form-select { background: var(--sand-light); border: 1.5px solid transparent; border-radius: 12px; padding: 12px 14px; font-size: 14px; color: var(--text-dark); font-family: 'DM Sans', sans-serif; outline: none; width: 100%; }
+  .verify-box { background: rgba(26,107,114,0.06); border: 1.5px solid rgba(26,107,114,0.2); border-radius: 14px; padding: 12px 14px; }
+  .verify-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; color: var(--ocean); margin-bottom: 4px; }
+  .verify-text { font-size: 12px; color: var(--text-mid); line-height: 1.5; }
+  .btn-main { width: 100%; background: var(--coral); color: white; border: none; border-radius: 14px; padding: 14px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: 0 4px 16px rgba(212,95,60,0.3); margin-top: 4px; }
+  .btn-main:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-ocean { background: var(--ocean); box-shadow: 0 4px 16px rgba(26,107,114,0.3); }
+  #error-msg { display: none; background: #fee; border: 1px solid #fcc; border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #c00; text-align: center; margin: 0 24px; }
+  .link-text { text-align: center; font-size: 13px; color: var(--text-light); padding-bottom: 8px; }
+  .link-text span { color: var(--coral); font-weight: 600; cursor: pointer; }
+  .lang-selector { display: flex; gap: 8px; align-items: center; }
+  .lang-btn { background: rgba(255,255,255,0.15); color: white; border: none; border-radius: 8px; padding: 4px 10px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; cursor: pointer; transition: all 0.2s; }
+  .lang-btn.active { background: var(--sun); color: var(--ocean-deep); }
+</style>
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Nudisol">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <meta name="theme-color" content="#0D3D42">
+  <meta name="mobile-web-app-capable" content="yes">
+</head>
+<body>
+<div class="wrapper">
+  <div class="logo-block">
+    <div class="logo-icon">
+      <svg style="position:absolute;bottom:0;left:0;right:0;width:100%;height:28px;" viewBox="0 0 70 28" preserveAspectRatio="none">
+        <path d="M0 12 Q8.75 4 17.5 12 Q26.25 20 35 12 Q43.75 4 52.5 12 Q61.25 20 70 12 L70 28 L0 28Z" fill="rgba(180,50,10,0.45)"/>
+        <path d="M0 12 Q8.75 4 17.5 12 Q26.25 20 35 12 Q43.75 4 52.5 12 Q61.25 20 70 12" fill="none" stroke="rgba(255,230,180,0.85)" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="logo-wordmark">nudi<span>sol</span></div>
+    <div class="logo-tagline" id="tagline">siente el sol en tu piel</div>
+    <div class="lang-selector">
+      <button class="lang-btn active" onclick="setLang('es')">ES</button>
+      <button class="lang-btn" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
+
+  <div class="auth-card">
+    <div class="tabs">
+      <button class="tab-btn active" id="nav-registro" onclick="showTab('registro')">Crear cuenta</button>
+      <button class="tab-btn" id="nav-login" onclick="showTab('login')">Entrar</button>
+    </div>
+
+    <div style="padding: 0 24px; padding-top: 16px;">
+      <div id="error-msg" style="margin:0;"></div>
+    </div>
+
+    <div id="tab-registro" class="tab-content" style="display:flex;">
+      <div class="form-group"><label class="form-label">Tu nombre</label><input class="form-input" id="reg-nombre" type="text" placeholder="¿Cómo te llamamos?"></div>
+      <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="reg-email" type="email" placeholder="tu@email.com"></div>
+      <div class="form-group"><label class="form-label">Contraseña</label><input class="form-input" id="reg-password" type="password" placeholder="Mínimo 6 caracteres"></div>
+      <div class="form-group"><label class="form-label">Soy</label>
+        <select class="form-select" id="reg-tipo">
+          <option value="nudista">🌞 Nudista</option>
+          <option value="naturista">🌿 Naturista</option>
+          <option value="anfitrion">🏡 Anfitrión</option>
+        </select>
+      </div>
+      <div class="verify-box"><div class="verify-title">✓ Comunidad verificada</div><div class="verify-text">Nudisol es una comunidad real. Verificaremos tu perfil tras el registro.</div></div>
+      <button class="btn-main" id="btn-registrar" onclick="registrar()">🌞 Crear mi cuenta</button>
+      <div class="link-text">¿Ya tienes cuenta? <span onclick="showTab('login')">Inicia sesión</span></div>
+    </div>
+
+    <div id="tab-login" class="tab-content" style="display:none;">
+      <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="login-email" type="email" placeholder="tu@email.com"></div>
+      <div class="form-group"><label class="form-label">Contraseña</label><input class="form-input" id="login-password" type="password" placeholder="Tu contraseña"></div>
+      <button class="btn-main btn-ocean" id="btn-login" onclick="login()">Entrar</button>
+      <div class="link-text">¿No tienes cuenta? <span onclick="showTab('registro')">Regístrate gratis</span></div>
+    </div>
+  </div>
+</div>
+<script>
+const t = {
+  es: {
+    tagline: 'siente el sol en tu piel',
+    tabRegistro: 'Crear cuenta', tabLogin: 'Entrar',
+    labelNombre: 'Tu nombre', placeholderNombre: '¿Cómo te llamamos?',
+    labelEmail: 'Email', labelPassword: 'Contraseña',
+    placeholderPassword: 'Mínimo 6 caracteres', labelSoy: 'Soy',
+    optNudista: '🌞 Nudista', optNaturista: '🌿 Naturista', optAnfitrion: '🏡 Anfitrión',
+    verifyTitle: '✓ Comunidad verificada',
+    verifyText: 'Nudisol es una comunidad real. Verificaremos tu perfil tras el registro.',
+    btnRegistrar: '🌞 Crear mi cuenta', btnLogin: 'Entrar',
+    linkYaTienes: '¿Ya tienes cuenta?', linkInicia: 'Inicia sesión',
+    linkNoTienes: '¿No tienes cuenta?', linkRegistrate: 'Regístrate gratis',
+    placeholderLoginPassword: 'Tu contraseña',
+    errorCampos: 'Por favor rellena todos los campos.',
+    errorPassword: 'La contraseña debe tener al menos 6 caracteres.',
+    errorEmail: 'Este email ya está registrado.',
+    errorLogin: 'Email o contraseña incorrectos.',
+    loading: 'Cargando...'
+  },
+  en: {
+    tagline: 'feel the sun on your skin',
+    tabRegistro: 'Create account', tabLogin: 'Sign in',
+    labelNombre: 'Your name', placeholderNombre: 'What should we call you?',
+    labelEmail: 'Email', labelPassword: 'Password',
+    placeholderPassword: 'At least 6 characters', labelSoy: 'I am',
+    optNudista: '🌞 Nudist', optNaturista: '🌿 Naturist', optAnfitrion: '🏡 Host',
+    verifyTitle: '✓ Verified community',
+    verifyText: 'Nudisol is a real community. We will verify your profile after registration.',
+    btnRegistrar: '🌞 Create my account', btnLogin: 'Sign in',
+    linkYaTienes: 'Already have an account?', linkInicia: 'Sign in',
+    linkNoTienes: "Don't have an account?", linkRegistrate: 'Register for free',
+    placeholderLoginPassword: 'Your password',
+    errorCampos: 'Please fill in all fields.',
+    errorPassword: 'Password must be at least 6 characters.',
+    errorEmail: 'This email is already registered.',
+    errorLogin: 'Incorrect email or password.',
+    loading: 'Loading...'
+  }
+};
+
+let lang = localStorage.getItem('nudisol_lang') || 'es';
+
+function setLang(l) {
+  lang = l;
+  localStorage.setItem('nudisol_lang', l);
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.textContent === l.toUpperCase()));
+  applyLang();
+}
+
+function applyLang() {
+  const tr = t[lang];
+  document.getElementById('tagline').textContent = tr.tagline;
+  document.getElementById('nav-registro').textContent = tr.tabRegistro;
+  document.getElementById('nav-login').textContent = tr.tabLogin;
+  document.querySelector('#reg-nombre').placeholder = tr.placeholderNombre;
+  document.querySelector('label[for="reg-nombre"]') && null;
+  document.querySelector('#reg-password').placeholder = tr.placeholderPassword;
+  document.querySelector('#login-password').placeholder = tr.placeholderLoginPassword;
+  document.getElementById('btn-registrar').textContent = tr.btnRegistrar;
+  document.getElementById('btn-login').textContent = tr.btnLogin;
+  document.querySelector('.verify-title').textContent = tr.verifyTitle;
+  document.querySelector('.verify-text').textContent = tr.verifyText;
+  // Opciones select
+  const sel = document.getElementById('reg-tipo');
+  if (sel) {
+    sel.options[0].text = tr.optNudista;
+    sel.options[1].text = tr.optNaturista;
+    sel.options[2].text = tr.optAnfitrion;
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  setLang(lang);
+});
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js")
+      .then(r => console.log("SW ok"))
+      .catch(e => console.log("SW error", e));
+  });
+}
+</script>
+</body>
+</html>
