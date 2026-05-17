@@ -43,7 +43,9 @@
   .ficha-tags { display: flex; gap: 6px; }
   .ftag { background: var(--sand-light); border-radius: 8px; padding: 4px 10px; font-size: 11px; color: var(--text-mid); font-weight: 500; }
   .ftag.green { background: #e8f4ec; color: #4A7C59; font-weight: 700; }
-  #btn-checkin { width: 100%; background: var(--coral); color: white; border: none; border-radius: 14px; padding: 13px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+  .ficha-btns { display: flex; gap: 8px; }
+  #btn-checkin { flex: 1; background: var(--coral); color: white; border: none; border-radius: 14px; padding: 13px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  .btn-aloj { background: var(--sand-light); color: var(--text-dark); border: none; border-radius: 14px; padding: 13px 14px; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap; }
 
   #toast { display: none; position: absolute; top: 70px; left: 50%; transform: translateX(-50%); background: #4A7C59; color: white; border-radius: 12px; padding: 10px 20px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; z-index: 600; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
 
@@ -87,14 +89,17 @@
       <span class="ftag green">✓ Verificado</span>
       <span class="ftag" id="ficha-tipo">Playa</span>
     </div>
-    <button id="btn-checkin" onclick="hacerCheckin()">📍 Estoy aquí ahora</button>
+    <div class="ficha-btns">
+      <button id="btn-checkin" onclick="hacerCheckin()">📍 Estoy aquí ahora</button>
+      <button class="btn-aloj" onclick="window.location.href='nudisol-alojamiento.html'">🏨 Alojamiento</button>
+    </div>
   </div>
 </div>
 
 <div class="bottom-nav">
   <div class="nav-item active"><div class="nav-icon">🗺️</div><div class="nav-label">Mapa</div></div>
   <div class="nav-item"><div class="nav-icon">🔍</div><div class="nav-label">Buscar</div></div>
-  <div class="nav-item"><div class="nav-icon">🏨</div><div class="nav-label">Alojamiento</div></div>
+  <div class="nav-item" onclick="window.location.href='nudisol-alojamiento.html'"><div class="nav-icon">🏨</div><div class="nav-label">Alojamiento</div></div>
   <div class="nav-item" onclick="accionUsuario()"><div class="nav-icon">👤</div><div class="nav-label">Perfil</div></div>
 </div>
 
@@ -228,7 +233,7 @@
 
   window.accionUsuario = async () => {
     if (currentUser) {
-      await signOut(auth);
+      if (confirm('¿Quieres cerrar sesión?')) await signOut(auth);
     } else {
       window.location.href = 'nudisol-login.html';
     }
