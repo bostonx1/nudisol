@@ -45,9 +45,9 @@
   .ftag.green { background: #e8f4ec; color: #4A7C59; font-weight: 700; }
   .ficha-btns { display: flex; gap: 8px; }
   #btn-checkin { flex: 1; background: var(--coral); color: white; border: none; border-radius: 14px; padding: 13px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s; }
-  .btn-aloj { background: var(--sand-light); color: var(--text-dark); border: none; border-radius: 14px; padding: 13px 14px; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap; }
+  #btn-aloj { background: var(--sand-light); color: var(--text-dark); border: none; border-radius: 14px; padding: 13px 14px; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap; }
 
-  #toast { display: none; position: absolute; top: 70px; left: 50%; transform: translateX(-50%); background: #4A7C59; color: white; border-radius: 12px; padding: 10px 20px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; z-index: 600; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+  #toast { display: none; position: absolute; top: 70px; left: 50%; transform: translateX(-50%); background: #4A7C59; color: white; border-radius: 12px; padding: 10px 20px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; z-index: 600; white-space: nowrap; }
 
   .bottom-nav { background: var(--white); border-top: 1px solid rgba(0,0,0,0.08); display: flex; justify-content: space-around; padding: 8px 0 12px; flex-shrink: 0; z-index: 1000; }
   .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; opacity: 0.4; text-decoration: none; cursor: pointer; }
@@ -91,7 +91,7 @@
     </div>
     <div class="ficha-btns">
       <button id="btn-checkin" onclick="hacerCheckin()">📍 Estoy aquí ahora</button>
-      <button class="btn-aloj" onclick="window.location.href='nudisol-alojamiento.html'">🏨 Alojamiento</button>
+      <button id="btn-aloj" onclick="irAlojamiento()">🏨 Alojamiento</button>
     </div>
   </div>
 </div>
@@ -125,16 +125,16 @@
   L.control.zoom({ position: 'bottomright' }).addTo(map);
 
   const lugares = [
-    { id: 'vera-playa', nombre: 'Playa de Vera', tipo: 'playa', lat: 37.234, lng: -1.834, provincia: 'Almería' },
-    { id: 'ses-illetes', nombre: 'Ses Illetes', tipo: 'playa', lat: 38.671, lng: 1.393, provincia: 'Formentera' },
-    { id: 'es-trenc', nombre: 'Es Trenc', tipo: 'playa', lat: 39.339, lng: 2.993, provincia: 'Mallorca' },
-    { id: 'costa-natura', nombre: 'Costa Natura', tipo: 'resort', lat: 36.421, lng: -5.148, provincia: 'Málaga' },
-    { id: 'cala-comte', nombre: 'Cala Comte', tipo: 'playa', lat: 38.979, lng: 1.225, provincia: 'Ibiza' },
-    { id: 'maspalomas', nombre: 'Playa de Maspalomas', tipo: 'playa', lat: 27.740, lng: -15.586, provincia: 'Gran Canaria' },
-    { id: 'portus', nombre: 'El Portús', tipo: 'camping', lat: 37.584, lng: -0.989, provincia: 'Murcia' },
-    { id: 'templo-sol', nombre: 'El Templo del Sol', tipo: 'camping', lat: 41.127, lng: 1.248, provincia: 'Tarragona' },
-    { id: 'papagayo', nombre: 'Playa Papagayo', tipo: 'playa', lat: 28.845, lng: -13.763, provincia: 'Lanzarote' },
-    { id: 'cala-pregonda', nombre: 'Cala Pregonda', tipo: 'playa', lat: 40.056, lng: 3.946, provincia: 'Menorca' },
+    { id: 'vera-playa', nombre: 'Playa de Vera', tipo: 'playa', lat: 37.234, lng: -1.834, provincia: 'Almería', zona: 'Almería' },
+    { id: 'ses-illetes', nombre: 'Ses Illetes', tipo: 'playa', lat: 38.671, lng: 1.393, provincia: 'Formentera', zona: 'Formentera' },
+    { id: 'es-trenc', nombre: 'Es Trenc', tipo: 'playa', lat: 39.339, lng: 2.993, provincia: 'Mallorca', zona: 'Mallorca' },
+    { id: 'costa-natura', nombre: 'Costa Natura', tipo: 'resort', lat: 36.421, lng: -5.148, provincia: 'Málaga', zona: 'Málaga' },
+    { id: 'cala-comte', nombre: 'Cala Comte', tipo: 'playa', lat: 38.979, lng: 1.225, provincia: 'Ibiza', zona: 'Ibiza' },
+    { id: 'maspalomas', nombre: 'Playa de Maspalomas', tipo: 'playa', lat: 27.740, lng: -15.586, provincia: 'Gran Canaria', zona: 'Lanzarote' },
+    { id: 'portus', nombre: 'El Portús', tipo: 'camping', lat: 37.584, lng: -0.989, provincia: 'Murcia', zona: 'Murcia' },
+    { id: 'templo-sol', nombre: 'El Templo del Sol', tipo: 'camping', lat: 41.127, lng: 1.248, provincia: 'Tarragona', zona: 'Tarragona' },
+    { id: 'papagayo', nombre: 'Playa Papagayo', tipo: 'playa', lat: 28.845, lng: -13.763, provincia: 'Lanzarote', zona: 'Lanzarote' },
+    { id: 'cala-pregonda', nombre: 'Cala Pregonda', tipo: 'playa', lat: 40.056, lng: 3.946, provincia: 'Menorca', zona: 'Mallorca' },
   ];
 
   const tipoColor = { playa: '#1A6B72', camping: '#4A7C59', resort: '#D45F3C' };
@@ -188,6 +188,15 @@
     document.getElementById('ficha').style.display = 'none';
     selectedPlace = null;
     map.setView([39.5, -3.5], 6);
+  };
+
+  // Ir al alojamiento filtrado por zona
+  window.irAlojamiento = () => {
+    if (selectedPlace && selectedPlace.zona) {
+      window.location.href = `nudisol-alojamiento.html?zona=${encodeURIComponent(selectedPlace.zona)}`;
+    } else {
+      window.location.href = 'nudisol-alojamiento.html';
+    }
   };
 
   window.hacerCheckin = async () => {
