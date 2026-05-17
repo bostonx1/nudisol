@@ -9,7 +9,7 @@
 <style>
   :root {
     --ocean-deep: #0D3D42; --ocean: #1A6B72; --ocean-light: #2A9BA5;
-    --sun: #F5C840; --coral: #D45F3C; --sand-light: #F5EFE3; --sand: #E8DCC8;
+    --sun: #F5C840; --coral: #D45F3C; --sand-light: #F5EFE3;
     --white: #FDFAF5; --text-dark: #1A1A1A; --text-light: #8A8A8A; --text-mid: #4A4A4A;
     --green: #4A7C59;
   }
@@ -19,103 +19,97 @@
   .header { background: var(--ocean-deep); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; position: sticky; top: 0; z-index: 100; }
   .header-left { display: flex; align-items: center; gap: 10px; }
   .btn-back { background: rgba(255,255,255,0.15); color: white; border: none; border-radius: 10px; padding: 6px 10px; font-size: 16px; cursor: pointer; }
-  .header-logo { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 20px; color: white; letter-spacing: -0.5px; }
+  .header-logo { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 20px; color: white; }
   .header-logo span { color: var(--sun); }
   .header-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; color: rgba(255,255,255,0.7); }
 
-  /* ZONA BANNER */
   #zona-banner { display: none; background: linear-gradient(135deg, var(--ocean), var(--ocean-light)); padding: 12px 16px; }
   .zona-banner-content { display: flex; align-items: center; justify-content: space-between; }
   .zona-texto { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: white; }
   .zona-sub { font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 2px; }
   .btn-ver-todo { background: rgba(255,255,255,0.2); color: white; border: none; border-radius: 10px; padding: 6px 12px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 11px; cursor: pointer; }
 
-  /* HERO */
   .hero { background: linear-gradient(160deg, #1a0808, #3d1200, #6B2000); padding: 20px 20px 24px; position: relative; overflow: hidden; }
   .hero-wave { position: absolute; bottom: 0; left: 0; right: 0; }
   .hero-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; color: white; line-height: 1.2; margin-bottom: 6px; position: relative; z-index: 1; }
   .hero-title span { color: var(--sun); }
   .hero-sub { font-size: 13px; color: rgba(255,200,150,0.65); position: relative; z-index: 1; }
 
-  /* FILTROS */
   .filters-wrap { padding: 12px 16px 0; background: var(--white); border-bottom: 1px solid rgba(0,0,0,0.06); }
   .filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; scrollbar-width: none; }
   .filters::-webkit-scrollbar { display: none; }
   .filter-pill { background: var(--sand-light); border: 1.5px solid transparent; border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: var(--text-mid); white-space: nowrap; cursor: pointer; font-family: 'Syne', sans-serif; transition: all 0.2s; }
   .filter-pill.active { background: var(--ocean); color: white; border-color: var(--ocean); }
 
-  /* RESULTADOS */
   .results-label { padding: 12px 16px 4px; font-size: 12px; color: var(--text-light); font-weight: 500; }
   .results-label b { color: var(--ocean); }
 
-  /* LISTA */
   .listings { padding: 8px 16px; display: flex; flex-direction: column; gap: 16px; flex: 1; padding-bottom: 80px; }
 
-  /* CARD */
-  .card { background: var(--white); border-radius: 20px; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.08); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
-  .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+  .card { background: var(--white); border-radius: 20px; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.08); cursor: pointer; transition: transform 0.2s; }
+  .card:hover { transform: translateY(-2px); }
 
-  .card-img { height: 180px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 60px; }
-  .img-vera { background: linear-gradient(135deg, #7ec8d0, #c8e4c0, #e8d4a0); }
-  .img-estepona { background: linear-gradient(135deg, #4a9cb8, #7ad0d8, #d4c890); }
-  .img-mallorca { background: linear-gradient(135deg, #2a7a90, #5ab8c8, #c8e8d0); }
-  .img-lanzarote { background: linear-gradient(135deg, #c8904a, #e8b870, #4a9cb8); }
-  .img-ibiza { background: linear-gradient(135deg, #7a4a90, #b870c8, #e8d0f0); }
-  .img-tarragona { background: linear-gradient(135deg, #4a7a30, #8ab860, #c8e890); }
+  .card-img { height: 160px; position: relative; display: flex; align-items: center; justify-content: center; font-size: 50px; }
+  .img-1 { background: linear-gradient(135deg, #7ec8d0, #c8e4c0, #e8d4a0); }
+  .img-2 { background: linear-gradient(135deg, #4a9cb8, #7ad0d8, #d4c890); }
+  .img-3 { background: linear-gradient(135deg, #c8904a, #e8b870, #f0d090); }
+  .img-4 { background: linear-gradient(135deg, #2a7a90, #5ab8c8, #c8e8d0); }
+  .img-5 { background: linear-gradient(135deg, #7a4a90, #b870c8, #e8d0f0); }
+  .img-6 { background: linear-gradient(135deg, #4a7a30, #8ab860, #c8e890); }
+  .img-7 { background: linear-gradient(135deg, #906030, #c89060, #e8c890); }
+  .img-8 { background: linear-gradient(135deg, #304a90, #6080c8, #b0c8e8); }
+  .img-9 { background: linear-gradient(135deg, #903040, #c86080, #e8b0c0); }
+  .img-10 { background: linear-gradient(135deg, #309060, #60c890, #b0e8c8); }
 
-  .card-img-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.35) 100%); }
+  .card-img-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.3) 100%); }
   .card-badge { position: absolute; top: 10px; left: 10px; background: var(--coral); color: white; border-radius: 20px; padding: 4px 10px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 11px; z-index: 1; }
   .card-badge.top { background: var(--sun); color: var(--ocean-deep); }
-  .card-fav { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; background: rgba(255,255,255,0.9); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; z-index: 1; }
   .card-nudistas { position: absolute; bottom: 10px; right: 10px; background: rgba(13,61,66,0.85); color: white; border-radius: 10px; padding: 4px 8px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px; z-index: 1; }
   .live-dot { width: 5px; height: 5px; background: var(--coral); border-radius: 50%; animation: blink 1.2s infinite; }
   @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-  .card-body { padding: 14px 16px; }
-  .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
-  .card-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: var(--text-dark); line-height: 1.2; flex: 1; }
-  .card-price { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 17px; color: var(--ocean); text-align: right; }
-  .card-price-unit { font-family: 'DM Sans', sans-serif; font-weight: 400; font-size: 10px; color: var(--text-light); text-align: right; }
-  .card-location { font-size: 12px; color: var(--text-light); margin-bottom: 10px; }
-  .card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-  .tag { background: var(--sand-light); border-radius: 8px; padding: 3px 8px; font-size: 11px; color: var(--text-mid); font-weight: 500; }
+  .card-body { padding: 12px 14px; }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 3px; }
+  .card-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: var(--text-dark); line-height: 1.2; flex: 1; }
+  .card-price { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 16px; color: var(--ocean); text-align: right; }
+  .card-price-unit { font-size: 10px; color: var(--text-light); text-align: right; }
+  .card-location { font-size: 11px; color: var(--text-light); margin-bottom: 8px; }
+  .card-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
+  .tag { background: var(--sand-light); border-radius: 8px; padding: 3px 8px; font-size: 10px; color: var(--text-mid); font-weight: 500; }
   .tag.green { background: #e8f4ec; color: var(--green); font-weight: 700; }
-  .card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.06); }
-  .card-rating { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: var(--text-dark); }
-  .card-reviews { font-size: 11px; color: var(--text-light); font-weight: 400; }
-  .card-verified { font-size: 11px; color: var(--green); font-weight: 600; }
+  .card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.06); }
+  .card-rating { font-size: 12px; font-weight: 600; color: var(--text-dark); }
+  .card-reviews { font-size: 10px; color: var(--text-light); font-weight: 400; }
+  .card-verified { font-size: 10px; color: var(--green); font-weight: 600; }
 
-  /* SIN RESULTADOS */
   .no-results { text-align: center; padding: 40px 20px; }
   .no-results-icon { font-size: 48px; margin-bottom: 12px; }
   .no-results-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: var(--text-dark); margin-bottom: 6px; }
   .no-results-sub { font-size: 13px; color: var(--text-light); margin-bottom: 16px; }
   .btn-ver-esp { background: var(--ocean); color: white; border: none; border-radius: 14px; padding: 12px 20px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; }
 
-  /* FICHA */
   #ficha-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; }
   #ficha-panel { display: none; position: fixed; bottom: 0; left: 0; right: 0; max-height: 90vh; background: var(--white); border-radius: 24px 24px 0 0; z-index: 300; overflow-y: auto; padding-bottom: 24px; }
   .ficha-handle { width: 40px; height: 4px; background: rgba(0,0,0,0.15); border-radius: 2px; margin: 12px auto 16px; }
-  .ficha-hero { height: 200px; display: flex; align-items: center; justify-content: center; font-size: 70px; margin: 0 16px; border-radius: 16px; position: relative; overflow: hidden; }
+  .ficha-hero { height: 180px; display: flex; align-items: center; justify-content: center; font-size: 60px; margin: 0 16px; border-radius: 16px; position: relative; overflow: hidden; }
   .ficha-hero-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.4) 100%); }
   .ficha-body { padding: 16px; }
-  .ficha-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; color: var(--text-dark); margin-bottom: 4px; }
-  .ficha-location { font-size: 13px; color: var(--text-light); margin-bottom: 14px; }
-  .ficha-live { background: linear-gradient(135deg, var(--ocean-deep), var(--ocean)); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+  .ficha-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: var(--text-dark); margin-bottom: 4px; }
+  .ficha-location { font-size: 13px; color: var(--text-light); margin-bottom: 12px; }
+  .ficha-live { background: linear-gradient(135deg, var(--ocean-deep), var(--ocean)); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
   .ficha-live-left h4 { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; color: white; margin-bottom: 2px; }
   .ficha-live-left p { font-size: 11px; color: rgba(255,255,255,0.5); }
   .ficha-live-count { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 28px; color: var(--sun); }
-  .ficha-amenities { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
-  .amenity { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-mid); font-weight: 500; }
-  .amenity-icon { width: 30px; height: 30px; background: var(--sand-light); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
-  .ficha-desc { font-size: 13px; color: var(--text-mid); line-height: 1.6; margin-bottom: 14px; }
-  .precio-grande { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 28px; color: var(--ocean); margin-bottom: 2px; }
-  .precio-nota { font-size: 11px; color: var(--green); font-weight: 600; margin-bottom: 14px; }
-  .btn-contactar { width: 100%; background: var(--coral); color: white; border: none; border-radius: 16px; padding: 15px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: 0 4px 16px rgba(212,95,60,0.3); margin-bottom: 10px; }
-  .btn-mapa { width: 100%; background: var(--sand-light); color: var(--text-dark); border: none; border-radius: 16px; padding: 13px; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 14px; cursor: pointer; }
+  .ficha-amenities { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .amenity { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-mid); }
+  .amenity-icon { width: 28px; height: 28px; background: var(--sand-light); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .ficha-desc { font-size: 13px; color: var(--text-mid); line-height: 1.6; margin-bottom: 12px; }
+  .precio-grande { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 26px; color: var(--ocean); margin-bottom: 2px; }
+  .precio-nota { font-size: 11px; color: var(--green); font-weight: 600; margin-bottom: 12px; }
+  .btn-contactar { width: 100%; background: var(--coral); color: white; border: none; border-radius: 16px; padding: 14px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; margin-bottom: 8px; }
+  .btn-mapa { width: 100%; background: var(--sand-light); color: var(--text-dark); border: none; border-radius: 16px; padding: 12px; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; }
 
-  /* BOTTOM NAV */
-  .bottom-nav { background: var(--white); border-top: 1px solid rgba(0,0,0,0.08); display: flex; justify-content: space-around; padding: 8px 0 12px; flex-shrink: 0; position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; }
+  .bottom-nav { background: var(--white); border-top: 1px solid rgba(0,0,0,0.08); display: flex; justify-content: space-around; padding: 8px 0 12px; position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; }
   .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; opacity: 0.4; text-decoration: none; cursor: pointer; }
   .nav-item.active { opacity: 1; }
   .nav-icon { font-size: 20px; }
@@ -132,27 +126,24 @@
   <div class="header-title">Alojamiento</div>
 </div>
 
-<!-- BANNER DE ZONA -->
 <div id="zona-banner">
   <div class="zona-banner-content">
     <div>
-      <div class="zona-texto" id="zona-texto">Almería</div>
+      <div class="zona-texto" id="zona-texto">📍 Almería</div>
       <div class="zona-sub">Alojamientos cerca de tu playa</div>
     </div>
     <button class="btn-ver-todo" onclick="verTodo()">Ver toda España</button>
   </div>
 </div>
 
-<!-- HERO -->
 <div class="hero">
   <svg class="hero-wave" viewBox="0 0 400 30" preserveAspectRatio="none" height="30">
     <path d="M0 15 Q50 0 100 15 Q150 30 200 15 Q250 0 300 15 Q350 30 400 15 L400 30 L0 30Z" fill="#F5EFE3"/>
   </svg>
   <div class="hero-title" id="hero-title">Aloja con tu <span>tribu</span></div>
-  <div class="hero-sub" id="hero-sub">Apartamentos, hoteles y campings 100% nudistas</div>
+  <div class="hero-sub" id="hero-sub">Apartamentos, hoteles y campings 100% nudistas verificados</div>
 </div>
 
-<!-- FILTROS -->
 <div class="filters-wrap">
   <div class="filters">
     <div class="filter-pill active" onclick="filtrar(this,'todos')">Todo</div>
@@ -166,20 +157,19 @@
 <div class="results-label" id="results-label"></div>
 <div class="listings" id="listings"></div>
 
-<!-- FICHA -->
 <div id="ficha-overlay" onclick="cerrarFicha()"></div>
 <div id="ficha-panel">
   <div class="ficha-handle"></div>
-  <div id="ficha-hero" class="ficha-hero img-vera"><div class="ficha-hero-overlay"></div></div>
+  <div id="ficha-hero" class="ficha-hero img-1"><div class="ficha-hero-overlay"></div></div>
   <div class="ficha-body">
     <div class="precio-grande" id="fp-precio">85€<span style="font-size:14px;font-weight:400;color:#8A8A8A;">/noche</span></div>
     <div class="precio-nota">Sin comisión para el huésped</div>
-    <div class="ficha-title" id="fp-nombre">Nombre</div>
-    <div class="ficha-location" id="fp-location">📍 Ubicación</div>
+    <div class="ficha-title" id="fp-nombre"></div>
+    <div class="ficha-location" id="fp-location"></div>
     <div class="ficha-live">
       <div class="ficha-live-left">
         <h4>Nudistas cerca ahora</h4>
-        <p id="fp-playa">Playa a X km · Sin textiles</p>
+        <p id="fp-playa">Playa cerca · Sin textiles</p>
       </div>
       <div class="ficha-live-count" id="fp-nudistas">0</div>
     </div>
@@ -190,7 +180,6 @@
   </div>
 </div>
 
-<!-- BOTTOM NAV -->
 <div class="bottom-nav">
   <div class="nav-item" onclick="window.location.href='nudisol-mapa.html'"><div class="nav-icon">🗺️</div><div class="nav-label">Mapa</div></div>
   <div class="nav-item"><div class="nav-icon">🔍</div><div class="nav-label">Buscar</div></div>
@@ -200,55 +189,100 @@
 
 <script>
 const alojamientos = [
-  { id: 1, nombre: "Apto. Natura World · 1ª línea", tipo: "apartamento", zona: "Almería",
-    ubicacion: "Vera Playa, Almería", precio: 85, imagen: "img-vera", emoji: "🏖️",
-    badge: "⭐ Top nudista", badgeClass: "top", rating: 4.9, reviews: 48, nudistas: 8, distPlaya: "0,2 km",
-    tags: ["✓ 100% nudista", "2 hab.", "Piscina", "WiFi"],
-    desc: "Apartamento de 1ª línea en la urbanización naturista Natura World. Acceso directo al Playazo de Vera, la playa nudista más grande de España.",
-    amenities: ["🏊 Piscina nudista", "❄️ Aire acond.", "📶 WiFi fibra", "🅿️ Parking", "🌊 1ª línea playa", "🍳 Cocina equipada"] },
-  { id: 2, nombre: "Costa Natura Resort · Estudio", tipo: "hotel", zona: "Málaga",
-    ubicacion: "Estepona, Málaga", precio: 110, imagen: "img-estepona", emoji: "🌊",
-    badge: "🔥 Muy solicitado", badgeClass: "", rating: 4.7, reviews: 31, nudistas: 12, distPlaya: "50m",
-    tags: ["✓ 100% nudista", "Estudio", "AC", "Vistas al mar"],
-    desc: "Resort naturista en primera línea de playa en Estepona. Piscina, restaurante y acceso directo a playa nudista privada.",
-    amenities: ["🏖️ Playa privada", "🏊 Piscina", "🍽️ Restaurante", "❄️ AC", "📶 WiFi", "🌅 Vistas mar"] },
-  { id: 3, nombre: "Naturplaya Hotel · Hab. doble", tipo: "hotel", zona: "Mallorca",
-    ubicacion: "Colònia de Sant Pere, Mallorca", precio: 130, imagen: "img-mallorca", emoji: "🌿",
-    badge: "🌿 Naturista", badgeClass: "", rating: 4.8, reviews: 67, nudistas: 5, distPlaya: "100m",
-    tags: ["✓ 100% nudista", "Hotel 4★", "Spa", "Desayuno"],
-    desc: "Hotel naturista de 4 estrellas en Mallorca. Spa, jardines y una atmósfera completamente libre de textiles en un entorno natural privilegiado.",
-    amenities: ["🧖 Spa", "🌳 Jardines", "🍳 Desayuno", "📶 WiFi", "🅿️ Parking", "🏊 Piscina"] },
-  { id: 4, nombre: "Bungalow Playa Papagayo", tipo: "bungalow", zona: "Lanzarote",
-    ubicacion: "Playa Blanca, Lanzarote", precio: 95, imagen: "img-lanzarote", emoji: "☀️",
-    badge: "🌞 Canarias", badgeClass: "", rating: 4.6, reviews: 24, nudistas: 3, distPlaya: "300m",
-    tags: ["✓ 100% nudista", "Bungalow", "Terraza", "BBQ"],
-    desc: "Bungalow naturista cerca de las famosas playas nudistas de Papagayo en Lanzarote. Terraza privada con vistas al mar y barbacoa.",
-    amenities: ["🌺 Terraza privada", "🔥 BBQ", "📶 WiFi", "🅿️ Parking", "🌊 Cerca playa", "🌡️ Clima ideal"] },
-  { id: 5, nombre: "Apto. Ibiza Naturista · 2 hab.", tipo: "apartamento", zona: "Ibiza",
-    ubicacion: "Cala Comte, Ibiza", precio: 145, imagen: "img-ibiza", emoji: "🏝️",
-    badge: "💎 Premium", badgeClass: "", rating: 4.9, reviews: 19, nudistas: 6, distPlaya: "5 min",
-    tags: ["✓ 100% nudista", "2 hab.", "Piscina", "Vista mar"],
-    desc: "Apartamento de lujo en zona naturista de Ibiza. A 5 minutos de Cala Comte, una de las calas nudistas más espectaculares del Mediterráneo.",
-    amenities: ["🏊 Piscina privada", "🌅 Vista mar", "❄️ AC", "📶 WiFi", "🍳 Cocina", "🚗 Parking"] },
-  { id: 6, nombre: "El Templo del Sol · Bungalow", tipo: "camping", zona: "Tarragona",
-    ubicacion: "L'Hospitalet de l'Infant, Tarragona", precio: 65, imagen: "img-tarragona", emoji: "⛺",
-    badge: "🏕️ Camping", badgeClass: "", rating: 4.5, reviews: 42, nudistas: 15, distPlaya: "En la playa",
-    tags: ["✓ 100% nudista", "Camping 5★", "Piscina", "Restaurante"],
-    desc: "El camping naturista más famoso de España. Bungalows completamente equipados directamente en la playa nudista de Tarragona.",
-    amenities: ["🏖️ Playa propia", "🏊 Piscina", "🍽️ Restaurante", "🛒 Supermercado", "🎾 Deportes", "📶 WiFi"] }
+  // ALMERÍA / VERA PLAYA
+  { id:1, nombre:"Apto. Natura World · 1ª línea", tipo:"apartamento", zonas:["Almería"],
+    ubicacion:"Vera Playa, Almería", precio:85, img:"img-1", badge:"⭐ Top nudista", badgeClass:"top",
+    rating:4.9, reviews:48, nudistas:8, distPlaya:"0,2 km",
+    tags:["✓ 100% nudista","2 hab.","Piscina","WiFi"],
+    desc:"Apartamento de 1ª línea en la urbanización naturista Natura World. Acceso directo al Playazo de Vera, la playa nudista más grande de España.",
+    amenities:["🏊 Piscina nudista","❄️ Aire acond.","📶 WiFi fibra","🅿️ Parking","🌊 1ª línea playa","🍳 Cocina"] },
+  { id:2, nombre:"Parque Vera · Apto. naturista", tipo:"apartamento", zonas:["Almería"],
+    ubicacion:"Vera Playa, Almería", precio:70, img:"img-2", badge:"🌞 Naturista", badgeClass:"",
+    rating:4.7, reviews:32, nudistas:8, distPlaya:"0,5 km",
+    tags:["✓ 100% nudista","1 hab.","Terraza","WiFi"],
+    desc:"Apartamento en la urbanización naturista Parque Vera. Ambiente 100% nudista, terraza privada y a 5 minutos andando de la playa.",
+    amenities:["🌺 Terraza privada","📶 WiFi","🅿️ Parking","🍳 Cocina","❄️ AC","🌊 Cerca playa"] },
+  { id:3, nombre:"Natsun · Estudio naturista", tipo:"apartamento", zonas:["Almería"],
+    ubicacion:"Vera Playa, Almería", precio:55, img:"img-3", badge:"💰 Mejor precio", badgeClass:"",
+    rating:4.5, reviews:19, nudistas:8, distPlaya:"1 km",
+    tags:["✓ 100% nudista","Estudio","WiFi","AC"],
+    desc:"Estudio naturista económico en la urbanización Natsun. Ideal para parejas o viajeros en solitario que quieren disfrutar de Vera Playa sin gastar mucho.",
+    amenities:["❄️ AC","📶 WiFi","🍳 Cocina básica","🌊 Playa nudista","🅿️ Parking","☀️ Solarium"] },
+  { id:4, nombre:"Vera Playa Club Hotel", tipo:"hotel", zonas:["Almería"],
+    ubicacion:"Vera Playa, Almería", precio:120, img:"img-7", badge:"🏨 Hotel naturista", badgeClass:"",
+    rating:4.8, reviews:156, nudistas:8, distPlaya:"En la playa",
+    tags:["✓ 100% nudista","Hotel 4★","Piscina","Restaurante"],
+    desc:"El hotel naturista más famoso de Vera Playa. Directamente en la playa nudista, con piscina, restaurante, spa y ambiente completamente naturista.",
+    amenities:["🏖️ Playa propia","🏊 Piscina","🍽️ Restaurante","🧖 Spa","📶 WiFi","🎾 Deportes"] },
+  // MÁLAGA
+  { id:5, nombre:"Costa Natura Resort · Estudio", tipo:"hotel", zonas:["Málaga"],
+    ubicacion:"Estepona, Málaga", precio:110, img:"img-2", badge:"🔥 Muy solicitado", badgeClass:"",
+    rating:4.7, reviews:31, nudistas:12, distPlaya:"50m",
+    tags:["✓ 100% nudista","Estudio","AC","Vistas al mar"],
+    desc:"Resort naturista en primera línea de playa en Estepona. Piscina, restaurante y acceso directo a playa nudista privada.",
+    amenities:["🏖️ Playa privada","🏊 Piscina","🍽️ Restaurante","❄️ AC","📶 WiFi","🌅 Vistas mar"] },
+  { id:6, nombre:"Apto. Naturista Málaga Costa", tipo:"apartamento", zonas:["Málaga"],
+    ubicacion:"Nerja, Málaga", precio:90, img:"img-8", badge:"🌿 Naturista", badgeClass:"",
+    rating:4.6, reviews:14, nudistas:12, distPlaya:"200m",
+    tags:["✓ 100% nudista","2 hab.","Terraza","Piscina"],
+    desc:"Apartamento naturista en Nerja con acceso a playa nudista privada. Piscina comunitaria y terraza con vistas al Mediterráneo.",
+    amenities:["🏊 Piscina","🌺 Terraza","📶 WiFi","🅿️ Parking","❄️ AC","🌊 Playa cerca"] },
+  // MALLORCA / MENORCA
+  { id:7, nombre:"Naturplaya Hotel · Hab. doble", tipo:"hotel", zonas:["Mallorca"],
+    ubicacion:"Colònia de Sant Pere, Mallorca", precio:130, img:"img-4", badge:"🌿 Naturista", badgeClass:"",
+    rating:4.8, reviews:67, nudistas:5, distPlaya:"100m",
+    tags:["✓ 100% nudista","Hotel 4★","Spa","Desayuno"],
+    desc:"Hotel naturista de 4 estrellas en Mallorca. Spa, jardines y una atmósfera completamente libre de textiles.",
+    amenities:["🧖 Spa","🌳 Jardines","🍳 Desayuno","📶 WiFi","🅿️ Parking","🏊 Piscina"] },
+  { id:8, nombre:"Apto. Es Trenc · Naturista", tipo:"apartamento", zonas:["Mallorca"],
+    ubicacion:"Campos, Mallorca", precio:100, img:"img-9", badge:"🏖️ Es Trenc", badgeClass:"",
+    rating:4.7, reviews:22, nudistas:5, distPlaya:"10 min",
+    tags:["✓ 100% nudista","2 hab.","Jardín","BBQ"],
+    desc:"Apartamento naturista a 10 minutos de la famosa playa nudista de Es Trenc. Jardín privado y barbacoa para disfrutar del clima mallorquín.",
+    amenities:["🌿 Jardín privado","🔥 BBQ","📶 WiFi","🅿️ Parking","❄️ AC","🌊 Es Trenc cerca"] },
+  // IBIZA / FORMENTERA
+  { id:9, nombre:"Apto. Ibiza Naturista · 2 hab.", tipo:"apartamento", zonas:["Ibiza","Formentera"],
+    ubicacion:"Cala Comte, Ibiza", precio:145, img:"img-5", badge:"💎 Premium", badgeClass:"",
+    rating:4.9, reviews:19, nudistas:6, distPlaya:"5 min",
+    tags:["✓ 100% nudista","2 hab.","Piscina","Vista mar"],
+    desc:"Apartamento de lujo en zona naturista de Ibiza. A 5 minutos de Cala Comte, una de las calas nudistas más espectaculares del Mediterráneo.",
+    amenities:["🏊 Piscina privada","🌅 Vista mar","❄️ AC","📶 WiFi","🍳 Cocina","🚗 Parking"] },
+  { id:10, nombre:"Casa Formentera · Naturista", tipo:"apartamento", zonas:["Formentera"],
+    ubicacion:"La Mola, Formentera", precio:180, img:"img-10", badge:"🌟 Exclusivo", badgeClass:"top",
+    rating:5.0, reviews:8, nudistas:6, distPlaya:"2 min",
+    tags:["✓ 100% nudista","Casa completa","Ses Illetes","Exclusivo"],
+    desc:"Casa naturista exclusiva en Formentera a 2 minutos de Ses Illetes. La playa nudista más bonita del Mediterráneo a un paso de tu puerta.",
+    amenities:["🏖️ Ses Illetes","🌊 2 min playa","🌅 Atardeceres","📶 WiFi","🚲 Bicicletas","🌿 Jardín"] },
+  // LANZAROTE / CANARIAS
+  { id:11, nombre:"Bungalow Playa Papagayo", tipo:"bungalow", zonas:["Lanzarote"],
+    ubicacion:"Playa Blanca, Lanzarote", precio:95, img:"img-3", badge:"🌞 Canarias", badgeClass:"",
+    rating:4.6, reviews:24, nudistas:3, distPlaya:"300m",
+    tags:["✓ 100% nudista","Bungalow","Terraza","BBQ"],
+    desc:"Bungalow naturista cerca de las famosas playas nudistas de Papagayo en Lanzarote. Terraza privada con vistas al mar y barbacoa.",
+    amenities:["🌺 Terraza privada","🔥 BBQ","📶 WiFi","🅿️ Parking","🌊 Cerca playa","🌡️ Clima ideal"] },
+  // TARRAGONA / MURCIA
+  { id:12, nombre:"El Templo del Sol · Bungalow", tipo:"camping", zonas:["Tarragona"],
+    ubicacion:"L'Hospitalet de l'Infant, Tarragona", precio:65, img:"img-6", badge:"🏕️ Camping", badgeClass:"",
+    rating:4.5, reviews:42, nudistas:15, distPlaya:"En la playa",
+    tags:["✓ 100% nudista","Camping 5★","Piscina","Restaurante"],
+    desc:"El camping naturista más famoso de España. Bungalows completamente equipados directamente en la playa nudista de Tarragona.",
+    amenities:["🏖️ Playa propia","🏊 Piscina","🍽️ Restaurante","🛒 Supermercado","🎾 Deportes","📶 WiFi"] },
+  { id:13, nombre:"El Portús · Bungalow naturista", tipo:"camping", zonas:["Murcia","Almería"],
+    ubicacion:"Cartagena, Murcia", precio:75, img:"img-7", badge:"⛺ Naturista", badgeClass:"",
+    rating:4.4, reviews:38, nudistas:4, distPlaya:"En la playa",
+    tags:["✓ 100% nudista","Camping","Playa propia","Piscina"],
+    desc:"Camping naturista El Portús en Cartagena. Playa nudista propia, piscina y bungalows equipados en un entorno natural espectacular.",
+    amenities:["🏖️ Playa propia","🏊 Piscina","🍽️ Restaurante","📶 WiFi","🅿️ Parking","⛺ Ambiente"] },
 ];
 
-// Leer zona de la URL
 const params = new URLSearchParams(window.location.search);
 const zonaParam = params.get('zona');
 let zonaActiva = zonaParam || null;
 let filtroActivo = 'todos';
 let fichaActual = null;
 
-// Mostrar banner si hay zona
 if (zonaActiva) {
-  const banner = document.getElementById('zona-banner');
-  banner.style.display = 'block';
+  document.getElementById('zona-banner').style.display = 'block';
   document.getElementById('zona-texto').textContent = `📍 ${zonaActiva}`;
   document.getElementById('hero-title').innerHTML = `Alojamiento en <span>${zonaActiva}</span>`;
   document.getElementById('hero-sub').textContent = `Alojamientos nudistas cerca de tu playa`;
@@ -258,27 +292,27 @@ function verTodo() {
   zonaActiva = null;
   document.getElementById('zona-banner').style.display = 'none';
   document.getElementById('hero-title').innerHTML = `Aloja con tu <span>tribu</span>`;
-  document.getElementById('hero-sub').textContent = `Apartamentos, hoteles y campings 100% nudistas`;
+  document.getElementById('hero-sub').textContent = `Apartamentos, hoteles y campings 100% nudistas verificados`;
   renderListings();
 }
 
-function getAlojamientosFiltrados() {
+function getListaFiltrada() {
   let lista = alojamientos;
   if (zonaActiva) {
-    lista = lista.filter(a => a.zona.toLowerCase().includes(zonaActiva.toLowerCase()) || 
-                              zonaActiva.toLowerCase().includes(a.zona.toLowerCase()));
+    lista = lista.filter(a => a.zonas.some(z => 
+      z.toLowerCase().includes(zonaActiva.toLowerCase()) || 
+      zonaActiva.toLowerCase().includes(z.toLowerCase())
+    ));
   }
-  if (filtroActivo !== 'todos') {
-    lista = lista.filter(a => a.tipo === filtroActivo);
-  }
+  if (filtroActivo !== 'todos') lista = lista.filter(a => a.tipo === filtroActivo);
   return lista;
 }
 
 function renderListings() {
   const container = document.getElementById('listings');
-  const lista = getAlojamientosFiltrados();
-  
-  document.getElementById('results-label').innerHTML = lista.length > 0 
+  const lista = getListaFiltrada();
+
+  document.getElementById('results-label').innerHTML = lista.length > 0
     ? `<b>${lista.length} alojamiento${lista.length !== 1 ? 's' : ''}</b>${zonaActiva ? ` en ${zonaActiva}` : ' en España'}`
     : '';
 
@@ -295,31 +329,23 @@ function renderListings() {
 
   container.innerHTML = lista.map(a => `
     <div class="card" onclick="abrirFicha(${a.id})">
-      <div class="card-img ${a.imagen}">
+      <div class="card-img ${a.img}">
         <div class="card-img-overlay"></div>
         <div class="card-badge ${a.badgeClass}">${a.badge}</div>
-        <div class="card-fav">🤍</div>
         <div class="card-nudistas"><div class="live-dot"></div>${a.nudistas} nudistas cerca</div>
       </div>
       <div class="card-body">
         <div class="card-top">
-          <div>
-            <div class="card-name">${a.nombre}</div>
-            <div class="card-location">📍 ${a.ubicacion} · ${a.distPlaya} playa</div>
-          </div>
-          <div>
-            <div class="card-price">${a.precio}€</div>
-            <div class="card-price-unit">/noche</div>
-          </div>
+          <div><div class="card-name">${a.nombre}</div><div class="card-location">📍 ${a.ubicacion} · ${a.distPlaya} playa</div></div>
+          <div><div class="card-price">${a.precio}€</div><div class="card-price-unit">/noche</div></div>
         </div>
-        <div class="card-tags">${a.tags.map((t,i) => `<span class="tag ${i===0?'green':''}">${t}</span>`).join('')}</div>
+        <div class="card-tags">${a.tags.map((t,i)=>`<span class="tag ${i===0?'green':''}">${t}</span>`).join('')}</div>
         <div class="card-footer">
           <div class="card-rating">⭐ ${a.rating} <span class="card-reviews">(${a.reviews} reseñas)</span></div>
           <div class="card-verified">✓ Anfitrión verificado</div>
         </div>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 function abrirFicha(id) {
@@ -331,10 +357,10 @@ function abrirFicha(id) {
   document.getElementById('fp-desc').textContent = fichaActual.desc;
   document.getElementById('fp-nudistas').textContent = fichaActual.nudistas;
   document.getElementById('fp-playa').textContent = `${fichaActual.distPlaya} playa · Sin textiles · 28°C`;
-  document.getElementById('fp-amenities').innerHTML = fichaActual.amenities.map(a => `
+  document.getElementById('fp-amenities').innerHTML = fichaActual.amenities.map(a=>`
     <div class="amenity"><div class="amenity-icon">${a.split(' ')[0]}</div><span>${a.split(' ').slice(1).join(' ')}</span></div>`).join('');
   const hero = document.getElementById('ficha-hero');
-  hero.className = `ficha-hero ${fichaActual.imagen}`;
+  hero.className = `ficha-hero ${fichaActual.img}`;
   hero.innerHTML = `<div class="ficha-hero-overlay"></div>`;
   document.getElementById('ficha-overlay').style.display = 'block';
   document.getElementById('ficha-panel').style.display = 'block';
