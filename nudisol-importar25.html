@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 25</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 25 — Galicia completo y últimas provincias</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 25</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── GALICIA — PONTEVEDRA (más playas pendientes) ──────────────
+  { nombre: 'Praia San Martiño — Islas Cíes', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.209, lng: -8.904, descripcion: 'Playa nudista en la isla de San Martiño, Islas Cíes. Solo acceso en barco desde Vigo o Cangas. Dentro del Parque Nacional Marítimo-Terrestre de las Islas Atlánticas. Aguas turquesas y arena blanca.' },
+  { nombre: 'Praia Viñó — Cabo Home', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.323, lng: -8.878, descripcion: 'Playa nudista en Cabo Home, Cangas. Solo acceso a pie. 300m de arena blanca y aguas cristalinas. Junto a Playa Barra, sin aparcamiento cercano.' },
+  { nombre: 'Praia Barreiro — Donón', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.327, lng: -8.877, descripcion: 'Playa nudista autorizada en Donón, Cangas. Una de las seis playas oficialmente nudistas de Pontevedra.' },
+  { nombre: 'Praia Abelleira — O Grove', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.476, lng: -8.870, descripcion: 'Playa nudista autorizada en O Grove. Pequeña y tranquila en la Ría de Arousa.' },
+  { nombre: 'Praia Tulla — Bueu', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.328, lng: -8.843, descripcion: 'Playa nudista en Bueu, 500m de longitud. En forma de concha, arena blanca gruesa que no se pega. Entorno natural protegido con vistas a la Ría de Pontevedra.' },
+  { nombre: 'Praia Fontiñas — Bueu', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.329, lng: -8.844, descripcion: 'Playa nudista pequeña en Bueu. 100m de longitud, aislada y poco concurrida.' },
+  { nombre: 'Praia Liñeiros — Bueu', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.330, lng: -8.845, descripcion: 'Playa nudista en Bueu. 200m de longitud, aguas tranquilas de la Ría de Pontevedra.' },
+
+  // ── GALICIA — A CORUÑA (más que faltan) ───────────────────────
+  { nombre: 'Praia Combouzas — Arteixo', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.327, lng: -8.578, descripcion: 'Playa nudista semiurbana en Arteixo. Arena blanca de la Costa de Galicia. Una de las recomendadas junto a Carreirón y Bascuas.' },
+  { nombre: 'Praia de Salsa — A Coruña', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.363, lng: -8.362, descripcion: 'Playa nudista en Oleiros, A Coruña. Arena mezclada con piedras entre las playas de Canide y Naval. Vistas espectaculares a A Coruña. Acceso más sencillo que otras.' },
+  { nombre: 'Praia San Miro — A Coruña', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.365, lng: -8.368, descripcion: 'Playa nudista de difícil acceso en Oleiros. Una de las más recomendadas para nudistas en busca de aislamiento.' },
+  { nombre: 'Praia Lumbedo — A Coruña', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.370, lng: -8.374, descripcion: 'Playa nudista de difícil acceso en Oleiros, A Coruña. Junto a San Miro, muy aislada.' },
+
+  // ── ALMERÍA — ÚLTIMAS CALAS CABO DE GATA ─────────────────────
+  { nombre: 'Playa de Los Genoveses', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.749, lng: -2.019, descripcion: 'Playa nudista en Níjar, Cabo de Gata. Extensa playa de arena dorada en la bahía de San José. Una de las más bellas del Parque Natural. Acceso por camino de grava.' },
+  { nombre: 'Cala Monsul', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.745, lng: -2.022, descripcion: 'Playa nudista en Níjar, junto a Los Genoveses. Arena volcánica oscura y roca de formas caprichosas. Aguas muy cristalinas. Muy fotogénica.' },
+  { nombre: 'Playa de Las Negras', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.977, lng: -1.988, descripcion: 'Zona nudista en Las Negras, Níjar. Pueblo pesquero con playa de guijarros negros. Ambiente naturista habitual en los extremos.' },
+
+  // ── ALICANTE — MÁS QUE FALTAN ────────────────────────────────
+  { nombre: 'Cala del Foso — Villajoyosa', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.508, lng: -0.228, descripcion: 'Cala nudista en Villajoyosa (La Vila Joiosa), Alicante. Pequeña y aislada, aguas cristalinas de la Costa Blanca.' },
+  { nombre: 'Cala de Finestrat', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.534, lng: -0.186, descripcion: 'Cala nudista en Benidorm/Finestrat, Alicante. Aguas turquesas y fondo marino espectacular para snorkel.' },
+  { nombre: 'Playa de Bassetes — Altea', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.619, lng: -0.058, descripcion: 'Playa nudista en Altea, Alicante. Arena gruesa y aguas tranquilas del Mediterráneo norte.' },
+
+  // ── CATALUNYA — ÚLTIMOS CAMPINGS NATURISTAS ───────────────────
+  { nombre: 'Camping Naturista Relax-Nat — Calonge', categoria: 'Camping', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.799, lng: 3.058, descripcion: 'Camping naturista en Calonge, Girona. Acceso a calas nudistas de la Costa Brava. Piscina, tenis y ambiente naturista familiar.' },
+  { nombre: 'Camping Naturista La Masia — L\'Hospitalet', categoria: 'Camping', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 40.879, lng: 0.830, descripcion: 'Camping naturista en L\'Hospitalet de l\'Infant, junto a la Playa del Torn. Con acceso directo a la playa nudista más valorada de la Costa Dorada.' },
+
+  // ── ÚLTIMAS ASOCIACIONES ──────────────────────────────────────
+  { nombre: 'Asociación Naturista de Baleares — ANB', categoria: 'Club / Asociación', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.570, lng: 2.650, descripcion: 'Asociación Naturista de Baleares federada a la FEN. Promueve el naturismo en todas las islas del archipiélago balear.' },
+  { nombre: 'Asociación Naturista de Asturias — ASNA', categoria: 'Club / Asociación', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.362, lng: -5.849, descripcion: 'Asociación naturista de Asturias federada a la FEN. Organiza actividades y promueve el nudismo en las 24 playas nudistas de la Costa Verde.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
