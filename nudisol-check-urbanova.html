@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Check Urbanova</title></head>
+<body style="font-family:monospace;background:#0D3D42;color:white;padding:20px;">
+<h2 style="color:#F5C840">🔍 Buscando Urbanova en Firestore...</h2>
+<div id="resultado" style="background:rgba(0,0,0,0.3);border-radius:10px;padding:16px;font-size:14px;line-height:1.8;"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const db = getFirestore(app);
+
+async function buscar() {
+  const snap = await getDocs(collection(db, 'lugares'));
+  const terminos = ['urbanova', 'urba', 'nova', 'alicante'];
+  const resultados = [];
+
+  snap.forEach(d => {
+    const data = d.data();
+    const nombre = (data.nombre || '').toLowerCase();
+    const provincia = (data.provincia || '').toLowerCase();
+    const desc = (data.descripcion || '').toLowerCase();
+
+    // Buscar Urbanova o playas de Alicante capital
+    if (nombre.includes('urbanova') || desc.includes('urbanova') ||
+        (provincia === 'alicante' && (nombre.includes('alicante') || nombre.includes('albufera') || nombre.includes('saladares') || nombre.includes('guardamar') || nombre.includes('santa pola')))) {
+      resultados.push({ nombre: data.nombre, provincia: data.provincia, categoria: data.categoria });
+    }
+  });
+
+  // También mostrar todas las playas de Alicante capital
+  const alicante = [];
+  snap.forEach(d => {
+    const data = d.data();
+    if ((data.provincia || '').toLowerCase() === 'alicante') {
+      alicante.push(data.nombre);
+    }
+  });
+
+  const el = document.getElementById('resultado');
+  if (resultados.length > 0) {
+    el.innerHTML = '<span style="color:#4ADE80">✅ ENCONTRADO:</span><br>' +
+      resultados.map(r => `• ${r.nombre} (${r.provincia} - ${r.categoria})`).join('<br>');
+  } else {
+    el.innerHTML = '<span style="color:#F87171">❌ Urbanova NO está en Firestore</span><br><br>' +
+      '<span style="color:#F5C840">Playas de Alicante en Firestore (' + alicante.length + '):</span><br>' +
+      alicante.sort().map(n => `• ${n}`).join('<br>');
+  }
+}
+
+buscar().catch(e => {
+  document.getElementById('resultado').innerHTML = '❌ Error: ' + e.message;
+});
+</script>
+</body>
+</html>
