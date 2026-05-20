@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 40</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 40 — Mallorca completo + Ibiza + Menorca</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 40</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── MALLORCA — SUR ────────────────────────────────────────────
+  { nombre: 'Es Carbó — Ses Roquetes', categoria: 'Playa / Cala', provincia: 'Mallorca', comunidad: 'Baleares', lat: 39.337, lng: 3.006, descripcion: 'Playa nudista aislada en Ses Salines, también conocida como Ses Roquetes. 1.500m de arena blanca y aguas cristalinas. Menos popular que Es Trenc pero con entorno de pinos, matorrales y dunas muy bonito.' },
+  { nombre: 'Es Caragol — Santanyí', categoria: 'Playa / Cala', provincia: 'Mallorca', comunidad: 'Baleares', lat: 39.325, lng: 3.053, descripcion: 'Playa nudista aislada junto al Cap de Ses Salines, Santanyí. 45 min de caminata por sendero. Arena blanca y aguas cristalinas. Aislamiento total. Sin servicios.' },
+  { nombre: 'Playa El Mago — Calvià', categoria: 'Playa / Cala', provincia: 'Mallorca', comunidad: 'Baleares', lat: 39.504, lng: 2.468, descripcion: 'Cala nudista en Portals Vells, Calvià. Muy accesible, popular entre residentes. Aguas cristalinas. Chiringuito en temporada alta. Puesta de sol espectacular por orientación oeste.' },
+  { nombre: 'Es Perengons Petits — Campos', categoria: 'Playa / Cala', provincia: 'Mallorca', comunidad: 'Baleares', lat: 39.343, lng: 2.973, descripcion: 'Playa nudista aislada de arena blanca en Campos, sur de Mallorca. Entorno virgen protegido cerca de Es Trenc.' },
+
+  // ── MALLORCA — NORTE ──────────────────────────────────────────
+  { nombre: 'Cala Camps Vells — Alcúdia', categoria: 'Playa / Cala', provincia: 'Mallorca', comunidad: 'Baleares', lat: 39.844, lng: 3.183, descripcion: 'Playa nudista entre Colonia de Sant Pere y Betlem, Bahía de Alcúdia. Tranquila pero poco resguardada del oleaje. Entorno natural de la bahía norte de Mallorca.' },
+  { nombre: 'Llucalcari — Deià', categoria: 'Playa / Cala', provincia: 'Mallorca', comunidad: 'Baleares', lat: 39.748, lng: 2.660, descripcion: 'Playa nudista aislada en Deià, sierra de Tramuntana. Grava y arena grisácea con mar totalmente transparente. Sin servicios. 45 min de caminata desde Alcúdia. Naturaleza desbordante.' },
+  { nombre: 'Es Corral Fals — Banyalbufar', categoria: 'Playa / Cala', provincia: 'Mallorca', comunidad: 'Baleares', lat: 39.687, lng: 2.510, descripcion: 'Playa nudista aislada en Banyalbufar, costa oeste de Mallorca. Sierra de Tramuntana. Acceso difícil que garantiza soledad total.' },
+
+  // ── MALLORCA — ESTE ───────────────────────────────────────────
+  { nombre: 'Cala Varques — Manacor', categoria: 'Playa / Cala', provincia: 'Mallorca', comunidad: 'Baleares', lat: 39.531, lng: 3.352, descripcion: 'Cala nudista aislada de arena blanca en Manacor. Acceso a pie por sendero. Aguas turquesas espectaculares. Una de las más virgenes del este.' },
+  { nombre: 'Cala Magraner — Manacor', categoria: 'Playa / Cala', provincia: 'Mallorca', comunidad: 'Baleares', lat: 39.529, lng: 3.348, descripcion: 'Cala nudista de cantos rodados en Manacor. Apartada pero de fácil acceso. Aguas cristalinas del este de Mallorca.' },
+  { nombre: 'Cala Moltó — Capdepera', categoria: 'Playa / Cala', provincia: 'Mallorca', comunidad: 'Baleares', lat: 39.720, lng: 3.471, descripcion: 'Cala nudista pequeña cerca de Cala Agulla, Capdepera. Entorno muy bello y tranquilo. Menos masificada que sus vecinas.' },
+  { nombre: 'Cala Torta — Artà', categoria: 'Playa / Cala', provincia: 'Mallorca', comunidad: 'Baleares', lat: 39.724, lng: 3.487, descripcion: 'Playa nudista de arena en el Parque Natural de Llevant, Artà. Cerca de Cala Matzoc. Bastante popular, nudismo en algunos puntos.' },
+  { nombre: 'Es Caló — Artà', categoria: 'Playa / Cala', provincia: 'Mallorca', comunidad: 'Baleares', lat: 39.719, lng: 3.484, descripcion: 'Playa nudista aislada de arena dorada en Artà. Parque Natural de Llevant. Acceso a pie.' },
+
+  // ── IBIZA — ES CAVALLET ───────────────────────────────────────
+  { nombre: 'Es Cavallet — Ibiza', categoria: 'Playa / Cala', provincia: 'Ibiza', comunidad: 'Baleares', lat: 38.872, lng: 1.406, descripcion: 'La playa nudista y gay más famosa de Ibiza, en Sant Josep de sa Talaia. 2 km de arena blanca en las salinas. Ambiente LGTBI+ muy consolidado. Chiringuito El Chiringay. Espectacular.' },
+
+  // ── MENORCA — MÁS CALAS ───────────────────────────────────────
+  { nombre: 'Cala Trebalúger — Menorca', categoria: 'Playa / Cala', provincia: 'Menorca', comunidad: 'Baleares', lat: 39.898, lng: 4.010, descripcion: 'Playa nudista aislada en Es Migjorn Gran, Menorca. Arena blanca. Más aislada que Binigaus. Acceso desde Binigaus o Cala Mitjana. Muy poco concurrida e ideal para nudistas.' },
+  { nombre: 'Cala Calderer — Es Mercadal', categoria: 'Playa / Cala', provincia: 'Menorca', comunidad: 'Baleares', lat: 40.058, lng: 3.977, descripcion: 'Cala nudista en el norte de Menorca. Difícil acceso que garantiza privacidad. Vista espectacular de montaña. Dentro de zona de protección especial.' },
+
+  // ── ÚLTIMAS FORMENTERA ────────────────────────────────────────
+  { nombre: 'Cavall d\'en Borràs — Formentera', categoria: 'Playa / Cala', provincia: 'Formentera', comunidad: 'Baleares', lat: 38.736, lng: 1.430, descripcion: 'Playa nudista semiurbana de arena dorada en Formentera. Aguas turquesas de las Pitiusas. Ambiente tranquilo y relajado.' },
+  { nombre: 'Caló d\'en Trull — Formentera', categoria: 'Playa / Cala', provincia: 'Formentera', comunidad: 'Baleares', lat: 38.717, lng: 1.447, descripcion: 'Cala nudista semiurbana en Formentera. Pequeña y tranquila con aguas cristalinas.' },
+  { nombre: 'Caló de S\'Olí — Formentera', categoria: 'Playa / Cala', provincia: 'Formentera', comunidad: 'Baleares', lat: 38.715, lng: 1.449, descripcion: 'Cala nudista semiurbana en Formentera. Rincón tranquilo con nudismo habitual.' },
+
+  // ── ÚLTIMAS ALICANTE ──────────────────────────────────────────
+  { nombre: 'Playa La Marina — Elche', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.148, lng: -0.636, descripcion: 'Zona nudista en La Marina, Elche. Entre El Pinet y Les Pesqueres-El Rebollo. A 13 km de Elche ciudad. Arena fina y aguas tranquilas.' },
+  { nombre: 'Cala de Barra Grande — Altea', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.599, lng: -0.062, descripcion: 'Cala nudista aislada en Altea, dentro del Parque Natural de la Sierra Helada. Acceso a pie con dificultad. Aguas cristalinas.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
