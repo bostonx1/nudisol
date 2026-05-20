@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 39</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 39 — Cádiz completo + últimas zonas</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 39</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── CÁDIZ — CONIL / VEJER ─────────────────────────────────────
+  { nombre: 'Calas del Quinto y Camacho — Conil', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.278, lng: -6.093, descripcion: 'Calas nudistas aisladas de arena dorada en Conil de la Frontera. Acceso por acantilados. Entorno íntimo y tranquilo de la Costa de la Luz.' },
+  { nombre: 'Calas de Roche — Conil', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.285, lng: -6.098, descripcion: 'Conjunto de calas nudistas en los acantilados de Roche, Conil de la Frontera. También conocidas como Calas de Poniente. Perfectas para nudismo íntimo rodeadas de acantilados y pinares.' },
+  { nombre: 'Cala Encendida — Conil', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.282, lng: -6.090, descripcion: 'Pequeña cala nudista en Conil. Acceso por escaleras en el acantilado. Uso naturista habitual. Arena dorada y aguas atlánticas.' },
+  { nombre: 'Cala del Aceite — Conil', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.295, lng: -6.101, descripcion: 'Cala nudista junto al puerto pesquero de Conil. Excelente para snorkel además de nudismo. Camping La Cala de Aceite con zona naturista.' },
+  { nombre: 'Playa de Trafalgar — Faro', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.185, lng: -6.032, descripcion: 'Playa nudista junto al Faro de Trafalgar. Escenario de la batalla de 1805. Zona nudista principal en "Pequeña Lulú" y "Las Cortinas". 7 km vírgenes continuando con Zahora y La Palmar.' },
+  { nombre: 'Punta Paloma — Tarifa', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.046, lng: -5.710, descripcion: 'Playa nudista en Tarifa famosa por sus grandes dunas. Entorno virgen espectacular. Nudismo habitual en zonas alejadas de los accesos principales.' },
+
+  // ── CÁDIZ — BAHÍA DE CÁDIZ ────────────────────────────────────
+  { nombre: 'Playa Camposoto — San Fernando', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.439, lng: -6.236, descripcion: 'Playa nudista semisalvaje de más de 10 km en San Fernando. Zona nudista oficial junto al búnker, accediendo desde el parking. Dividida entre zona agreste y zona con servicios.' },
+  { nombre: 'Playa de Levante — Los Toruños', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.593, lng: -6.237, descripcion: 'Playa nudista aislada en El Puerto de Santa María. También conocida como Los Toruños. Dentro del Parque Natural Bahía de Cádiz. Arena dorada virgen.' },
+  { nombre: 'Punta Candor — Rota', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.635, lng: -6.367, descripcion: 'Una de las mejores playas de Andalucía en Rota. Semisalvaje, arena fina y dorada, 1,5 km rodeada de pinares del Parque Natural de la Almadraba. Nudismo habitual.' },
+
+  // ── ÚLTIMAS GALICIA A CORUÑA ──────────────────────────────────
+  { nombre: 'Praia de Baleo — Valdoviño', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.601, lng: -8.145, descripcion: 'Playa nudista esporádica en Valdoviño. Costa Norte de A Coruña. Una de las playas donde el nudismo suele ser esporádico pero habitual entre los naturistas locales.' },
+  { nombre: 'Praia de Reira — Camariñas', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.131, lng: -9.175, descripcion: 'Playa nudista esporádica en Camariñas. Costa da Morte. Entorno virgen de gran belleza en el extremo occidental gallego.' },
+  { nombre: 'Praia Armenteiro — A Coruña', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 42.594, lng: -8.784, descripcion: 'Pequeña joya nudista en la provincia de A Coruña. Aguas azules y cristalinas entre rocas y vegetación salvaje. Casi sin tránsito de visitantes pese a tener chiringuito.' },
+
+  // ── ÚLTIMAS PONTEVEDRA ────────────────────────────────────────
+  { nombre: 'Praia Con do Corvo — Donón', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.322, lng: -8.880, descripcion: 'Playa nudista autorizada en Donón, Cangas. Una de las seis playas oficialmente nudistas de Pontevedra. Aguas cristalinas de Cabo Home.' },
+  { nombre: 'Praia Agüeira — O Grove', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.475, lng: -8.874, descripcion: 'Playa nudista autorizada en O Grove. Pequeña e íntima en la Ría de Arousa. Una de las seis playas nudistas oficiales de Pontevedra.' },
+  { nombre: 'Praia de Area Brava — Pantín', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.694, lng: -7.992, descripcion: 'Playa nudista en Pantín, Valdoviño. Playa ventosa de arena fina y entorno virgen. Muy ventosa por lo que atrae surfistas. Ambiente naturista consolidado.' },
+  { nombre: 'Praia Tuia — Bueu', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.329, lng: -8.843, descripcion: 'Playa nudista en Bueu. Nudismo habitual y practicado sin tapujos. Entorno de pinos y aguas de la Ría de Pontevedra.' },
+
+  // ── ÚLTIMAS IBIZA ─────────────────────────────────────────────
+  { nombre: 'Cala Xarraca — Ibiza', categoria: 'Playa / Cala', provincia: 'Ibiza', comunidad: 'Baleares', lat: 39.083, lng: 1.461, descripcion: 'Cala nudista en el norte de Ibiza, Sant Joan de Labritja. Aguas muy cristalinas y tranquilas. Excelente para snorkel. Ambiente íntimo y relajado.' },
+  { nombre: 'Cala Aubarca — Ibiza', categoria: 'Playa / Cala', provincia: 'Ibiza', comunidad: 'Baleares', lat: 39.077, lng: 1.378, descripcion: 'Cala nudista aislada en el norte de Ibiza. Solo acceso a pie. Aguas de color esmeralda en entorno de acantilados y pinar mediterráneo.' },
+  { nombre: 'Cala d\'en Serra — Ibiza', categoria: 'Playa / Cala', provincia: 'Ibiza', comunidad: 'Baleares', lat: 39.091, lng: 1.481, descripcion: 'Cala nudista aislada en Portinatx, Ibiza norte. Aguas turquesas y arena blanca. Acceso por camino de tierra. Muy poco frecuentada.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
