@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 18</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 18 — Ibiza y Formentera completos</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 18</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── IBIZA ─────────────────────────────────────────────────────
+  { nombre: 'Aigües Blanques', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.071, lng: 1.583, descripcion: 'Playa nudista muy querida por residentes en el noreste de Ibiza. Protegida por altos acantilados ocres. Arena dorada y baños de barro naturales. Ambiente relajado y natural.' },
+  { nombre: 'Punta Galera', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.981, lng: 1.256, descripcion: 'Zona nudista espectacular en Sant Antoni, Ibiza. No tiene arena, son terrazas de piedra antigua cantera desgastadas. Menos visitada, más intimidad. Puesta de sol única.' },
+  { nombre: 'Cala Escondida — Platges de Comte', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.975, lng: 1.228, descripcion: 'Cala nudista en Cala Comte, Ibiza. Señalizada como "Playa nudista". Acceso bajando unas escaleras desde la gran roca. Ambiente íntimo, chiringuito con amor. Atardecer espectacular.' },
+  { nombre: 'Playa Talamanca — zona nudista', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.920, lng: 1.446, descripcion: 'Zona nudista en Playa Talamanca, junto al puerto de Ibiza. Semiurbana con servicios completos: duchas, aseos, sombrillas y acceso para minusválidos.' },
+  { nombre: 'Playa Es Canar — zona nudista', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.984, lng: 1.591, descripcion: 'Zona nudista en Es Canar, Santa Eulalia, Ibiza. 350m de arena rubia. Centro de una cadena de calas naturistas. Duchas, socorristas y buena oferta hotelera.' },
+  { nombre: 'Cala de s\'Aigua Blanca', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.069, lng: 1.582, descripcion: 'Cala nudista en Santa Eulalia, Ibiza. 9,4 km desde Santa Eulalia dirección norte. Acceso señalizado con parking. Aguas cristalinas y entorno virgen.' },
+  { nombre: 'Es Figueral — zona nudista', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.048, lng: 1.598, descripcion: 'Zona nudista en Es Figueral, Santa Eulalia. 400m de playa con Bandera Azul. Duchas, aseos, socorrista, hamacas y restauración.' },
+  { nombre: 'Cala Xuclar', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.075, lng: 1.508, descripcion: 'Cala nudista en el norte de Ibiza. Ambiente relajado, vistas del amanecer espectaculares. Aguas cristalinas y arena dorada. Popular entre residentes locales.' },
+  { nombre: 'Cala Nova — zona nudista', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.991, lng: 1.588, descripcion: 'Zona nudista en Cala Nova, Santa Eulalia, Ibiza. Sección nudista en el centro de la playa.' },
+  { nombre: 'Platja de Sa Galera', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.977, lng: 1.268, descripcion: 'Cala nudista tranquila en Sant Antoni de Portmany, Ibiza. Apartada y natural.' },
+  { nombre: 'Playa s\'Estanyol — zona nudista', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.876, lng: 1.388, descripcion: 'Zona nudista en s\'Estanyol, Ibiza. Arena dorada fina y exuberante vegetación. Sección amigable para nudistas.' },
+  { nombre: 'Cala Olivera', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.917, lng: 1.524, descripcion: 'Cala nudista en Santa Eulalia, Ibiza. Rodeada de rocas y bosque, crea una piscina natural. Ambiente tranquilo y natural.' },
+
+  // ── FORMENTERA ────────────────────────────────────────────────
+  { nombre: 'Ses Illetes', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.747, lng: 1.401, descripcion: 'La playa más famosa de Formentera y una de las más bellas del Mediterráneo. Arena blanca con orilla a ambos costados. Zona nudista en el extremo norte. Dentro del Parque Natural de Ses Salines.' },
+  { nombre: 'Playa de Ses Salines — Formentera', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.866, lng: 1.408, descripcion: 'Zona nudista en Ses Salines, Formentera. Frente al chiringuito Sa Trinxa los nudistas se concentran en calas pequeñas. Música ambiente y gran ambiente.' },
+  { nombre: 'Caló des Mort', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.688, lng: 1.491, descripcion: 'Cala nudista en el extremo oriental de Migjorn, Formentera. Forma de media luna, acantilados, agua azul cristalina. Privacidad única.' },
+  { nombre: 'Cala Saona', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.724, lng: 1.381, descripcion: 'Considerada la cala más bonita de Formentera. 140x120m de arena blanca y pinos. Nudismo habitual en sus aguas turquesas.' },
+  { nombre: 'Ses Platgetes des Caló', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.712, lng: 1.481, descripcion: 'Conjunto de pequeñas calas interconectadas en Es Caló, Formentera. Entorno íntimo y tranquilo. Snorkel espectacular en fondo marino.' },
+  { nombre: 'Els Arenals — Formentera', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.698, lng: 1.471, descripcion: 'Playa nudista de 2,5 km junto a Migjorn en Formentera. Arena fina y aguas transparentes. Continuación nudista de Migjorn.' },
+  { nombre: 'Playa des Trucadors', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.752, lng: 1.406, descripcion: 'Playa nudista apartada en el extremo norte de Formentera. Vistas impresionantes de Ibiza y aguas turquesas.' },
+  { nombre: 'S\'Espalmador — zona nudista', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.793, lng: 1.421, descripcion: 'Isla virgen al norte de Formentera, dentro del Parque Natural de Ses Salines. Solo acceso en barco. Playas salvajes totalmente nudistas. La Playa de S\'Algas es la principal.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
