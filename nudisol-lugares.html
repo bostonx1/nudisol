@@ -27,7 +27,99 @@
   let mapaInstancia = null;
   let marcadores = [];
 
-  async function cargarTodos() {
+
+  // ── TRADUCCIONES ──────────────────────────────────────────────
+  const t = {
+    es: {
+      back: '← Inicio',
+      pageTitulo: '🌿 Lugares naturistas',
+      selectPlaceholder: 'Selecciona una provincia...',
+      catPlaya: 'Playa / Cala',
+      catParaje: 'Paraje',
+      catCamping: 'Camping',
+      catAloj: 'Alojamiento',
+      catPiscina: 'Piscina / Spa',
+      catClub: 'Club',
+      catUrb: 'Urbanización',
+      placeholderTitulo: 'Elige una provincia',
+      placeholderSub: 'Selecciona una provincia para ver todos los lugares naturistas disponibles con su ubicación en el mapa.',
+      lugarSingular: 'lugar',
+      lugarPlural: 'lugares',
+      btnNavegar: '🚗 Cómo llegar — Google Maps',
+      btnMapa: '🗺️ Ver en el mapa',
+      btnWeb: '🌐 Ver web oficial',
+      btnLlamar: '📞 Llamar',
+      btnCerrar: 'Cerrar',
+      sinDesc: 'Sin descripción disponible.',
+      navInicio: 'Inicio',
+      navMapa: 'Mapa',
+      navLugares: 'Lugares',
+      navComunidad: 'Comunidad',
+      navPerfil: 'Perfil',
+    },
+    en: {
+      back: '← Home',
+      pageTitulo: '🌿 Naturist places',
+      selectPlaceholder: 'Select a province...',
+      catPlaya: 'Beach / Cove',
+      catParaje: 'Nature spot',
+      catCamping: 'Camping',
+      catAloj: 'Accommodation',
+      catPiscina: 'Pool / Spa',
+      catClub: 'Club',
+      catUrb: 'Resort',
+      placeholderTitulo: 'Choose a province',
+      placeholderSub: 'Select a province to see all naturist spots with their location on the map.',
+      lugarSingular: 'place',
+      lugarPlural: 'places',
+      btnNavegar: '🚗 Get directions — Google Maps',
+      btnMapa: '🗺️ Show on map',
+      btnWeb: '🌐 Official website',
+      btnLlamar: '📞 Call',
+      btnCerrar: 'Close',
+      sinDesc: 'No description available.',
+      navInicio: 'Home',
+      navMapa: 'Map',
+      navLugares: 'Places',
+      navComunidad: 'Community',
+      navPerfil: 'Profile',
+    }
+  };
+
+  function getLang() { return localStorage.getItem('nudisol_lang') || 'es'; }
+  function tx() { return t[getLang()] || t.es; }
+
+  function aplicarIdioma() {
+    const s = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    const tr = tx();
+    s('i18n-back', tr.back);
+    s('i18n-page-titulo', tr.pageTitulo);
+    s('i18n-placeholder-titulo', tr.placeholderTitulo);
+    s('i18n-placeholder-sub', tr.placeholderSub);
+    s('i18n-cat-playa', tr.catPlaya);
+    s('i18n-cat-paraje', tr.catParaje);
+    s('i18n-cat-camping', tr.catCamping);
+    s('i18n-cat-aloj', tr.catAloj);
+    s('i18n-cat-piscina', tr.catPiscina);
+    s('i18n-cat-club', tr.catClub);
+    s('i18n-cat-urb', tr.catUrb);
+    s('i18n-btn-navegar', tr.btnNavegar);
+    s('i18n-btn-mapa', tr.btnMapa);
+    s('i18n-btn-web', tr.btnWeb);
+    s('i18n-btn-cerrar', tr.btnCerrar);
+    s('i18n-nav-inicio', tr.navInicio);
+    s('i18n-nav-mapa', tr.navMapa);
+    s('i18n-nav-lugares', tr.navLugares);
+    s('i18n-nav-comunidad', tr.navComunidad);
+    s('i18n-nav-perfil', tr.navPerfil);
+    // Select placeholder
+    const sel = document.getElementById('select-provincia');
+    if (sel && sel.options[0]) sel.options[0].textContent = tr.selectPlaceholder;
+  }
+
+  document.addEventListener('DOMContentLoaded', aplicarIdioma);
+
+    async function cargarTodos() {
     try {
       const snap = await getDocs(collection(db, 'lugares'));
       snap.forEach(d => todosLosLugares.push({ id: d.id, ...d.data() }));
@@ -46,7 +138,7 @@
       .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
 
     const select = document.getElementById('select-provincia');
-    select.innerHTML = '<option value="">Selecciona una provincia...</option>';
+    select.innerHTML = '<option value="" id="i18n-select-placeholder">Selecciona una provincia...</option>';
     provincias.forEach(p => {
       const opt = document.createElement('option');
       opt.value = p;
@@ -63,7 +155,8 @@
     }
     const lugares = todosLosLugares.filter(l => l.provincia === provincia);
     document.getElementById('provincia-titulo').textContent = provincia;
-    document.getElementById('provincia-count').textContent = `${lugares.length} lugar${lugares.length !== 1 ? 'es' : ''}`;
+    const _tr = tx();
+    document.getElementById('provincia-count').textContent = `${lugares.length} ${lugares.length !== 1 ? _tr.lugarPlural : _tr.lugarSingular}`;
     renderLugares(lugares);
     document.getElementById('placeholder').style.display = 'none';
     document.getElementById('vista-lugares').style.display = 'block';
@@ -136,7 +229,7 @@
     document.getElementById('ficha-cat').style.background = catColor(lugar.categoria) + '20';
     document.getElementById('ficha-cat').style.color = catColor(lugar.categoria);
     document.getElementById('ficha-provincia').textContent = `📍 ${lugar.provincia}, ${lugar.comunidad || ''}`;
-    document.getElementById('ficha-desc').textContent = lugar.descripcion || 'Sin descripción disponible.';
+    document.getElementById('ficha-desc').textContent = lugar.descripcion || tx().sinDesc;
 
     const btnNav = document.getElementById('btn-navegar');
     if (lugar.lat && lugar.lng) {
@@ -309,11 +402,11 @@
 
 <div class="header">
   <div class="header-nav">
-    <button class="back-btn" onclick="window.location.href='nudisol-home.html'">← Inicio</button>
+    <button class="back-btn" onclick="window.location.href='nudisol-home.html'"><span id="i18n-back">← Inicio</span></button>
     <div class="logo-small">nudi<span>sol</span></div>
     <div style="width:60px;"></div>
   </div>
-  <div class="page-titulo">🌿 Lugares naturistas</div>
+  <div class="page-titulo"><span id="i18n-page-titulo">🌿 Lugares naturistas</span></div>
   <div class="select-wrap">
     <select class="select-provincia" id="select-provincia" onchange="seleccionarProvincia(this.value)">
       <option value="">Selecciona una provincia...</option>
@@ -321,13 +414,13 @@
     <div class="select-arrow">▾</div>
   </div>
   <div class="leyenda">
-    <div class="leyenda-item"><div class="leyenda-dot" style="background:#1A6B72;"></div>Playa / Cala</div>
-    <div class="leyenda-item"><div class="leyenda-dot" style="background:#2D6A4F;"></div>Paraje</div>
-    <div class="leyenda-item"><div class="leyenda-dot" style="background:#E8A020;"></div>Camping</div>
-    <div class="leyenda-item"><div class="leyenda-dot" style="background:#D45F3C;"></div>Alojamiento</div>
-    <div class="leyenda-item"><div class="leyenda-dot" style="background:#6B4F9E;"></div>Piscina / Spa</div>
-    <div class="leyenda-item"><div class="leyenda-dot" style="background:#C00;"></div>Club</div>
-    <div class="leyenda-item"><div class="leyenda-dot" style="background:#4A4A4A;"></div>Urbanización</div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#1A6B72;"></div><span id="i18n-cat-playa">Playa / Cala</span></div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#2D6A4F;"></div><span id="i18n-cat-paraje">Paraje</span></div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#E8A020;"></div><span id="i18n-cat-camping">Camping</span></div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#D45F3C;"></div><span id="i18n-cat-aloj">Alojamiento</span></div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#6B4F9E;"></div><span id="i18n-cat-piscina">Piscina / Spa</span></div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#C00;"></div><span id="i18n-cat-club">Club</span></div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#4A4A4A;"></div><span id="i18n-cat-urb">Urbanización</span></div>
   </div>
 </div>
 
@@ -338,8 +431,8 @@
 <div class="main">
   <div id="placeholder">
     <div class="placeholder-icon">🗺️</div>
-    <div class="placeholder-titulo">Elige una provincia</div>
-    <div class="placeholder-sub">Selecciona una provincia para ver todos los lugares naturistas disponibles con su ubicación en el mapa.</div>
+    <div class="placeholder-titulo"><span id="i18n-placeholder-titulo">Elige una provincia</span></div>
+    <div class="placeholder-sub"><span id="i18n-placeholder-sub">Selecciona una provincia para ver todos los lugares naturistas disponibles con su ubicación en el mapa.</span></div>
   </div>
 
   <div id="vista-lugares">
@@ -364,30 +457,30 @@
     <div class="ficha-provincia" id="ficha-provincia"></div>
     <div class="ficha-desc" id="ficha-desc"></div>
     <div class="ficha-btns">
-      <button class="btn-navegar" id="btn-navegar">🚗 Cómo llegar — Google Maps</button>
-      <button class="btn-ver-mapa" id="btn-ver-mapa">🗺️ Ver en el mapa</button>
-      <a class="btn-secundario" id="btn-web" href="#" target="_blank">🌐 Ver web oficial</a>
+      <button class="btn-navegar" id="btn-navegar"><span id="i18n-btn-navegar">🚗 Cómo llegar — Google Maps</span></button>
+      <button class="btn-ver-mapa" id="btn-ver-mapa"><span id="i18n-btn-mapa">🗺️ Ver en el mapa</span></button>
+      <a class="btn-secundario" id="btn-web" href="#" target="_blank"><span id="i18n-btn-web">🌐 Ver web oficial</span></a>
       <a class="btn-secundario" id="btn-tel" href="#" style="display:none;">📞 Llamar</a>
-      <button class="btn-cerrar-ficha" onclick="cerrarFicha()">Cerrar</button>
+      <button class="btn-cerrar-ficha" onclick="cerrarFicha()"><span id="i18n-btn-cerrar">Cerrar</span></button>
     </div>
   </div>
 </div>
 
 <nav class="bottom-nav">
   <button class="nav-item" onclick="window.location.href='nudisol-home.html'">
-    <span class="nav-icon">🏠</span><span class="nav-label">Inicio</span>
+    <span class="nav-icon">🏠</span><span class="nav-label"><span id="i18n-nav-inicio">Inicio</span>
   </button>
   <button class="nav-item" onclick="window.location.href='nudisol-mapa.html'">
-    <span class="nav-icon">🗺️</span><span class="nav-label">Mapa</span>
+    <span class="nav-icon">🗺️</span><span class="nav-label"><span id="i18n-nav-mapa">Mapa</span>
   </button>
   <button class="nav-item active">
-    <span class="nav-icon">🌿</span><span class="nav-label">Lugares</span>
+    <span class="nav-icon">🌿</span><span class="nav-label" id="i18n-nav-lugares">Lugares</span>
   </button>
   <button class="nav-item" onclick="window.location.href='nudisol-comunidad.html'">
-    <span class="nav-icon">💬</span><span class="nav-label">Comunidad</span>
+    <span class="nav-icon">💬</span><span class="nav-label"><span id="i18n-nav-comunidad">Comunidad</span>
   </button>
   <button class="nav-item" onclick="window.location.href='nudisol-perfil.html'">
-    <span class="nav-icon">👤</span><span class="nav-label">Perfil</span>
+    <span class="nav-icon">👤</span><span class="nav-label"><span id="i18n-nav-perfil">Perfil</span>
   </button>
 </nav>
 
