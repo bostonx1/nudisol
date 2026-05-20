@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 41</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 41 — Cádiz completo (calas pendientes) + Urbanova</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 41</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── CÁDIZ — CALAS DE PONIENTE (CONIL) — LAS 5 CALAS ─────────
+  { nombre: 'Cala Áspero — Conil', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.296, lng: -6.105, descripcion: 'Una de las 5 Calas de Poniente en Conil de la Frontera. Acantilados de Poniente. Nudismo permitido. Acceso por CA-4202 desde Cabo Roche.' },
+  { nombre: 'Cala del Frailecillo — Conil', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.294, lng: -6.107, descripcion: 'Una de las 5 Calas de Poniente en Conil. Pequeña ensenada nudista en los acantilados occidentales de Conil.' },
+  { nombre: 'Cala Pato — Conil', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.292, lng: -6.109, descripcion: 'Una de las 5 Calas de Poniente en Conil. Nudismo permitido. Aguas atlánticas y acantilados de la Costa de la Luz.' },
+  { nombre: 'Cala Tío Juan de Medina — Conil', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.290, lng: -6.111, descripcion: 'Cala nudista expresamente nudista en los Acantilados de Poniente, Conil. Acceso por pequeño sendero desde CA-4202 de Cabo Roche. También frecuentada por textiles.' },
+
+  // ── CÁDIZ — BARBATE ───────────────────────────────────────────
+  { nombre: 'Playa de La Hierbabuena — Barbate', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.194, lng: -5.924, descripcion: 'Playa nudista dentro del Parque Natural de la Breña y Marismas de Barbate. Arena fina y dorada, aguas transparentes. Acantilados de Barbate de fondo. Ambiente tranquilo y aislado.' },
+  { nombre: 'Playa de Los Acantilados — Barbate', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.186, lng: -5.932, descripcion: 'Playa nudista bajo los acantilados de Barbate, dentro del Parque Natural de la Breña. Arena dorada y entorno protegido.' },
+  { nombre: 'Playa de Zahara de los Atunes — zona nudista', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.131, lng: -5.847, descripcion: 'Zona nudista en Zahara de los Atunes, Barbate. Extensa playa atlántica con zona naturista en el extremo sur. Aguas limpias y viento de levante habitual.' },
+
+  // ── CÁDIZ — TARIFA ────────────────────────────────────────────
+  { nombre: 'Playa de Los Lances — Tarifa', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.057, lng: -5.614, descripcion: 'Zona nudista en Playa de Los Lances, Tarifa. 7 km de playa virgen junto al Estrecho. Zona naturista en el extremo norte junto al camping. Parque Natural del Estrecho.' },
+  { nombre: 'Cala del Cañuelo — Tarifa', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.015, lng: -5.672, descripcion: 'Cala nudista en el Parque Natural del Estrecho, Tarifa. Rincón aislado entre acantilados. Vistas al continente africano a solo 14 km.' },
+
+  // ── CÁDIZ — CHICLANA ──────────────────────────────────────────
+  { nombre: 'Playa de La Barrosa — zona nudista', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.378, lng: -6.138, descripcion: 'Zona nudista en Playa de la Barrosa, Chiclana de la Frontera. 8 km de playa. Zona naturista en el extremo sur más alejado de los servicios. Arena dorada atlántica.' },
+  { nombre: 'Playa de Sancti Petri — zona nudista', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.393, lng: -6.207, descripcion: 'Zona nudista en Sancti Petri, Chiclana. Playa aislada junto al islote de Sancti Petri con restos romanos.' },
+
+  // ── CÁDIZ — CHIPIONA / SANLÚCAR ───────────────────────────────
+  { nombre: 'Playa del Camarón — Chipiona', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.738, lng: -6.416, descripcion: 'Playa nudista semiurbana en Chipiona. También conocida como La Laguna o Tres Piedras. Arena dorada de la Costa de la Luz atlántica.' },
+
+  // ── ALICANTE — URBANOVA (PENDIENTE) ──────────────────────────
+  { nombre: 'Playa de Urbanova — Alicante', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.319, lng: -0.504, descripcion: 'Playa nudista en Urbanova, Alicante ciudad. 4 km de playa natural entre la Albufereta y el aeropuerto. Zona naturista consolidada. La principal playa nudista de la capital alicantina.' },
+
+  // ── ALICANTE — MÁS PENDIENTES ─────────────────────────────────
+  { nombre: 'Cala de Agua Dulce — Dénia', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.849, lng: 0.120, descripcion: 'Cala nudista aislada en Dénia, dentro del Parque Natural del Montgó. Aguas dulces que emergen del fondo marino. Entorno único.' },
+  { nombre: 'Playa de La Albufereta — Alicante', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.349, lng: -0.474, descripcion: 'Zona nudista en La Albufereta, noroeste de Alicante. Playa semiurbana con tradición nudista en su extremo norte.' },
+
+  // ── MURCIA — ÚLTIMA ───────────────────────────────────────────
+  { nombre: 'Playa Playa Parreño — Cartagena', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.625, lng: -0.893, descripcion: 'Playa nudista gay-friendly aislada de arena dorada en Cartagena. Costa Cálida.' },
+  { nombre: 'Playa Negrete — Cartagena', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.621, lng: -0.895, descripcion: 'Playa nudista gay-friendly aislada en Cartagena. Arena dorada. Costa Cálida.' },
+  { nombre: 'Playa La Grúa — Mazarrón', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.521, lng: -1.272, descripcion: 'Playa nudista aislada de arena dorada en Mazarrón. Costa Cálida.' },
+  { nombre: 'Playa Barranco Ancho — Mazarrón', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.519, lng: -1.270, descripcion: 'Playa nudista aislada de arena dorada en Mazarrón. Costa Cálida.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
