@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 17</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 17 — Mallorca, campings y últimos rincones</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 17</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── MALLORCA — COMPLETO ───────────────────────────────────────
+  { nombre: 'Playa del Mago', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.509, lng: 2.489, descripcion: 'Primera playa oficialmente declarada nudista en Mallorca, en Calvià. Apenas 20m de cala íntima con chiringuito. Aguas cristalinas. Nombre de la película rodada aquí en los 60.' },
+  { nombre: 'Es Trenc — zona nudista', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.339, lng: 2.969, descripcion: 'La playa nudista más importante de España según varios rankings. 3 km de arena blanca y aguas turquesas en Campos. Zona nudista en el extremo oeste, cerca de Ses Covetes. Espacio dunar protegido.' },
+  { nombre: 'Arenal de Sa Canova', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.723, lng: 3.262, descripcion: 'Una de las playas nudistas más extensas de Mallorca, en Artà. Última gran playa virgen entre Son Serra de Marina y la Colònia de Sant Pere. Arena fina y entorno protegido.' },
+  { nombre: 'Cala Mesquida', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.725, lng: 3.479, descripcion: 'Cala nudista en Capdepera, noreste de Mallorca. Belleza natural única, uso naturista consolidado.' },
+  { nombre: 'Cala Tuent', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.843, lng: 2.738, descripcion: 'Cala nudista en Escorca, costa norte de Mallorca, Serra de Tramuntana. Cantos rodados y aguas tranquilas rodeadas de montañas. Nudismo en varios puntos.' },
+  { nombre: 'Cala Camps Vells', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.731, lng: 3.225, descripcion: 'Cala nudista entre Colònia de Sant Pere y Betlem, Bahía de Alcúdia. Tranquila pero poco resguardada del oleaje.' },
+  { nombre: 'Cala Torta', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.714, lng: 3.489, descripcion: 'Cala nudista en el Parque Natural de Artà, cerca de Cala Matzoc. Playa de arena popular. Nudismo en puntos específicos.' },
+  { nombre: 'Cala Matzoc', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.712, lng: 3.487, descripcion: 'Cala nudista junto a Cala Torta en el Parque Natural de Artà. Entorno virgen y salvaje.' },
+  { nombre: 'Platja de Ses Covetes', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.341, lng: 2.961, descripcion: 'Zona nudista en Ses Covetes, Campos. Junto a Es Trenc, parte del mismo sistema de playas naturistas más importantes de Mallorca.' },
+
+  // ── CAMPINGS NATURISTAS ESPAÑA ────────────────────────────────
+  { nombre: 'Camping Naturista El Templo del Sol', categoria: 'Camping', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 40.877, lng: 0.829, descripcion: 'Uno de los mejores campings naturistas de Europa, en L\'Hospitalet de l\'Infant. 900 plazas con acceso directo a la Playa del Torn. Piscinas, restaurante y arquitectura hispano-árabe.' },
+  { nombre: 'Camping Naturista Sierra Natura', categoria: 'Camping', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 38.988, lng: -0.841, descripcion: 'Camping naturista de montaña en Navalón, Macizo del Caroig. Piscina, sauna climatizada, huerta ecológica y senderismo nudista. Apartamentos disponibles. Interior valenciano.' },
+  { nombre: 'Camping Las Grullas', categoria: 'Camping', provincia: 'Cáceres', comunidad: 'Extremadura', lat: 39.412, lng: -5.871, descripcion: 'Camping naturista en Benquerencia, Cáceres. Intimista, pocas plazas. Antigua finca rural con sabor tradicional extremeño. El mejor camping naturista de interior de España.' },
+  { nombre: 'Camping Naturista Mas Patoxas', categoria: 'Camping', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.996, lng: 3.189, descripcion: 'Camping naturista en Mont-ras, Baix Empordà. Rodeado de vegetación, cerca de playas de ensueño. Tenis, pádel, voleibol, mini-golf, piscinas y biblioteca. Temporada alta.' },
+
+  // ── ASOCIACIONES Y CLUBS NATURISTAS ──────────────────────────
+  { nombre: 'ANVA — Asociación Naturista Valenciana', categoria: 'Club / Asociación', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.470, lng: -0.376, descripcion: 'Referente del nudismo social en la Comunidad Valenciana. Actividades mensuales en playas, restaurantes, museos y castillos. Paseo en barca por la Albufera, spa nudista en Gandía y más.' },
+  { nombre: 'Asociación Naturista Camp de Morvedre', categoria: 'Club / Asociación', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.678, lng: -0.269, descripcion: 'Asociación naturista en Puerto de Sagunto, Valencia. Federada a la FEN. Organiza actividades naturistas en la Comunidad Valenciana.' },
+  { nombre: 'Asociación Naturista de Aragón', categoria: 'Club / Asociación', provincia: 'Zaragoza', comunidad: 'Aragón', lat: 41.649, lng: -0.887, descripcion: 'Asociación naturista de Aragón federada a la FEN con sede en Zaragoza. Organiza actividades naturistas en ríos, pantanos y parajes del interior aragonés.' },
+  { nombre: 'Asociación Naturista de Euskadi', categoria: 'Club / Asociación', provincia: 'Vizcaya', comunidad: 'País Vasco', lat: 43.263, lng: -2.935, descripcion: 'Asociación naturista del País Vasco, con sede en Bilbao. Federada a la FEN. Organiza actividades naturistas en playas y parajes vascos.' },
+
+  // ── VALENCIA — MÁS PLAYAS ─────────────────────────────────────
+  { nombre: 'Playa de El Saler — zona nudista', categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.367, lng: -0.321, descripcion: 'Zona nudista en El Saler, Valencia. Dentro del Parque Natural de La Albufera. Pinares y dunas protegidas.' },
+  { nombre: 'Playa Tres Playas — Alcalá de Xivert', categoria: 'Playa / Cala', provincia: 'Castellón', comunidad: 'Comunidad Valenciana', lat: 40.307, lng: 0.308, descripcion: 'Playa nudista en Alcalá de Xivert, Castellón. Costa Azahar, nudismo habitual.' },
+
+  // ── INTERIOR — ÚLTIMOS RINCONES ───────────────────────────────
+  { nombre: 'Río Esla — Valencia de Don Juan', categoria: 'Paraje natural', provincia: 'León', comunidad: 'Castilla y León', lat: 42.289, lng: -5.518, descripcion: 'Zona naturista en el Río Esla, cerca de Valencia de Don Juan, León. Aguas cristalinas y riberas frescas.' },
+  { nombre: 'Playa del Pinar — Puente Duero', categoria: 'Paraje natural', provincia: 'Valladolid', comunidad: 'Castilla y León', lat: 41.594, lng: -4.778, descripcion: 'Zona nudista en la playa del pinar de Puente Duero, cerca de Valladolid. Arena natural junto al Río Duero.' },
+  { nombre: 'Piscina Thermia — ANVA Valencia', categoria: 'Piscina / Spa', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.464, lng: -0.371, descripcion: 'Piscina nudista en Valencia. ANVA alquila las instalaciones los terceros sábados entre octubre y junio. C/ Literario Azorín, 25.' },
+  { nombre: 'Río Duero — zona naturista Soria', categoria: 'Paraje natural', provincia: 'Soria', comunidad: 'Castilla y León', lat: 41.766, lng: -2.468, descripcion: 'Zona de tradición nudista en el Río Duero cerca de Soria capital. Ribera fluvial frecuentada por naturistas locales.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
