@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Fix Coordenadas</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 6px; }
+  p { color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 16px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 420px; overflow-y: auto; font-size: 12px; line-height: 1.7; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; } .skip { color: #94A3B8; }
+  .btns { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 20px; font-size: 14px; font-weight: bold; cursor: pointer; }
+  button.sec { background: #1A6B72; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  #resumen { margin-top: 12px; font-size: 13px; color: #F5C840; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px; display:none; }
+  #barra-wrap { margin-top: 10px; background: rgba(255,255,255,0.1); border-radius:8px; height:10px; overflow:hidden; display:none; }
+  #barra { height:100%; background: linear-gradient(90deg,#1A6B72,#4ADE80); width:0%; transition: width 0.3s; border-radius:8px; }
+  #pct { color: rgba(255,255,255,0.5); font-size:12px; margin-top:4px; }
+</style>
+</head>
+<body>
+<h2>🗺️ Nudisol — Corrector de Coordenadas</h2>
+<p>Consulta Nominatim (OpenStreetMap) para cada lugar y actualiza las coords en Firestore.<br>
+⚠️ Proceso lento (~1 seg/lugar). No cierres la pestaña. Ejecuta en lotes de 50.</p>
+
+<div class="btns">
+  <button id="btn-start" onclick="iniciar()">🚀 Corregir coordenadas</button>
+  <button id="btn-stop" class="sec" onclick="detener()" disabled>⏹ Detener</button>
+</div>
+
+<div id="barra-wrap"><div id="barra"></div></div>
+<div id="pct"></div>
+<div id="resumen"></div>
+<div id="log" style="margin-top:12px;"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+let parar = false;
+let stats = { ok: 0, noEncontrado: 0, err: 0, total: 0 };
+
+onAuthStateChanged(auth, user => {
+  if (!user) log('❌ Inicia sesión como admin.', 'err');
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+async function buscarCoordenadas(nombre, provincia, comunidad) {
+  // Intentamos varias queries, de más específica a más general
+  const queries = [
+    `${nombre}, ${provincia}, Spain`,
+    `${nombre}, ${comunidad}, Spain`,
+    `${nombre}, Spain`,
+  ];
+
+  for (const q of queries) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=es`;
+      const res = await fetch(url, {
+        headers: { 'Accept-Language': 'es', 'User-Agent': 'Nudisol/1.0' }
+      });
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+        // Validar que las coordenadas son de España
+        if (lat >= 27 && lat <= 44 && lng >= -19 && lng <= 5) {
+          return { lat, lng, query: q, displayName: data[0].display_name };
+        }
+      }
+    } catch(e) {}
+    // Esperar entre intentos
+    await sleep(300);
+  }
+  return null;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+window.detener = () => {
+  parar = true;
+  log('⏹ Proceso detenido por el usuario.', 'info');
+  document.getElementById('btn-stop').disabled = true;
+};
+
+window.iniciar = async () => {
+  parar = false;
+  stats = { ok: 0, noEncontrado: 0, err: 0, total: 0 };
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('btn-stop').disabled = false;
+  document.getElementById('barra-wrap').style.display = 'block';
+  document.getElementById('resumen').style.display = 'none';
+
+  log('📦 Cargando lugares desde Firestore...', 'info');
+
+  let lugares = [];
+  try {
+    const snap = await getDocs(collection(db, 'lugares'));
+    snap.forEach(d => lugares.push({ id: d.id, ...d.data() }));
+  } catch(e) {
+    log('❌ Error cargando Firestore: ' + e.message, 'err');
+    return;
+  }
+
+  stats.total = lugares.length;
+  log(`📍 ${lugares.length} lugares encontrados. Iniciando corrección...`, 'info');
+  log('⏱️ Tiempo estimado: ~' + Math.round(lugares.length * 1.2 / 60) + ' minutos', 'info');
+
+  let procesados = 0;
+
+  for (const lugar of lugares) {
+    if (parar) break;
+
+    procesados++;
+    const pct = Math.round(procesados / stats.total * 100);
+    document.getElementById('barra').style.width = pct + '%';
+    document.getElementById('pct').textContent = `${procesados}/${stats.total} (${pct}%) — ✅ ${stats.ok} corregidos · ⚠️ ${stats.noEncontrado} no encontrados · ❌ ${stats.err} errores`;
+
+    try {
+      const resultado = await buscarCoordenadas(
+        lugar.nombre,
+        lugar.provincia || '',
+        lugar.comunidad || ''
+      );
+
+      if (resultado) {
+        // Calcular diferencia con las coords actuales
+        const diffLat = Math.abs((lugar.lat || 0) - resultado.lat);
+        const diffLng = Math.abs((lugar.lng || 0) - resultado.lng);
+        const diffKm = Math.round(Math.sqrt(diffLat*diffLat + diffLng*diffLng) * 111);
+
+        // Solo actualizar si hay diferencia significativa (>0.5 km) o si no tenía coords
+        if (!lugar.lat || !lugar.lng || diffKm > 0.5) {
+          await updateDoc(doc(db, 'lugares', lugar.id), {
+            lat: resultado.lat,
+            lng: resultado.lng,
+            coords_fuente: 'nominatim',
+            coords_query: resultado.query
+          });
+          log(`✅ [${diffKm}km diff] ${lugar.nombre} → ${resultado.lat.toFixed(4)}, ${resultado.lng.toFixed(4)}`, 'ok');
+          stats.ok++;
+        } else {
+          log(`⏭️ ${lugar.nombre} — coords ya correctas (diff <0.5km)`, 'skip');
+        }
+      } else {
+        log(`⚠️ No encontrado: ${lugar.nombre} (${lugar.provincia})`, 'info');
+        stats.noEncontrado++;
+      }
+    } catch(e) {
+      log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err');
+      stats.err++;
+    }
+
+    // Pausa entre consultas para respetar límite de Nominatim (1 req/seg)
+    await sleep(1100);
+  }
+
+  // Resumen final
+  const resEl = document.getElementById('resumen');
+  resEl.style.display = 'block';
+  resEl.innerHTML = `
+    🎉 <strong>Proceso completado</strong><br>
+    ✅ Corregidos: ${stats.ok}<br>
+    ⏭️ Ya correctos: ${procesados - stats.ok - stats.noEncontrado - stats.err}<br>
+    ⚠️ No encontrados: ${stats.noEncontrado}<br>
+    ❌ Errores: ${stats.err}<br>
+    📍 Total procesados: ${procesados}/${stats.total}
+  `;
+
+  log(`\n🎉 COMPLETADO: ${stats.ok} corregidos, ${stats.noEncontrado} no encontrados, ${stats.err} errores.`, 'info');
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-stop').disabled = true;
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo;
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
