@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 27</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 27 — Huelva completo y últimos rincones de Andalucía</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 27</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── HUELVA — MÁS PLAYAS ───────────────────────────────────────
+  { nombre: 'Playa Nueva Umbría — zona nudista central', categoria: 'Playa / Cala', provincia: 'Huelva', comunidad: 'Andalucía', lat: 37.171, lng: -7.069, descripcion: 'Zona nudista oficial de 5 km en el centro de la Playa Nueva Umbría, Lepe. La única playa oficialmente nudista de Huelva. Entre las pasarelas de El Terrón y el ferry de El Rompido. 10+ km totales de playa virgen.' },
+  { nombre: 'Playa Cuesta Maneli', categoria: 'Playa / Cala', provincia: 'Huelva', comunidad: 'Andalucía', lat: 37.057, lng: -6.739, descripcion: 'Playa nudista en Matalascañas, Almonte. Junto a Rompeculos dentro del Parque Nacional de Doñana. Reconstruida tras el incendio de 2017. Dunas fósiles y paisaje único. Perfecta para iniciarse.' },
+  { nombre: 'Playa de Los Enebrales — Kilómetro 14', categoria: 'Playa / Cala', provincia: 'Huelva', comunidad: 'Andalucía', lat: 37.188, lng: -6.957, descripcion: 'Playa nudista en Punta Umbría. También conocida como Kilómetro 14 en la comunidad gay andaluza. 2,3 km de arena entre enebros. Paraje Natural de los Enebrales de Punta Umbría.' },
+
+  // ── CÁDIZ — BOLONIA Y MÁS ─────────────────────────────────────
+  { nombre: 'El Chorrito — Bolonia', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.086, lng: -5.779, descripcion: 'Zona nudista específica de Playa de Bolonia, Tarifa. Conocida como El Chorrito. Con barro medicinal natural. La zona naturista más característica de la famosa playa gaditana.' },
+  { nombre: 'Playa de Levante — Bahía de Cádiz', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.587, lng: -6.226, descripcion: 'Playa nudista en el Parque Natural de la Bahía de Cádiz. 4 km de longitud, 55m de ancho. Arena dorada protegida, zona de marisma reservada y alejada de edificaciones.' },
+
+  // ── MÁLAGA — ALMAYATE ─────────────────────────────────────────
+  { nombre: 'Playa Almayate — chiringuito nudista', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.745, lng: -4.147, descripcion: 'Playa nudista en Vélez-Málaga con chiringuito naturista y Camping Almanat. 2.800m de arena oscura. Una de las más completas de Málaga, con ambiente internacional.' },
+
+  // ── GRANADA — CALAS DEL PINO ─────────────────────────────────
+  { nombre: 'Calas del Pino — Nerja/Granada', categoria: 'Playa / Cala', provincia: 'Granada', comunidad: 'Andalucía', lat: 36.743, lng: -3.877, descripcion: 'Calas nudistas en la frontera Málaga-Granada, a 6 km de Nerja. Joya oculta accesible por escalera de cuerda bajo acantilados. Tradición nudista de los años 70.' },
+
+  // ── MÁS INTERIOR PENDIENTE ────────────────────────────────────
+  { nombre: 'Embalse de Cijara — zona naturista', categoria: 'Paraje natural', provincia: 'Cáceres', comunidad: 'Extremadura', lat: 39.331, lng: -4.966, descripcion: 'Zona naturista en el Embalse de Cijara, Guadalupe. Aguas cálidas del embalse extremeño en verano. Entorno de dehesa con jaras y encinas.' },
+  { nombre: 'Río Tajo — Las Villuercas', categoria: 'Paraje natural', provincia: 'Cáceres', comunidad: 'Extremadura', lat: 39.474, lng: -5.263, descripcion: 'Zona naturista en el Río Tajo a su paso por Las Villuercas, Cáceres. Pozas naturales en entorno virgen de montaña extremeña.' },
+  { nombre: 'Piscinas Naturales del Valle del Jerte', categoria: 'Paraje natural', provincia: 'Cáceres', comunidad: 'Extremadura', lat: 40.071, lng: -5.736, descripcion: 'Conjunto de piscinas naturales nudistas en el Valle del Jerte, Cáceres. Aguas cristalinas de montaña entre cerezos. Los Pilones es el más conocido pero hay más.' },
+  { nombre: 'Pantano de Valdecañas — zona naturista', categoria: 'Paraje natural', provincia: 'Cáceres', comunidad: 'Extremadura', lat: 39.793, lng: -5.589, descripcion: 'Zona naturista en el Pantano de Valdecañas, Cáceres. Aguas cálidas del embalse en verano rodeadas de dehesa extremeña.' },
+
+  // ── ÚLTIMAS ASOCIACIONES ──────────────────────────────────────
+  { nombre: 'ANNA — Asociación Naturista-Nudista de Andalucía', categoria: 'Club / Asociación', provincia: 'Sevilla', comunidad: 'Andalucía', lat: 37.362, lng: -5.973, descripcion: 'Asociación Naturista-Nudista de Andalucía federada a la FEN. Defiende el derecho al nudismo en todas las playas andaluzas. Integrada también en la Federación Internacional de Naturismo (FNI).' },
+
+  // ── ÚLTIMAS PLAYAS PENDIENTES GALICIA ────────────────────────
+  { nombre: 'Praia de Liñeiros — Bueu', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.331, lng: -8.846, descripcion: 'Playa nudista aislada en Bueu, Pontevedra. 200m de longitud. Aguas tranquilas de la Ría de Pontevedra.' },
+  { nombre: 'Praia do Vilar — Ribeira', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 42.559, lng: -9.028, descripcion: 'Zona nudista en Praia do Vilar, Ribeira. 3 km espectaculares con bandera azul. Zona nudista en el extremo sur accediendo por pasarelas de madera.' },
+
+  // ── ÚLTIMAS BALEARES PENDIENTES ───────────────────────────────
+  { nombre: 'Playa de Es Trenc — chiringuito naturista', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.341, lng: 2.970, descripcion: 'Chiringuito naturista en Es Trenc, Mallorca. La playa nudista más importante de España sirve de base para el naturismo organizado balear. Con tiendas, alquiler de hamacas y ambiente 100% naturista.' },
+  { nombre: 'Playa de Torrent de Pareis — Mallorca', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.852, lng: 2.800, descripcion: 'Cala nudista en Escorca, norte de Mallorca. Solo accesible a pie por el espectacular cañón del Torrent de Pareis. Una de las más salvajes e inaccesibles de España.' },
+  { nombre: 'Playa de Formentor — zona nudista', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.933, lng: 3.199, descripcion: 'Zona nudista en Playa de Formentor, Pollença, Mallorca. En el extremo norte de la famosa playa del Cap de Formentor.' },
+
+  // ── ÚLTIMA BÚSQUEDA — MADRID PISCINAS NUDISTAS ───────────────
+  { nombre: 'Piscina Municipal de La Elipa — nudista', categoria: 'Piscina / Spa', provincia: 'Madrid', comunidad: 'Madrid', lat: 40.424, lng: -3.655, descripcion: 'Piscina nudista en el Barrio de La Elipa, Madrid. Una de las dos piscinas municipales de Madrid con sesiones nudistas habilitadas.' },
+  { nombre: 'Piscina Municipal del Barrio del Pilar — nudista', categoria: 'Piscina / Spa', provincia: 'Madrid', comunidad: 'Madrid', lat: 40.493, lng: -3.717, descripcion: 'Piscina nudista en el Barrio del Pilar, Madrid. La otra piscina municipal madrileña con sesiones nudistas habilitadas. Referente del nudismo urbano en la capital.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
