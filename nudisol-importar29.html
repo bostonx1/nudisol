@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 29</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 29 — Fuerteventura COMPLETO</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 29</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── NORTE — CORRALEJO / LA OLIVA ─────────────────────────────
+  { nombre: 'Grandes Playas de Corralejo — zona nudista', categoria: 'Playa / Cala', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.735, lng: -13.856, descripcion: 'Parque Natural de las Dunas de Corralejo. 8 km de playas salpicadas de espacios tranquilos. Zona nudista preferida: Playa del Moro, El Dormidero y sur de Playa Larga. Acceso FV-1.' },
+  { nombre: 'Playa del Moro — Corralejo', categoria: 'Playa / Cala', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.715, lng: -13.848, descripcion: 'Playa nudista dentro del Parque Natural de Corralejo. Arena dorada, aislada y tranquila. Una de las zonas nudistas preferidas del norte de Fuerteventura.' },
+  { nombre: 'El Dormidero — Corralejo', categoria: 'Playa / Cala', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.710, lng: -13.845, descripcion: 'Playa nudista aislada en el Parque Natural de Corralejo. Arena dorada y ambiente totalmente natural.' },
+  { nombre: 'El Bajo Negro — Corralejo', categoria: 'Playa / Cala', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.705, lng: -13.842, descripcion: 'Zona nudista en el sur del Parque Natural de Corralejo. Con servicios turísticos cercanos pero zona naturista tranquila.' },
+  { nombre: 'El Islote — La Oliva', categoria: 'Playa / Cala', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.726, lng: -13.861, descripcion: 'Playa nudista aislada de arena blanca en La Oliva. Lagunas naturales y aguas cristalinas. Dentro del Parque Natural de Corralejo.' },
+  { nombre: 'Caleta Beatriz — El Cotillo', categoria: 'Playa / Cala', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.673, lng: -14.009, descripcion: 'Cala nudista en El Cotillo, noroeste de Fuerteventura. Pequeña y aislada. Laguna natural protegida por arrecife.' },
+  { nombre: 'Playa El Pozo — Corralejo', categoria: 'Playa / Cala', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.744, lng: -13.862, descripcion: 'Playa nudista en Corralejo. Tranquila y poco concurrida. Aguas del Atlántico norte de Fuerteventura.' },
+  { nombre: 'Flag Beach — Corralejo', categoria: 'Playa / Cala', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.712, lng: -13.851, descripcion: 'Playa nudista y de kitesurf en Corralejo. Zona amigable para nudistas muy frecuentada. Condiciones ideales para windsurf y naturismo.' },
+  { nombre: 'Caleta del Marrajo', categoria: 'Playa / Cala', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.068, lng: -14.340, descripcion: 'Playa nudista espectacular en Fuerteventura. Múltiples lagunas en miniatura rodeadas de arrecifes naturales. Popular entre nudistas, kitesurfistas y windsurfistas.' },
+  { nombre: 'Risco del Paso — Pájara', categoria: 'Playa / Cala', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.154, lng: -14.257, descripcion: 'Playa nudista de arena dorada y aguas claras poco profundas en Pájara. Ideal para kitesurf y windsurf. Ambiente naturista consolidado.' },
+
+  // ── CENTRO — PUERTO DEL ROSARIO ──────────────────────────────
+  { nombre: 'Playa de Janubio — Puerto del Rosario', categoria: 'Playa / Cala', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.478, lng: -13.997, descripcion: 'Playa nudista en Puerto del Rosario. Arena negra volcánica junto a las salinas. Entorno único y paisaje lunark canario.' },
+
+  // ── SUR — JANDÍA / PÁJARA ────────────────────────────────────
+  { nombre: 'Playa de Cofete', categoria: 'Playa / Cala', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.093, lng: -14.393, descripcion: 'La playa nudista más espectacular de Fuerteventura. 14,5 km de arena dorada virgen en el Parque Natural de Jandía. Rodeada de montañas. Difícil acceso que garantiza soledad total. Icónica a nivel europeo.' },
+  { nombre: 'Playa de Sotavento — zona nudista', categoria: 'Playa / Cala', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.166, lng: -14.252, descripcion: '12 km de longitud, en algunos tramos supera 1 km de anchura. Sur de Fuerteventura. Zona nudista en las áreas más aisladas de servicios. Dunas blancas, aguas cristalinas, kitesurf y naturismo.' },
+  { nombre: 'Playa de Esquinzo — Butihondo', categoria: 'Playa / Cala', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.059, lng: -14.338, descripcion: 'Playa nudista semiurbana en Jandía, Pájara. Enorme belleza, aguas cristalinas. Una de las más famosas de Fuerteventura. Junto a la urbanización de Butihondo.' },
+  { nombre: 'Playa de Butihondo', categoria: 'Playa / Cala', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.062, lng: -14.341, descripcion: 'Playa nudista en Jandía contigua a Esquinzo. Arena dorada y aguas turquesas. Ambiente naturista tradicional del sur de Fuerteventura.' },
+  { nombre: 'Las Coloradas — Jandía', categoria: 'Playa / Cala', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.055, lng: -14.335, descripcion: 'Playa nudista aislada en Jandía. Arena de tonos anaranjados volcánicos. Entorno virgen del Parque Natural de Jandía.' },
+  { nombre: 'Playa del Morro de Potala', categoria: 'Playa / Cala', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.047, lng: -14.327, descripcion: 'Playa nudista virgen de 230m en Morro Jable, Pájara. A 1 km del puerto. Sin servicios pero acceso fácil. Perfecta para picnic naturista.' },
+  { nombre: 'Playa del Matorral — zona nudista', categoria: 'Playa / Cala', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.044, lng: -14.326, descripcion: 'Zona nudista en Playa del Matorral, Morro Jable. Bandera Azul, socorristas. Arena fina dorada y aguas cálidas del sur de Fuerteventura.' },
+
+  // ── ALOJAMIENTO NATURISTA ─────────────────────────────────────
+  { nombre: 'BHH Naturist Resort — Costa Calma', categoria: 'Alojamiento / Resort', provincia: 'Fuerteventura', comunidad: 'Canarias', lat: 28.161, lng: -14.228, descripcion: 'Resort naturista en Costa Calma, sur de Fuerteventura. Apartamentos independientes en zona nudista. Muy valorado por la comunidad naturista europea. Climatología perfecta todo el año.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
