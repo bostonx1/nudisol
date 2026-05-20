@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 31</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 31 — La Gomera, El Hierro y La Palma completos</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 31</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── LA GOMERA — COMPLETO ──────────────────────────────────────
+  { nombre: 'Playa del Inglés — Valle Gran Rey', categoria: 'Playa / Cala', provincia: 'La Gomera', comunidad: 'Canarias', lat: 28.076, lng: -17.329, descripcion: 'La playa nudista más famosa de La Gomera, en Valle Gran Rey. Histórica desde los 70 ligada al movimiento hippie. Arena oscura. Cerca de apartamentos, restaurantes y servicios. Ambiente muy consolidado.' },
+  { nombre: 'Playa de La Guancha', categoria: 'Playa / Cala', provincia: 'La Gomera', comunidad: 'Canarias', lat: 28.097, lng: -17.107, descripcion: 'Playa nudista de casi 500m en San Sebastián de La Gomera. Bolos y manchas de arena negra. Entorno totalmente virgen. Una de las mejores de Canarias para nudistas. Muy tranquila pese a la cercanía con la capital.' },
+  { nombre: 'Playa de El Cabrito', categoria: 'Playa / Cala', provincia: 'La Gomera', comunidad: 'Canarias', lat: 28.090, lng: -17.099, descripcion: 'Playa nudista de 450m de bolos y arena negra en San Sebastián de La Gomera. Solo acceso a pie desde La Guancha o en barco. Vergel tropical a las espaldas. Aguas tranquilas.' },
+  { nombre: 'Playa de Avalo', categoria: 'Playa / Cala', provincia: 'La Gomera', comunidad: 'Canarias', lat: 28.101, lng: -17.112, descripcion: 'Playa nudista semiurbana de arena oscura en San Sebastián de La Gomera. Acceso más sencillo que otras. Nudismo habitual.' },
+  { nombre: 'Playa El Guincho — La Gomera', categoria: 'Playa / Cala', provincia: 'La Gomera', comunidad: 'Canarias', lat: 28.083, lng: -17.114, descripcion: 'Playa nudista pequeña y hermosa en la costa sur de San Sebastián de La Gomera. Aguas cristalinas, paisaje espectacular. Poco transitada. Duchas y papeleras disponibles.' },
+  { nombre: 'Playa de Iguala — Vallehermoso', categoria: 'Playa / Cala', provincia: 'La Gomera', comunidad: 'Canarias', lat: 28.192, lng: -17.271, descripcion: 'Playa nudista en Vallehermoso, junto al barrio de La Dama, vertiente sur. Solitaria y deliciosa para un día de playa nudista.' },
+  { nombre: 'El Puerto del Trigo — Alojera', categoria: 'Playa / Cala', provincia: 'La Gomera', comunidad: 'Canarias', lat: 28.191, lng: -17.337, descripcion: 'Playa nudista en Alojera, Vallehermoso, noroeste de La Gomera. Pequeña y aislada. Difícil acceso que garantiza soledad.' },
+  { nombre: 'Playa de La Sepultura — Vallehermoso', categoria: 'Playa / Cala', provincia: 'La Gomera', comunidad: 'Canarias', lat: 28.197, lng: -17.278, descripcion: 'Playa nudista en Vallehermoso, próxima al núcleo de población. Arena oscura y ambiente naturista tranquilo.' },
+  { nombre: 'Playa de Heredia — Valle Gran Rey', categoria: 'Playa / Cala', provincia: 'La Gomera', comunidad: 'Canarias', lat: 28.089, lng: -17.349, descripcion: 'Playa nudista de difícil acceso en Taguluche, Valle Gran Rey. En inmejorable estado natural. Solo conocida por los más aventureros.' },
+
+  // ── EL HIERRO — COMPLETO ──────────────────────────────────────
+  { nombre: 'Playa El Verodal', categoria: 'Playa / Cala', provincia: 'El Hierro', comunidad: 'Canarias', lat: 27.748, lng: -18.160, descripcion: 'Playa nudista en Frontera, muy cerca del Faro de Orchilla, El Hierro. Una de las más solitarias de Canarias. Arena oscura y entorno volcánico extremo. La isla más occidental de España.' },
+  { nombre: 'Puerto Naos — La Restinga nudista', categoria: 'Playa / Cala', provincia: 'El Hierro', comunidad: 'Canarias', lat: 27.640, lng: -17.980, descripcion: 'Zona nudista en la parte más apartada de Puerto Naos, La Restinga, El Hierro. Piscinas naturales volcánicas. Nudismo habitual en entorno de buceo espectacular.' },
+  { nombre: 'Playa de Las Playas — El Hierro', categoria: 'Playa / Cala', provincia: 'El Hierro', comunidad: 'Canarias', lat: 27.699, lng: -17.912, descripcion: 'Zona nudista en Las Playas, El Pinar, El Hierro. Arenales oscuros bajo el Risco de Tibataje. Entorno completamente virgen en la isla más pura de Canarias.' },
+
+  // ── LA PALMA — MÁS COMPLETO ───────────────────────────────────
+  { nombre: 'Playa de Los Tarajales', categoria: 'Playa / Cala', provincia: 'La Palma', comunidad: 'Canarias', lat: 28.560, lng: -17.882, descripcion: 'La única playa oficialmente habilitada para nudismo en La Palma desde 2014, en Los Llanos de Aridane. 760m de longitud y 90m de anchura. Arena y piedras. Muy buena acogida entre residentes, turistas y comunidad LGTBI.' },
+  { nombre: 'Playa de Antoncojo — La Palma', categoria: 'Playa / Cala', provincia: 'La Palma', comunidad: 'Canarias', lat: 28.529, lng: -17.869, descripcion: 'Playa nudista en Tazacorte, La Palma. Arena oscura volcánica. Nudismo habitual en entorno de la costa oeste palmera.' },
+  { nombre: 'Playa del Remo — La Palma', categoria: 'Playa / Cala', provincia: 'La Palma', comunidad: 'Canarias', lat: 28.518, lng: -17.888, descripcion: 'Zona nudista en Playa del Remo, La Palma. Pequeña playa de cantos rodados en el suroeste. Entorno salvaje con palmerales.' },
+
+  // ── TENERIFE — ÚLTIMAS ────────────────────────────────────────
+  { nombre: 'Playa de Antequera — Santa Cruz', categoria: 'Playa / Cala', provincia: 'Tenerife', comunidad: 'Canarias', lat: 28.521, lng: -16.183, descripcion: 'Playa nudista aislada en Santa Cruz de Tenerife, Anaga. Solo acceso en barco desde el puerto. Arena oscura y aguas muy limpias. Una de las más vírgenes del norte.' },
+  { nombre: 'Playa de Las Gaviotas — Santa Cruz', categoria: 'Playa / Cala', provincia: 'Tenerife', comunidad: 'Canarias', lat: 28.500, lng: -16.189, descripcion: 'Zona nudista en Las Gaviotas, Santa Cruz de Tenerife. Cantos rodados y aguas tranquilas del Atlántico norte. Acceso por carretera TF-11.' },
+  { nombre: 'Playa de Fañabé — zona nudista', categoria: 'Playa / Cala', provincia: 'Tenerife', comunidad: 'Canarias', lat: 28.088, lng: -16.733, descripcion: 'Zona nudista en Playa de Fañabé, Adeje, sur de Tenerife. Extremo de la playa más tranquilo frecuentado por nudistas.' },
+  { nombre: 'Barranco Seco — nudista Tenerife', categoria: 'Paraje natural', provincia: 'Tenerife', comunidad: 'Canarias', lat: 28.372, lng: -16.642, descripcion: 'Zona naturista en el Barranco Seco, La Orotava. Interior de Tenerife. Pozas naturales con aguas cristalinas. Nudismo habitual entre la vegetación exuberante del valle.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
