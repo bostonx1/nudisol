@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 38</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 38 — Málaga completo y últimos rincones</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 38</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── MÁLAGA — NERJA / COSTA ORIENTAL ──────────────────────────
+  { nombre: 'Playa Las Alberquillas — Nerja', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.748, lng: -3.857, descripcion: 'Playa nudista de 400m x 20m bajo los Acantilados de Maro, Nerja. Sin aglomeraciones. Ideal para buceo con gran fondo marino de moluscos, algas y peces. Acceso por bajada empinada.' },
+  { nombre: 'Playa La Viborilla — Benalmádena', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.584, lng: -4.534, descripcion: 'Cala nudista en Benalmádena. 40m de anchura media, entorno tranquilo de acantilados. Aguas cristalinas. Ambiente relajado y poco masificado.' },
+  { nombre: 'Playamarina — El Chaparral Mijas', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.514, lng: -4.625, descripcion: 'Playa nudista semiurbana en El Chaparral, Mijas, junto al Faro. 500m de longitud. Una de las más tranquilas de la Costa del Sol. Chiringuito visible desde la carretera.' },
+
+  // ── MÁLAGA — PLAYA COSTA NATURA ──────────────────────────────
+  { nombre: 'Playa de Costa Natura — Estepona', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.422, lng: -5.152, descripcion: 'Playa nudista de 400m junto al complejo naturista más antiguo de España, Costa Natura, Estepona. Arena y gravilla. Turistas extranjeros residentes. Ambiente familiar todo el año. Inaugurada en 1979.' },
+
+  // ── ÚLTIMAS HUELVA ────────────────────────────────────────────
+  { nombre: 'Playa de Rompeculos — Moguer', categoria: 'Playa / Cala', provincia: 'Huelva', comunidad: 'Andalucía', lat: 37.112, lng: -6.834, descripcion: 'Playa nudista en Moguer, Doñana. Junto a Cuesta Maneli bajo acantilados de arena. Nombre curioso y entorno salvaje único en Huelva.' },
+  { nombre: 'Playa de El Arenosillo — Moguer', categoria: 'Playa / Cala', provincia: 'Huelva', comunidad: 'Andalucía', lat: 37.108, lng: -6.841, descripcion: '3 km de playa nudista bajo acantilados de arena en Moguer. Junto a Rompeculos. Entorno virgen del litoral de Doñana.' },
+
+  // ── ÚLTIMAS GIRONA ────────────────────────────────────────────
+  { nombre: 'Cala Bona — Palamós', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.845, lng: 3.136, descripcion: 'Cala nudista pequeña y muy tranquila en Palamós, Costa Brava. Junto a Camping Relax-Nat. Una de las calas nudistas del Baix Empordà más apreciadas.' },
+  { nombre: 'Cap de Planes — Palamós', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.843, lng: 3.141, descripcion: 'Cala nudista aislada en Palamós. Acceso a pie por el camino de ronda costero. Aguas cristalinas de la Costa Brava.' },
+  { nombre: 'Cala Canyers — Castell-Platja d\'Aro', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.797, lng: 3.044, descripcion: 'Cala nudista semiurbana en Castell-Platja d\'Aro, Costa Brava. Arena dorada y aguas limpias del Baix Empordà.' },
+  { nombre: 'Cala Vallpresona — Tossa de Mar', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.725, lng: 2.946, descripcion: 'Cala nudista de guijarros en Santa Cristina d\'Aro/Tossa de Mar. 200m x 25m. Espacio natural virgen con 1 km de caminata. Perfecta para nudismo tranquilo.' },
+  { nombre: 'Cala de Sa Futadera — Tossa de Mar', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.723, lng: 2.948, descripcion: 'Cala nudista aislada en Tossa de Mar, también conocida como Pentine. Arena dorada rodeada de acantilados. Difícil acceso que la hace casi virgen.' },
+  { nombre: 'Cala Ull de Vidre — Tossa de Mar', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.726, lng: 2.944, descripcion: 'Cala nudista aislada en Tossa de Mar, también conocida como La Figuera. Arena dorada. Acceso a pie por camino costero.' },
+  { nombre: 'Cala del Crit — Mont-ras', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.876, lng: 3.157, descripcion: 'Cala nudista aislada en Mont-ras, Baix Empordà. Arena dorada y aguas cristalinas de la Costa Brava.' },
+  { nombre: 'Cala Estreta — Palamós', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.871, lng: 3.153, descripcion: 'Cala nudista en Palamós. 30 minutos de caminata por el camino de ronda entre Castell y Calella de Palafrugell garantizan tranquilidad. Pinos y acantilados. Nudismo de tradición.' },
+  { nombre: 'Cala del Lledó — Roses', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.237, lng: 3.170, descripcion: 'Cala nudista aislada en Roses, Alt Empordà. También conocida como Cala de la Font del Lledó. Dentro del Parque Natural del Cap de Creus.' },
+  { nombre: 'Cala Calitjàs — Roses', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.241, lng: 3.168, descripcion: 'Cala nudista aislada en Roses. También conocida como Cala Calitges. Arena dorada de la Costa Brava norte. Acceso a pie.' },
+  { nombre: 'Cala Canadell — Roses', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.243, lng: 3.172, descripcion: 'Cala nudista aislada en Roses. Parque Natural del Cap de Creus. Aguas cristalinas y entorno de maquia mediterránea.' },
+  { nombre: 'Playa del Pi — Portbou', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.430, lng: 3.163, descripcion: 'Primera playa nudista accesible en coche tras cruzar la frontera francesa, en Portbou. Paisaje de guijarros y relieve accidentado. La más septentrional de España en la Costa Brava.' },
+  { nombre: 'S\'Alqueria Gran — Cadaqués', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.296, lng: 3.281, descripcion: 'Playa nudista semiurbana en Cadaqués. Vistas al faro y a Port Lligat. Retiro perfecto para nudismo íntimo en ambiente bohemio.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
