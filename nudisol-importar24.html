@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 24</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 24 — Málaga, Menorca y Mallorca completos</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 24</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── MÁLAGA — MÁS PLAYAS ───────────────────────────────────────
+  { nombre: 'Playa de Guadalmar', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.671, lng: -4.532, descripcion: 'Zona nudista en Málaga capital, junto a la desembocadura del río Guadalhorce. Playa mixta con zona naturista. La más próxima al aeropuerto de Málaga.' },
+  { nombre: 'Playa Playamarina — Mijas', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.511, lng: -4.628, descripcion: 'Playa nudista semiurbana en Mijas, muy próxima al faro de Fuengirola. La opción nudista más cercana para quienes están en Fuengirola.' },
+  { nombre: 'Camping Naturista Almanat — Vélez Málaga', categoria: 'Camping', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.745, lng: -4.148, descripcion: 'Camping naturista junto a la Playa de Almayate, Vélez-Málaga. Acceso directo a la playa nudista. Bungalós y parcelas en entorno natural.' },
+
+  // ── MENORCA — COMPLETO ────────────────────────────────────────
+  { nombre: 'Playa de Binigaus', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.905, lng: 4.002, descripcion: 'Elegida por El País como una de las mejores playas nudistas de España. Sur de Menorca, junto a Santo Tomás. Zona nudista en el extremo oeste, 10 min andando. Arena blanca y aguas cristalinas.' },
+  { nombre: 'Playa de Son Bou — zona nudista', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.893, lng: 4.064, descripcion: 'Zona nudista en Son Bou, la playa más larga de Menorca (2 km). Zona naturista en el extremo oeste en dirección a Santo Tomás. Sin servicios en la zona nudista.' },
+  { nombre: 'Playa de Atalis', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.894, lng: 3.996, descripcion: 'Playa nudista en Es Migjorn Gran, Menorca. Contigua a Binigaus, zona nudista en el extremo oeste. Aguas cristalinas del sur de la isla.' },
+  { nombre: 'Cales Coves', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.958, lng: 4.151, descripcion: 'Cala nudista en Alaior, Menorca. Acantilados llenos de cuevas prehistóricas donde vivieron comunidades naturales. Entorno arqueológico y naturista único.' },
+  { nombre: 'Cala Mesquida — Menorca', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 40.025, lng: 4.271, descripcion: 'Una de las playas nudistas más extensas de Menorca, en Maó. Arena dorada y aguas turquesas. Gran afluencia, todos los servicios disponibles.' },
+  { nombre: 'Capifort — Cala Presili', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 40.049, lng: 4.279, descripcion: 'Cala nudista en Maó, Menorca. Arena fina y aguas cristalinas. Lugar ideal para nudismo en entorno natural.' },
+  { nombre: 'Cala Tamarells', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 40.048, lng: 4.282, descripcion: 'Cala nudista en Maó, Menorca, también conocida como Tamarells d\'es Nort. Arena dorada aislada en el norte de la isla.' },
+  { nombre: 'Cala del Pilar — arena roja', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 40.071, lng: 3.828, descripcion: 'Cala nudista al norte de Ciutadella, Menorca. Arena roja característica única en la isla. Totalmente virgen, ZEPA y ANEI. Acceso a pie 30 min desde parking. Vale cada paso.' },
+
+  // ── MALLORCA — MÁS CALAS ──────────────────────────────────────
+  { nombre: 'Caló des Monjo', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.509, lng: 2.487, descripcion: 'Cala nudista virgen en Calvià declarada nudista por el Ayuntamiento. Acceso en 10 min por bosque desde Cala Fornells. Popular entre nudistas y colectivo gay de Mallorca.' },
+  { nombre: 'Cala Sequer', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.529, lng: 3.358, descripcion: 'Cala nudista aislada en Manacor, Mallorca. Arena dorada y aguas cristalinas del mediterráneo.' },
+  { nombre: 'Cala Virgili', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.527, lng: 3.356, descripcion: 'Cala nudista aislada en Manacor, Mallorca. Arena blanca y dorada. Acceso a pie.' },
+  { nombre: 'Caló Bota', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.525, lng: 3.354, descripcion: 'Cala nudista aislada en Manacor, Mallorca. Rincón virgen entre Cala Virgili y Cala Sequer.' },
+  { nombre: 'Cala Castell — Pollença', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.921, lng: 3.199, descripcion: 'Cala nudista aislada en Pollença, norte de Mallorca. Arena blanca y aguas cristalinas. Acceso a pie por camino costero.' },
+  { nombre: 'Coll Baix — Alcúdia', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.878, lng: 3.186, descripcion: 'Cala nudista en Alcúdia, norte de Mallorca. Solo acceso a pie o en barca. Arena oscura y aguas espectaculares bajo acantilados.' },
+  { nombre: 'Cala Dèntol — Artà', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.718, lng: 3.491, descripcion: 'Cala nudista aislada en Artà, Mallorca. Dentro del Parque Natural de Llevant.' },
+  { nombre: 'Caló d\'Es Cans — Artà', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.720, lng: 3.489, descripcion: 'Cala nudista aislada en Artà, Mallorca. Arena oscura volcánica y aguas tranquilas.' },
+
+  // ── FORMENTERA — MÁS CALAS ────────────────────────────────────
+  { nombre: 'Cala Codolá', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.696, lng: 1.484, descripcion: 'Cala nudista aislada en Formentera. Pequeña y tranquila, acceso a pie.' },
+  { nombre: 'Cala de Bosch — Formentera', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.699, lng: 1.463, descripcion: 'Cala nudista en Formentera. Pequeña ensenada de arena dorada y aguas cristalinas.' },
+  { nombre: 'Cala Savina', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.736, lng: 1.404, descripcion: 'Cala nudista aislada en Formentera. Aguas turquesas cerca del puerto de La Savina.' },
+  { nombre: 'Caló d\'En Timo — Llucmajor', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.354, lng: 2.841, descripcion: 'Cala nudista aislada en Llucmajor, Mallorca. Arena dorada y oscura en el sur de la isla.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
