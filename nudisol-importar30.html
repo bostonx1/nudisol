@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 30</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 30 — Gran Canaria COMPLETO</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 30</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── SUR — MASPALOMAS / PLAYA DEL INGLÉS ──────────────────────
+  { nombre: 'Playa del Inglés — zona nudista', categoria: 'Playa / Cala', provincia: 'Gran Canaria', comunidad: 'Canarias', lat: 27.757, lng: -15.574, descripcion: 'Zona nudista entre chiringuitos 5 y 6 de Playa del Inglés, San Bartolomé de Tirajana. Bandera Azul todo el año. Socorristas y servicios. 2.700m totales sumando Maspalomas. LGTBI+ friendly.' },
+  { nombre: 'Playa de Maspalomas — zona nudista', categoria: 'Playa / Cala', provincia: 'Gran Canaria', comunidad: 'Canarias', lat: 27.740, lng: -15.586, descripcion: 'Zona nudista entre chiringuitos 3 y 4, comenzando a 900m de la Charca de Maspalomas. Dunas de arena rubia icónicas, aguas cristalinas. La zona nudista más famosa de las islas Canarias.' },
+  { nombre: 'Playa Montaña de Arena', categoria: 'Playa / Cala', provincia: 'Gran Canaria', comunidad: 'Canarias', lat: 27.747, lng: -15.580, descripcion: 'Playa nudista en San Bartolomé de Tirajana. 520m x 25m de arena oscura volcánica. Oleaje moderado, sin socorrista. Ambiente sereno y relajado en prolongación del Paseo de Maspalomas.' },
+  { nombre: 'Playa El Confital — Las Palmas', categoria: 'Playa / Cala', provincia: 'Gran Canaria', comunidad: 'Canarias', lat: 28.139, lng: -15.451, descripcion: 'Playa nudista en Las Palmas de Gran Canaria. 250m de arena oscura y ambiente tranquilo. Orientación al suroeste para atardeceres espectaculares. Sin socorrista. Gay-friendly.' },
+
+  // ── OESTE — MOGÁN / COSTA OESTE ──────────────────────────────
+  { nombre: 'Playa de Güigüi', categoria: 'Playa / Cala', provincia: 'Gran Canaria', comunidad: 'Canarias', lat: 27.977, lng: -15.832, descripcion: 'La playa nudista más salvaje e inaccesible de Gran Canaria. Solo acceso a pie (1h30 de caminata) o en barco desde Mogán o La Aldea. Completamente virgen, sin servicios. Paraíso de los naturistas más aventureros.' },
+  { nombre: 'Playa de Veneguera', categoria: 'Playa / Cala', provincia: 'Gran Canaria', comunidad: 'Canarias', lat: 27.888, lng: -15.790, descripcion: 'Playa nudista virgen en Mogán, costa oeste. Arena dorada y aguas cristalinas poco profundas. Rodeada de montañas y acantilados. Sin servicios. Ideal para snorkel y nudismo tranquilo.' },
+  { nombre: 'Playa de Tasarte', categoria: 'Playa / Cala', provincia: 'Gran Canaria', comunidad: 'Canarias', lat: 27.932, lng: -15.820, descripcion: 'Playa nudista de cantos rodados en la costa oeste de Gran Canaria, Mogán. Ambiente sereno y limpio. Nudismo habitual en entorno virgen.' },
+  { nombre: 'Playa de Tiritaña', categoria: 'Playa / Cala', provincia: 'Gran Canaria', comunidad: 'Canarias', lat: 27.863, lng: -15.778, descripcion: 'Pequeña bahía nudista en Mogán. Arena oscura y paisaje pintoresco. Acceso por ruta de montaña. Ambiente íntimo y solitario.' },
+  { nombre: 'Playa de Mogán — zona nudista', categoria: 'Playa / Cala', provincia: 'Gran Canaria', comunidad: 'Canarias', lat: 27.854, lng: -15.721, descripcion: 'Zona nudista en Mogán. 370m de longitud, arena fina. Una de las playas más completas del suroeste de Gran Canaria.' },
+
+  // ── NORTE / NOROESTE ─────────────────────────────────────────
+  { nombre: 'Playa de Guayedra', categoria: 'Playa / Cala', provincia: 'Gran Canaria', comunidad: 'Canarias', lat: 28.099, lng: -15.718, descripcion: 'Playa nudista en Agaete, noroeste de Gran Canaria. Acceso difícil por carretera sinuosa o senderismo. Entorno virgen espectacular con montañas y acantilados. Requiere 4x4.' },
+  { nombre: 'Puerto de las Nieves — zona nudista', categoria: 'Playa / Cala', provincia: 'Gran Canaria', comunidad: 'Canarias', lat: 28.103, lng: -15.695, descripcion: 'Zona nudista en el pueblo pesquero de Puerto de las Nieves, Agaete. Pequeña e idílica, con vistas al Roque de Idafe y La Palma al fondo.' },
+
+  // ── TENERIFE — MÁS PLAYAS ─────────────────────────────────────
+  { nombre: 'Playa de El Médano', categoria: 'Playa / Cala', provincia: 'Tenerife', comunidad: 'Canarias', lat: 28.046, lng: -16.530, descripcion: 'Zona nudista en El Médano, Granadilla de Abona. Capital del windsurf en España. Zona naturista en los extremos de la playa. 2 km de arena con viento constante.' },
+  { nombre: 'Playa de La Tejita', categoria: 'Playa / Cala', provincia: 'Tenerife', comunidad: 'Canarias', lat: 28.036, lng: -16.544, descripcion: 'Playa nudista junto a El Médano. 1 km de arena dorada bajo el Montaña Roja. Parque Natural protegido. Una de las más valoradas por los naturistas del sur de Tenerife.' },
+  { nombre: 'Playa de Benijo', categoria: 'Playa / Cala', provincia: 'Tenerife', comunidad: 'Canarias', lat: 28.577, lng: -16.189, descripcion: 'Playa nudista en Anaga, Santa Cruz de Tenerife. Arena negra volcánica y rocas. Paisaje espectacular del Macizo de Anaga. Solo acceso a pie. Batida por las olas del Atlántico norte.' },
+  { nombre: 'Playa de Almáciga', categoria: 'Playa / Cala', provincia: 'Tenerife', comunidad: 'Canarias', lat: 28.570, lng: -16.198, descripcion: 'Zona nudista en Almáciga, Anaga. Arena negra volcánica en entorno rural. Junto a Benijo, poco concurrida y muy tranquila.' },
+  { nombre: 'Los Patos — San Marcos', categoria: 'Playa / Cala', provincia: 'Tenerife', comunidad: 'Canarias', lat: 28.374, lng: -16.780, descripcion: 'Zona nudista en San Marcos, Icod de los Vinos. Arena negra, aguas tranquilas. Ambiente local tinerfeño.' },
+  { nombre: 'Playa de Diego Hernández', categoria: 'Playa / Cala', provincia: 'Tenerife', comunidad: 'Canarias', lat: 28.177, lng: -16.722, descripcion: 'Playa nudista en Adeje, sur de Tenerife. Acceso a pie por sendero costero. Arena oscura y entorno de acantilados volcánicos.' },
+
+  // ── LA PALMA ──────────────────────────────────────────────────
+  { nombre: 'Playa de Nogales — La Palma', categoria: 'Playa / Cala', provincia: 'La Palma', comunidad: 'Canarias', lat: 28.724, lng: -17.770, descripcion: 'Playa nudista en Puntallana, La Palma. Arena negra volcánica. Nudismo habitual en entorno virgen de la isla más verde de Canarias.' },
+  { nombre: 'Playa de Charco Verde — La Palma', categoria: 'Playa / Cala', provincia: 'La Palma', comunidad: 'Canarias', lat: 28.533, lng: -17.874, descripcion: 'Zona nudista en El Paso / Los Llanos, La Palma. Piscina natural volcánica de agua salada. Entorno de laurisilva y acantilados negros.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
