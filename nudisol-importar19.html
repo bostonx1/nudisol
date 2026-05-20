@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 19</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 19 — Vera, resorts y alojamientos naturistas</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 19</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── VERA — EL GRAN DESTINO NATURISTA DE ESPAÑA ────────────────
+  { nombre: 'Hotel Vera Playa Club', categoria: 'Alojamiento / Resort', provincia: 'Almería', comunidad: 'Andalucía', lat: 37.231, lng: -1.848, descripcion: 'Único hotel naturista de 4 estrellas de España. En primera línea de la Playa El Playazo de Vera. Piscinas nudistas, zonas de ocio y restaurante naturista. Referente del turismo naturista europeo.' },
+  { nombre: 'Urbanización Vera Natura', categoria: 'Urbanización', provincia: 'Almería', comunidad: 'Andalucía', lat: 37.232, lng: -1.849, descripcion: 'Una de las urbanizaciones naturistas más reconocidas de Europa en Vera, Almería. Piscina exterior y climatizada, chiringuito, restaurante, masajes, supermercado, pub, voley y fútbol playa.' },
+  { nombre: 'Urbanización Torremar Natura', categoria: 'Urbanización', provincia: 'Almería', comunidad: 'Andalucía', lat: 37.233, lng: -1.847, descripcion: 'Urbanización naturista cerrada en Vera. Apartamentos rodeados de jardines en segunda línea de playa. Ambiente íntimo y cuidado.' },
+  { nombre: 'Vera Playa — urbanización naturista', categoria: 'Urbanización', provincia: 'Almería', comunidad: 'Andalucía', lat: 37.234, lng: -1.846, descripcion: 'Complejo de urbanizaciones naturistas en Vera Playa. Apartamentos, casas y hoteles donde el nudismo se vive las 24h. Vida cotidiana desnuda en entorno mediterráneo.' },
+
+  // ── RESORTS Y ALOJAMIENTOS NATURISTAS ────────────────────────
+  { nombre: 'Costa Natura — primer resort naturista de España', categoria: 'Alojamiento / Resort', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.421, lng: -5.151, descripcion: 'Inaugurado en 1979, fue el primer complejo naturista oficial de España y de Europa. En Estepona, directamente en la primera playa naturista española. 190 apartamentos, piscina climatizada 22m, restaurante, bar y acceso directo al mar.' },
+  { nombre: 'BHH Naturist Resort — Costa Calma', categoria: 'Alojamiento / Resort', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.116, lng: -14.297, descripcion: 'Resort naturista en Costa Calma, Fuerteventura. Apartamentos independientes en zona nudista. Muy bien valorado por la comunidad naturista europea.' },
+
+  // ── MALLORCA — MÁS CALAS ──────────────────────────────────────
+  { nombre: 'Cala en Gossalba', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.321, lng: 2.994, descripcion: 'Cala nudista aislada en Ses Salines, Mallorca. Aguas turquesas y entorno virgen protegido. Acceso a pie.' },
+  { nombre: 'Cala Agulla — zona nudista', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.723, lng: 3.469, descripcion: 'Zona nudista en Cala Agulla, Capdepera, Mallorca. Playa de arena blanca y pinos en el parque natural.' },
+  { nombre: 'Cala Mitjana — Mallorca', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.380, lng: 3.406, descripcion: 'Cala nudista en Felanitx, Mallorca. Aguas azul cristalino rodeada de bosques verdes. Ideal para senderismo y snorkel.' },
+
+  // ── MENORCA — ÚLTIMAS CALAS ───────────────────────────────────
+  { nombre: 'Cala Macarella — Menorca', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.925, lng: 3.825, descripcion: 'Cala nudista en Ciutadella, Menorca. Considerada una de las más bellas de España. Aguas turquesas espectaculares y arena blanca. Solo acceso a pie.' },
+  { nombre: 'Playa de Es Grau — Menorca', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.988, lng: 4.241, descripcion: 'Playa nudista dentro del Parque Natural de S\'Albufera des Grau, Menorca. Laguna y playa protegidas. Nudismo en zona designada.' },
+
+  // ── IBIZA — ÚLTIMAS CALAS ─────────────────────────────────────
+  { nombre: 'Cala Llentia', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.886, lng: 1.242, descripcion: 'Cala nudista en Sant Josep, Ibiza. Joya del sur frecuentada por pescadores y buscadores de sosiego. Aguas cristalinas y tranquilas.' },
+  { nombre: 'Cala Llentrisca', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.884, lng: 1.244, descripcion: 'Cala nudista en Sant Josep, Ibiza. Junto a Cala Llentia, muy aislada y tranquila. Acceso por sendero.' },
+  { nombre: 'Es Portitxol', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.048, lng: 1.441, descripcion: 'Bahía nudista casi circular en el norte de Ibiza. Acceso por sendero panorámico. Sensación de lugar detenido en el tiempo.' },
+  { nombre: 'Sa Caleta — Es Bol Nou', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.872, lng: 1.371, descripcion: 'Cala nudista en Sant Josep, Ibiza. Rodeada de acantilados rojizos arcillosos. Pequeña y fascinante. Las familias la adoran.' },
+
+  // ── GRAN CANARIA — ALOJAMIENTOS ───────────────────────────────
+  { nombre: 'Playa del Inglés — Urbanización nudista', categoria: 'Urbanización', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 27.757, lng: -15.574, descripcion: 'Zona de apartamentos y hoteles nudistas en Playa del Inglés, Gran Canaria. Maspalomas es el área nudista LGTBI+ por excelencia de España. Kioscos 4, 5 y 6 marcan la zona.' },
+
+  // ── ASOCIACIONES NACIONALES ───────────────────────────────────
+  { nombre: 'Federación Española de Naturismo — FEN', categoria: 'Club / Asociación', provincia: 'Madrid', comunidad: 'Madrid', lat: 40.416, lng: -3.703, descripcion: 'Organismo rector del naturismo en España. Federación que agrupa a todas las asociaciones naturistas españolas. Homologa playas nudistas y promueve el naturismo a nivel nacional.' },
+  { nombre: 'AANUMA — Amigos del Nudismo en Madrid', categoria: 'Club / Asociación', provincia: 'Madrid', comunidad: 'Madrid', lat: 40.412, lng: -3.699, descripcion: 'Asociación madrileña de nudismo que organiza actividades en embalses, ríos y zonas naturistas de la Comunidad de Madrid y alrededores.' },
+
+  // ── ÚLTIMOS PARAJES DE INTERIOR ───────────────────────────────
+  { nombre: 'Vado de las Carretas — La Pedriza', categoria: 'Paraje natural', provincia: 'Madrid', comunidad: 'Madrid', lat: 40.717, lng: -3.879, descripcion: 'Zona naturista en Vado de las Carretas, La Pedriza, Manzanares el Real. Pozas graníticas en el Parque Regional de la Cuenca Alta del Manzanares.' },
+  { nombre: 'Casapirineos — alojamiento naturista', categoria: 'Alojamiento / Resort', provincia: 'Huesca', comunidad: 'Aragón', lat: 42.541, lng: 0.391, descripcion: 'Alojamiento naturista en la provincia de Huesca, junto a los Pirineos. Según la FEN, permite la estancia de nudistas. Ideal para montañeros naturistas.' },
+  { nombre: 'Lago de Sanabria — zona naturista', categoria: 'Paraje natural', provincia: 'Zamora', comunidad: 'Castilla y León', lat: 42.121, lng: -6.718, descripcion: 'Zona naturista en el Lago de Sanabria, el lago glaciar más grande de la Península Ibérica. Aguas cristalinas de montaña zamorana.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
