@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 4</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 4 — Cádiz, Málaga y Huelva</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 4</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── CÁDIZ — COMPLETO ──────────────────────────────────────────
+  { nombre: 'Punta Paloma', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.052, lng: -5.714, descripcion: 'Playa nudista entre Bolonia y Tarifa. Famosas dunas y aguas turquesas. Aparece cada año entre las mejores playas nudistas del mundo según rankings internacionales.' },
+  { nombre: 'Playa del Faro de Trafalgar', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.181, lng: -6.034, descripcion: 'Zona nudista junto al Faro de Trafalgar en Barbate. Acantilados, pinos y aguas tranquilas. Zona principal: Las Cortinas.' },
+  { nombre: 'Cala del Aceite', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.284, lng: -6.094, descripcion: 'Cala nudista en Conil de la Frontera, junto al puerto pesquero. Aguas tranquilas, ideal para snorkel. Sin reservas, sin bungalows.' },
+  { nombre: 'Cala Encendida', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.270, lng: -6.088, descripcion: 'Una de las Calas de Poniente de Conil. Pequeña ensenada de difícil acceso por escaleras en el acantilado. Uso naturista habitual.' },
+  { nombre: 'Cala Aspero', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.267, lng: -6.085, descripcion: 'Cala nudista en Conil de la Frontera. Una de las 5 Calas de Poniente, pequeña y aislada.' },
+  { nombre: 'Cala Pato', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.265, lng: -6.083, descripcion: 'Cala nudista en Conil de la Frontera. Pequeña ensenada virgen en estado salvaje.' },
+  { nombre: 'Cala Frailecillo', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.263, lng: -6.081, descripcion: 'Cala nudista en Conil de la Frontera, una de las 5 Calas de Poniente. Entorno virgen y solitario.' },
+  { nombre: 'Cala Medina', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.261, lng: -6.079, descripcion: 'Cala nudista en Conil de la Frontera. La quinta de las Calas de Poniente, gran belleza natural.' },
+  { nombre: 'Castilnovo', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.275, lng: -6.092, descripcion: 'Playa virgen nudista entre Roche y Cala Encendida en Conil. Sin servicios, nudismo habitual.' },
+  { nombre: 'Mangueta', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.215, lng: -6.052, descripcion: 'Playa natural nudista en Vejer de la Frontera, al sur de El Palmar. Sin servicios, entorno virgen.' },
+  { nombre: 'Playa Punta Candor', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.646, lng: -6.349, descripcion: 'Playa nudista en Rota, respaldada por bosques de pinos. Aguas cristalinas con bandera azul. Zona nudista entre la bajada principal y Los Corrales.' },
+  { nombre: 'Los Corrales — zona nudista', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.658, lng: -6.355, descripcion: 'Zona nudista en la zona norte de la Playa de Rota, conocida como Los Corrales.' },
+  { nombre: 'Playa de Levante — Los Toruños', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.574, lng: -6.193, descripcion: 'Playa nudista aislada en El Puerto de Santa María, dentro de la Reserva Natural de las Marismas. Entorno natural único.' },
+  { nombre: 'Playa La Cortadura — zona nudista', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.489, lng: -6.217, descripcion: 'Zona nudista oficial delimitada por el Ayuntamiento de San Fernando en La Cortadura.' },
+  { nombre: 'La Jara — Sanlúcar de Barrameda', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.792, lng: -6.360, descripcion: 'Playa nudista semiurbana en Sanlúcar de Barrameda, al norte de Bajo de Guía. Uso nudista de larga tradición.' },
+  { nombre: 'Calas de Roche', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.260, lng: -6.077, descripcion: 'Conjunto de calas nudistas en Conil de la Frontera, rodeadas de acantilados y pinares. Aguas cristalinas y arena dorada. Entorno íntimo y tranquilo.' },
+
+  // ── MÁLAGA — COMPLETO ─────────────────────────────────────────
+  { nombre: 'Playa de la Alberquillas', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.741, lng: -3.979, descripcion: 'Una de las mejores playas nudistas de Málaga. Ubicada en Maro-Nerja, dentro del Parque Natural de los Acantilados. Aguas cristalinas y acceso a pie.' },
+  { nombre: 'Playa Arroyo Vaquero', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.421, lng: -5.148, descripcion: 'Playa nudista urbana en Estepona (Guadalobón), junto al resort Costa Natura. Fue la primera playa nudista oficial de España (1979).' },
+  { nombre: 'Playa El Candado', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.732, lng: -4.334, descripcion: 'Playa nudista semiurbana en Málaga capital. Arena oscura del Mediterráneo.' },
+  { nombre: 'Playa La Viborilla', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.576, lng: -4.520, descripcion: 'Playa nudista semiurbana en Benalmádena. Arena oscura de la Costa del Sol.' },
+  { nombre: 'Playa de Maro', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.743, lng: -3.832, descripcion: 'Playa nudista en Nerja dentro de la zona protegida de Maro-Cerro Gordo. Acceso restringido en verano, aguas cristalinas.' },
+
+  // ── HUELVA — COMPLETO ─────────────────────────────────────────
+  { nombre: 'Playa de los Enebrales', categoria: 'Playa / Cala', provincia: 'Huelva', comunidad: 'Andalucía', lat: 37.188, lng: -6.957, descripcion: 'Playa nudista de 2,3 km de arena virgen en Punta Umbría. Acceso por pasarelas de madera entre matorrales y pinar. Entorno natural único.' },
+  { nombre: 'Playa de Rompeculos', categoria: 'Playa / Cala', provincia: 'Huelva', comunidad: 'Andalucía', lat: 37.114, lng: -6.812, descripcion: 'Playa nudista virgen entre Mazagón y Matalascañas, dentro del Parque Nacional de Doñana. Chiringuito en verano, aparcamiento de pago.' },
+  { nombre: 'Playa Mazagón — zona nudista', categoria: 'Playa / Cala', provincia: 'Huelva', comunidad: 'Andalucía', lat: 37.131, lng: -6.827, descripcion: 'Zona nudista en la extensa playa de Mazagón. Arena virgen de 12 km con 5 km dedicados al nudismo en el extremo este.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
