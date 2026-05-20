@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 10</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 10 — Galicia completo</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 10</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── GALICIA — A CORUÑA (más playas) ──────────────────────────
+  { nombre: 'Praia de Ponzos', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.491, lng: -8.112, descripcion: 'Playa nudista en Ferrol con bandera azul. Más de 1 km de extensión. Zona nudista en la derecha mirando al mar. Aguas muy frías.' },
+  { nombre: 'Praia Lumebo', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.494, lng: -8.108, descripcion: 'Playa nudista aislada en Ferrol. Arena dorada de la Costa de Galicia.' },
+  { nombre: 'Praia Los Moros', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.372, lng: -8.411, descripcion: 'Playa nudista aislada en A Coruña capital. Arena blanca y aguas del Atlántico.' },
+  { nombre: 'Praia Bolera de Punta Herminia', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.378, lng: -8.418, descripcion: 'Playa nudista aislada en A Coruña. Acceso a pie, entorno natural protegido.' },
+  { nombre: 'Praia Combouzas', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.327, lng: -8.578, descripcion: 'Playa nudista semiurbana en Arteixo. Arena blanca de la Costa de Galicia.' },
+  { nombre: 'Praia Marín', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.358, lng: -8.189, descripcion: 'Playa nudista aislada en Miño. Arena dorada entre acantilados gallegos.' },
+  { nombre: 'Praia Recaveira', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 42.759, lng: -8.963, descripcion: 'Playa nudista aislada en Porto do Son. Arena dorada de la Ría de Muros e Noia.' },
+  { nombre: 'Praia Serans', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 42.761, lng: -8.961, descripcion: 'Playa nudista aislada en Porto do Son. Arena dorada, acceso a pie.' },
+  { nombre: 'Praia As Furnas', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 42.748, lng: -8.971, descripcion: 'Playa nudista en Porto do Son con piscina natural. Muy frecuentada, cuidado con las corrientes.' },
+  { nombre: 'Praia de Carnota — zona nudista', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 42.816, lng: -9.095, descripcion: 'Zona nudista en la Playa de Carnota. 7 km de playa gigantesca junto a parque natural. Zona sur considerada nudista.' },
+  { nombre: 'Praia de Torradas', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.299, lng: -8.761, descripcion: 'Playa nudista en Malpica. Parte derecha totalmente nudista, arena dorada y fina, aguas turquesas. Puesta de sol espectacular.' },
+  { nombre: 'Praia da Pedrosa', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.197, lng: -9.177, descripcion: 'Pequeña cala nudista en Camariñas. Muy abrigada y tranquila, acceso por pista sin asfaltar.' },
+
+  // ── GALICIA — LUGO (más playas) ───────────────────────────────
+  { nombre: 'Praia O Caolín', categoria: 'Playa / Cala', provincia: 'Lugo', comunidad: 'Galicia', lat: 43.712, lng: -7.671, descripcion: 'Playa nudista en O Vicedo, Lugo. Pequeño arenal de aguas cristalinas caribeñas rodeado de rocas y bosques. Completamente aislado y sin comparación.' },
+  { nombre: 'Cala dos Alemáns — Burela', categoria: 'Playa / Cala', provincia: 'Lugo', comunidad: 'Galicia', lat: 43.659, lng: -7.358, descripcion: 'Cala nudista en Burela, Lugo. Pequeños espacios de arena entre rocas. Muy buen ambiente naturista, ocupación mínima y gran tranquilidad.' },
+
+  // ── GALICIA — PONTEVEDRA (más playas) ─────────────────────────
+  { nombre: 'Praia Barra', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.321, lng: -8.809, descripcion: 'Considerada la mejor playa nudista de Galicia por muchos naturistas. En Cangas, Ría de Vigo. Arena blanca, aguas cristalinas casi caribeñas, rodeada de pinos. Una de las primeras en permitir el nudismo en Galicia.' },
+  { nombre: 'Praia Bascuas', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.389, lng: -8.778, descripcion: 'Playa nudista aislada en Sanxenxo. Una de las tres principales de mayor tradición nudista en Pontevedra.' },
+  { nombre: 'Praia Castiñeira', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.479, lng: -8.867, descripcion: 'Playa nudista aislada en O Grove. Arena dorada y aguas tranquilas de la Ría de Arousa.' },
+  { nombre: 'Praia Canelas', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.476, lng: -8.869, descripcion: 'Playa nudista autorizada en O Grove. Arena dorada de la Ría de Arousa.' },
+  { nombre: 'Praia Abelleira', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.474, lng: -8.871, descripcion: 'Playa nudista autorizada en O Grove. Pequeña y tranquila.' },
+  { nombre: 'Praia Con do Corvo', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.326, lng: -8.879, descripcion: 'Playa nudista autorizada en la zona de Donón, Cangas. Aguas tranquilas de la Ría de Vigo.' },
+  { nombre: 'Praia Baluarte', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.237, lng: -8.724, descripcion: 'Playa nudista semiurbana en Vigo, también conocida como As Barcas o Breadouro. Arena dorada.' },
+  { nombre: 'Praia Os Namorados', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.393, lng: -8.697, descripcion: 'Playa nudista semiurbana en Marín. Arena dorada de la Ría de Pontevedra.' },
+  { nombre: 'Praia Figueiras — Isla San Martiño', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.212, lng: -8.903, descripcion: 'Playa nudista en la isla de San Martiño, Islas Cíes. Acceso solo en barco. Arena blanca y aguas cristalinas gélidas en zona protegida.' },
+  { nombre: 'Praia Melide — Isla de Ons', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.381, lng: -8.934, descripcion: 'Playa nudista en la Isla de Ons, Parque Nacional Atlántico. Acceso en barco desde Bueu. 1,5 km de arena fina virgen con vistas a las Cíes.' },
+  { nombre: 'Praia Tulla', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.328, lng: -8.843, descripcion: 'Playa nudista aislada en Bueu, también conocida como Tuia. 500m de longitud, muy concurrida. Vegetación mediterránea.' },
+  { nombre: 'Praia Pedrón', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.326, lng: -8.841, descripcion: 'Playa nudista aislada en Bueu. Pequeña y poco concurrida, vegetación gallega.' },
+  { nombre: 'Praia Carreirón — Illa de Arousa', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.573, lng: -8.874, descripcion: 'Playa nudista en el Parque Natural de Carreirón, Illa de Arousa. Acceso a pie obligatorio. Arena blanca, zonas arboladas para la sombra y aguas muy tranquilas.' },
+  { nombre: 'Praia de O Vilar — zona nudista', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 42.558, lng: -9.027, descripcion: 'Zona nudista en la Praia de O Vilar, Ribeira. 3 km de playa espectacular con bandera azul. Zona nudista en el extremo sur accesible por caminos de madera.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
