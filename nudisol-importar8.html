@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 8</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 8 — Granada, Almería, Cantabria y País Vasco</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 8</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── GRANADA — COMPLETO ────────────────────────────────────────
+  { nombre: 'Playa El Muerto', categoria: 'Playa / Cala', provincia: 'Granada', comunidad: 'Andalucía', lat: 36.728, lng: -3.868, descripcion: 'Playa nudista en Almuñécar. Cala de arena oscura y guijarros al oeste de Almuñécar. Rodeada de acantilados con el Pico de Águila visible desde la playa.' },
+  { nombre: 'Cala El Pino', categoria: 'Playa / Cala', provincia: 'Granada', comunidad: 'Andalucía', lat: 36.726, lng: -3.871, descripcion: 'Cala nudista en Almuñécar. Arena fina y aguas tranquilas. Ambiente relajado y pintoresco.' },
+  { nombre: 'Playa El Ruso', categoria: 'Playa / Cala', provincia: 'Granada', comunidad: 'Andalucía', lat: 36.784, lng: -3.156, descripcion: 'Playa nudista en Albuñol, cerca del límite con Almería. 300m de arena oscura. Sin servicios, muy poco transitada y tranquila.' },
+  { nombre: 'Playa La Rijana', categoria: 'Playa / Cala', provincia: 'Granada', comunidad: 'Andalucía', lat: 36.747, lng: -3.441, descripcion: 'Cala nudista en Gualchos-Castell de Ferro. Pequeña cala aislada entre Castel de Ferro y Calahonda.' },
+  { nombre: 'Playa La Joya', categoria: 'Playa / Cala', provincia: 'Granada', comunidad: 'Andalucía', lat: 36.716, lng: -3.512, descripcion: 'Cala nudista aislada en Motril. Arena oscura y aguas tranquilas de la Costa Tropical granadina.' },
+  { nombre: 'Playa Torre Nueva', categoria: 'Playa / Cala', provincia: 'Granada', comunidad: 'Andalucía', lat: 36.678, lng: -3.562, descripcion: 'Playa nudista en Torrenueva, Motril. Acceso por escalera de 500 metros desde la carretera.' },
+  { nombre: 'Playa Calabajío', categoria: 'Playa / Cala', provincia: 'Granada', comunidad: 'Andalucía', lat: 36.703, lng: -3.537, descripcion: 'Playa nudista en Motril, Costa Tropical. Zona naturista tradicional.' },
+  { nombre: 'Embalse del Negratín — zona naturista', categoria: 'Paraje natural', provincia: 'Granada', comunidad: 'Andalucía', lat: 37.587, lng: -2.861, descripcion: 'Playa naturista interior en el Embalse del Negratín, cerca de Cuevas del Campo. Pequeña playa artificial de arena blanca y aguas turquesas. Con sombrillas y kiosko.' },
+  { nombre: 'Playa de Almerimar', categoria: 'Playa / Cala', provincia: 'Granada', comunidad: 'Andalucía', lat: 36.691, lng: -2.798, descripcion: 'Playa nudista en El Ejido, Granada. Arena fina y aguas tranquilas. Zona nudista designada en el extremo de la playa.' },
+
+  // ── ALMERÍA — MÁS PLAYAS ──────────────────────────────────────
+  { nombre: 'Playa de Mojácar', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 37.128, lng: -1.847, descripcion: 'Zona nudista en la playa de Mojácar, cerca del Parque Natural Cabo de Gata. Playa virgen con 500m de arena y entorno salvaje.' },
+  { nombre: 'Cala de Enmedio', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.758, lng: -2.029, descripcion: 'Cala nudista en Cabo de Gata, Almería. Arena dorada y piscinas naturales al retirarse la marea. Zona nudista en el extremo oeste.' },
+  { nombre: 'Playa del Arco', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.826, lng: -2.165, descripcion: 'Playa nudista en Roquetas de Mar, Almería. Arena fina y aguas tranquilas del Mediterráneo.' },
+  { nombre: 'Playa de Aguamarga', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 37.073, lng: -1.913, descripcion: 'Zona nudista en Aguamarga, Cabo de Gata. Entorno natural espectacular del Parque Natural.' },
+
+  // ── CANTABRIA — COMPLETO ──────────────────────────────────────
+  { nombre: 'Playa Sonabia', categoria: 'Playa / Cala', provincia: 'Cantabria', comunidad: 'Cantabria', lat: 43.397, lng: -3.334, descripcion: 'Playa nudista aislada en Liendo, también conocida como Valdearenas. Arena dorada y entorno natural salvaje de la Costa de Cantabria.' },
+  { nombre: 'Playa Somocuevas', categoria: 'Playa / Cala', provincia: 'Cantabria', comunidad: 'Cantabria', lat: 43.438, lng: -3.852, descripcion: 'Playa nudista gay-friendly en Piélagos. Arena dorada y fina, aguas turquesas. Larga escalinata de acceso con cantil protegiéndola. Una de las mejores de Cantabria.' },
+  { nombre: 'Playa Langre I', categoria: 'Playa / Cala', provincia: 'Cantabria', comunidad: 'Cantabria', lat: 43.455, lng: -3.688, descripcion: 'Playa nudista aislada en Ribamontán al Mar. Arena dorada entre acantilados de piedra blanca.' },
+  { nombre: 'Playa Langre II', categoria: 'Playa / Cala', provincia: 'Cantabria', comunidad: 'Cantabria', lat: 43.453, lng: -3.685, descripcion: 'Playa nudista aislada en Ribamontán al Mar. Continuación de Langre I entre acantilados.' },
+  { nombre: 'Playa El Puntal — zona nudista', categoria: 'Playa / Cala', provincia: 'Cantabria', comunidad: 'Cantabria', lat: 43.459, lng: -3.771, descripcion: 'Zona nudista en la Playa El Puntal, Ribamontán al Mar. Apta para perros también.' },
+  { nombre: 'Playa La Arena', categoria: 'Playa / Cala', provincia: 'Cantabria', comunidad: 'Cantabria', lat: 43.493, lng: -3.588, descripcion: 'Playa nudista aislada en Arnuero, también conocida como Los Nudistas. Arena dorada de la Costa de Cantabria.' },
+  { nombre: 'Playa Oyambre — zona nudista', categoria: 'Playa / Cala', provincia: 'Cantabria', comunidad: 'Cantabria', lat: 43.391, lng: -4.322, descripcion: 'Caletas nudistas en el extremo oriental del Cabo Oyambre, San Vicente de la Barquera. Acceso a pie desde el monumento al Pájaro Amarillo.' },
+
+  // ── PAÍS VASCO — COMPLETO ─────────────────────────────────────
+  { nombre: 'Playa de Meñakoz', categoria: 'Playa / Cala', provincia: 'Vizcaya', comunidad: 'País Vasco', lat: 43.409, lng: -2.786, descripcion: 'Playa nudista en Barrika, Vizcaya. Poca arena y abundante piedra, rodeada de verdes acantilados. Nudismo habitual y respetado, convivencia con textiles. Acceso a pie por largo camino.' },
+  { nombre: 'Playa de Laga', categoria: 'Playa / Cala', provincia: 'Vizcaya', comunidad: 'País Vasco', lat: 43.377, lng: -2.648, descripcion: 'Zona nudista en la Playa de Laga, Ibarrangelu, Vizcaya. Dentro del Parque Natural de Urdaibai, la Reserva de la Biosfera del País Vasco.' },
+  { nombre: 'Playa de Ogeia', categoria: 'Playa / Cala', provincia: 'Vizcaya', comunidad: 'País Vasco', lat: 43.417, lng: -2.772, descripcion: 'Playa nudista aislada en Barrika, Vizcaya. Acceso a pie por sendero costero. Aguas frías del Cantábrico.' },
+  { nombre: 'Playa de Arrigunaga', categoria: 'Playa / Cala', provincia: 'Vizcaya', comunidad: 'País Vasco', lat: 43.352, lng: -3.027, descripcion: 'Zona nudista en Getxo, Vizcaya. Playa urbana con zona naturista frecuentada por los bilbainos.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
