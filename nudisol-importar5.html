@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 5</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 5 — Girona, Valencia y Murcia</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 5</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── GIRONA — COSTA BRAVA COMPLETA ────────────────────────────
+  { nombre: 'Cala Vallpresona', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.726, lng: 2.942, descripcion: 'Cala nudista casi virgen con aguas transparentes cerca de Tossa de Mar. Acceso a través de un bosque. Remanso de paz en la Costa Brava.' },
+  { nombre: 'Cala de Sa Futadera', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.724, lng: 2.939, descripcion: 'Cala nudista aislada en Tossa de Mar, también conocida como Pentine. Arena dorada y aguas cristalinas de la Costa Brava.' },
+  { nombre: 'Cala Ull de Vidre', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.721, lng: 2.936, descripcion: 'Cala nudista aislada en Tossa de Mar, también conocida como La Figuera. Arena dorada y aguas turquesas.' },
+  { nombre: 'Cala del Crit', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.841, lng: 3.132, descripcion: 'Cala nudista aislada en Mont-ras. Arena dorada de difícil acceso, aguas cristalinas.' },
+  { nombre: 'Cala Bona', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.676, lng: 2.791, descripcion: 'Cala nudista en Palamós, cerca del Jardín Botánico de Blanes. Con chiringuitos y ambiente animado. Una de las más concurridas de la Costa Brava.' },
+  { nombre: 'Cap de Planes', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.842, lng: 3.128, descripcion: 'Cala nudista aislada en Palamós. Arena dorada y acceso a pie por camino costero.' },
+  { nombre: 'Cala Canyers', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.799, lng: 3.057, descripcion: 'Cala nudista semiurbana en Castell-Platja d\'Aro. Arena dorada de la Costa Brava.' },
+  { nombre: 'Cala del Senyor Ramon', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.771, lng: 3.012, descripcion: 'Cala nudista en la urbanización Rosamar, Santa Cristina d\'Aro. Pequeña y tranquila.' },
+  { nombre: 'Cala Nans', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.295, lng: 3.291, descripcion: 'Cala nudista en Cadaqués, representada en obras de Salvador Dalí. Faro del siglo XIX cercano, aguas cristalinas y ambiente tranquilo.' },
+  { nombre: 'Cala S\'Alqueria Gran', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.287, lng: 3.285, descripcion: 'Playa nudista virgen con faro en Cadaqués. Vistas impresionantes de Cadaqués y Port Lligat. Retiro íntimo y natural.' },
+  { nombre: 'Cala Tamariua', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.330, lng: 3.194, descripcion: 'Cala nudista semiurbana en El Port de la Selva. Arena oscura en el extremo norte de la Costa Brava.' },
+  { nombre: 'Cala del Lledó', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.228, lng: 3.155, descripcion: 'Cala nudista aislada en Roses, también conocida como Cala de la Font del Lledó.' },
+  { nombre: 'Cala Calitjàs', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.231, lng: 3.158, descripcion: 'Cala nudista aislada en Roses, también conocida como Cala Calitges. Arena dorada y aguas tranquilas.' },
+  { nombre: 'Cala Canadell', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.234, lng: 3.161, descripcion: 'Cala nudista aislada en Roses. Costa Brava norte, aguas cristalinas.' },
+  { nombre: 'Cala Jugadora', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.317, lng: 3.185, descripcion: 'Cala nudista en el Alt Empordà, accesible por camino costero. Aguas turquesas del Cap de Creus.' },
+  { nombre: 'Cala de Roques Planes', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.838, lng: 3.124, descripcion: 'Cala nudista aislada en Palamós. Sin servicios, entorno virgen de la Costa Brava.' },
+  { nombre: 'Cala Estreta', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.836, lng: 3.121, descripcion: 'Cala nudista aislada en Palamós. Pequeña y rocosa, ideal para buceo y naturismo.' },
+  { nombre: 'Playa El Castell — zona nudista', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.849, lng: 3.135, descripcion: 'Zona nudista en la Playa de El Castell, Palamós. Una de las playas más bellas de la Costa Brava sur.' },
+
+  // ── VALENCIA — COMPLETO ───────────────────────────────────────
+  { nombre: 'Playa del Dosel', categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.154, lng: -0.218, descripcion: 'Playa nudista en Cullera. Más de 3 km de arena dorada rodeada de dunas. Ambiente tranquilo, muy poco concurrida.' },
+  { nombre: 'Playa de Malvarrosa — zona nudista', categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.488, lng: -0.322, descripcion: 'Zona nudista en la playa de Malvarrosa de Sagunto. Playa semiurbana con zona naturista.' },
+  { nombre: "Playa L'Arbre del Gos", categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.421, lng: -0.329, descripcion: 'Playa nudista aislada en Valencia. Arena dorada de la Costa de Valencia, acceso a pie.' },
+  { nombre: 'Playa de Pinedo — zona nudista', categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.414, lng: -0.331, descripcion: 'Zona nudista en el extremo sur de la Playa de Pinedo, Valencia. A 20 minutos del centro.' },
+
+  // ── MURCIA — COMPLETO ─────────────────────────────────────────
+  { nombre: 'Playa Parreño', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.561, lng: -1.023, descripcion: 'Playa nudista gay-friendly en Cartagena. Arena dorada aislada de la Costa Cálida.' },
+  { nombre: 'Playa Barranco Ancho', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.512, lng: -1.261, descripcion: 'Playa nudista aislada en Mazarrón. Arena dorada y entorno natural protegido.' },
+  { nombre: 'Cala Desnuda', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.514, lng: -1.263, descripcion: 'Cala nudista en Mazarrón, arena oscura. El propio nombre lo dice todo.' },
+  { nombre: 'Cala Leño', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.517, lng: -1.259, descripcion: 'Cala nudista aislada en Mazarrón. Arena dorada y aguas tranquilas del Mediterráneo.' },
+  { nombre: 'Playa La Grúa', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.519, lng: -1.257, descripcion: 'Playa nudista aislada en Mazarrón. Arena dorada de la Costa Cálida.' },
+  { nombre: 'Playa La Morena', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.558, lng: -1.021, descripcion: 'Playa nudista semiurbana en Cartagena. Arena dorada de la Costa Cálida.' },
+  { nombre: 'Playa Negrete', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.556, lng: -1.019, descripcion: 'Playa nudista gay-friendly en Cartagena. Aislada y de difícil acceso.' },
+  { nombre: 'Playa de La Puñeta', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.516, lng: -1.255, descripcion: 'Playa nudista en Mazarrón, también conocida como Playa Amarilla. Aislada y tranquila.' },
+  { nombre: 'Playa de Calblanque — La Boca', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.594, lng: -0.899, descripcion: 'Zona nudista en Calblanque, Cartagena. Parque Regional de gran valor ecológico con dunas fósiles.' },
+  { nombre: 'Cala del Barco', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.592, lng: -0.896, descripcion: 'Cala nudista en el Parque Regional de Calblanque, Cartagena. Solo acceso a pie, aguas cristalinas.' },
+  { nombre: 'Playa de Covaticas', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.588, lng: -0.891, descripcion: 'Playa nudista aislada en Calblanque, Cartagena. Entorno natural protegido de gran belleza.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
