@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 20</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 20 — Cantabria, interior y últimos rincones</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 20</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── CANTABRIA — MÁS PLAYAS ────────────────────────────────────
+  { nombre: 'Playa de Valdearenas — Dunas de Liencres', categoria: 'Playa / Cala', provincia: 'Cantabria', comunidad: 'Cantabria', lat: 43.437, lng: -3.942, descripcion: 'Playa nudista en el Parque Natural de las Dunas de Liencres, Piélagos. 3 km de arena, zona nudista en el extremo occidental más alejado. Muy frecuentada por surfistas.' },
+  { nombre: 'Playa de Tregandín — zona nudista', categoria: 'Playa / Cala', provincia: 'Cantabria', comunidad: 'Cantabria', lat: 43.497, lng: -3.521, descripcion: 'Zona nudista en Playa de Tregandín, Noja. 6 km de arena. Zona nudista en Punta del Brusco, el extremo más alejado. Una de las más fotogénicas de Cantabria.' },
+  { nombre: 'Somocuevas Oeste', categoria: 'Playa / Cala', provincia: 'Cantabria', comunidad: 'Cantabria', lat: 43.437, lng: -3.854, descripcion: 'Cala nudista junto a Somocuevas, Piélagos. 139 escalones garantizan la privacidad. Cuevas marinas y ambiente naturista consolidado.' },
+  { nombre: 'Tómbolo de Covachos', categoria: 'Playa / Cala', provincia: 'Cantabria', comunidad: 'Cantabria', lat: 43.438, lng: -3.855, descripcion: 'Playa nudista en Santa Cruz de Bezana. Acceso por escalera empinada. Nudismo integral en entorno espectacular con islote. Solitaria y limpia.' },
+  { nombre: 'Playa de Soto de la Marina', categoria: 'Playa / Cala', provincia: 'Cantabria', comunidad: 'Cantabria', lat: 43.441, lng: -3.828, descripcion: 'Playa nudista aislada en Soto de la Marina, Santa Cruz de Bezana. 600m de longitud dividida en dos partes por zona rocosa. Solo acceso a pie.' },
+
+  // ── ASTURIAS — MÁS PARAJES ────────────────────────────────────
+  { nombre: 'Playa de Bañugues', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.619, lng: -5.872, descripcion: 'Playa nudista en Gozón, Asturias. Área del Cabo Peñas. Nudismo habitual en zona tranquila.' },
+  { nombre: 'Playa de Tenrero', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.621, lng: -5.869, descripcion: 'Cala nudista en Gozón, Asturias. Pequeña y aislada, entorno de acantilados del Cabo Peñas.' },
+
+  // ── NAVARRA — MÁS ZONAS INTERIOR ─────────────────────────────
+  { nombre: 'Pantano de Alloz — zona naturista Lerate', categoria: 'Paraje natural', provincia: 'Navarra', comunidad: 'Navarra', lat: 42.683, lng: -1.877, descripcion: 'Zona naturista específica en el Pantano de Alloz, entre Alloz y Lerate. Acceso desde Vitoria por A-132, desvío a Lorca y carretera NAL-9076. Zona a la izquierda de la presa.' },
+  { nombre: 'Río Ara — pozas de Fiscal', categoria: 'Paraje natural', provincia: 'Huesca', comunidad: 'Aragón', lat: 42.498, lng: 0.126, descripcion: 'Zona naturista en las pozas del Río Ara cerca de Fiscal, Huesca. Aguas cristalinas del Pirineo, pozas naturales entre rocas.' },
+  { nombre: 'Río Gállego — Villanueva de Gállego', categoria: 'Paraje natural', provincia: 'Zaragoza', comunidad: 'Aragón', lat: 41.729, lng: -0.777, descripcion: 'Zona naturista en el Río Gállego entre San Juan de Mozarrifar y Villanueva de Gállego. Aguas del prepirineo aragonés, tradición nudista local.' },
+
+  // ── ÚLTIMOS RINCONES DE INTERIOR ─────────────────────────────
+  { nombre: 'Embalse de San Juan — zona nudista', categoria: 'Paraje natural', provincia: 'Madrid', comunidad: 'Madrid', lat: 40.378, lng: -4.362, descripcion: 'Zona nudista en el Embalse de San Juan, Pelayos de la Presa. 650 ha de superficie. El único punto de baño permitido por las autoridades de Madrid. Acceso por la entrada más difícil.' },
+  { nombre: 'Charca El Tudón — Gavilanes', categoria: 'Paraje natural', provincia: 'Ávila', comunidad: 'Castilla y León', lat: 40.213, lng: -4.916, descripcion: 'Zona naturista en la Charca El Tudón de la Sala, Gavilanes-Casavieja. Poza natural en la ladera sur de la Sierra de Gredos.' },
+  { nombre: 'Pozas del Jerte — Cabezuela del Valle', categoria: 'Paraje natural', provincia: 'Cáceres', comunidad: 'Extremadura', lat: 40.118, lng: -5.763, descripcion: 'Pozas naturales nudistas en el Valle del Jerte, Cabezuela del Valle. Aguas cristalinas de montaña entre cerezos. Muy frecuentadas en verano.' },
+
+  // ── ÚLTIMA BARRERA — PROVINCIA DE ALBACETE ────────────────────
+  { nombre: 'Riópar — pozas naturistas', categoria: 'Paraje natural', provincia: 'Albacete', comunidad: 'Castilla-La Mancha', lat: 38.488, lng: -2.468, descripcion: 'Pozas naturistas en el nacimiento del Río Mundo, Riópar, Albacete. Aguas cristalinas en la Sierra del Segura. Espacio natural protegido.' },
+
+  // ── ÚLTIMA BARRERA — TERUEL ───────────────────────────────────
+  { nombre: 'Río Matarraña — zona naturista', categoria: 'Paraje natural', provincia: 'Teruel', comunidad: 'Aragón', lat: 40.866, lng: -0.117, descripcion: 'Zona naturista en el Río Matarraña, Teruel. Pozas naturales de aguas cristalinas en las Sierras de Beceite. Nudismo habitual en entorno virgen.' },
+
+  // ── ASOCIACIONES REGIONALES PENDIENTES ───────────────────────
+  { nombre: 'Asociación Naturista de Cataluña — ANC', categoria: 'Club / Asociación', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.387, lng: 2.170, descripcion: 'Asociación naturista de Cataluña federada a la FEN. Promueve el naturismo en toda la comunidad y organiza actividades naturistas.' },
+  { nombre: 'Asociación Naturista de Andalucía — AANANU', categoria: 'Club / Asociación', provincia: 'Sevilla', comunidad: 'Andalucía', lat: 37.388, lng: -5.997, descripcion: 'Asociación Naturista-Nudista de Andalucía con sede en Mairena del Aljarafe, Sevilla. Federada a la FEN. Organiza actividades naturistas en toda Andalucía.' },
+  { nombre: 'Asociación Naturista de Murcia', categoria: 'Club / Asociación', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.983, lng: -1.128, descripcion: 'Asociación naturista de Murcia federada a la FEN. Promueve el nudismo en la Región de Murcia y la Costa Cálida.' },
+  { nombre: 'Asociación Naturista de Canarias', categoria: 'Club / Asociación', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.124, lng: -15.430, descripcion: 'Asociación Naturista de Lanzarote y Canarias. Federada a la FEN desde 2009. Referente del naturismo en el archipiélago canario.' },
+  { nombre: 'NATURIGAL — Asociación Naturista de Galicia', categoria: 'Club / Asociación', provincia: 'A Coruña', comunidad: 'Galicia', lat: 42.879, lng: -8.544, descripcion: 'Asociación naturista de Galicia federada a la FEN. Organiza actividades y promueve el naturismo en las más de 50 playas nudistas gallegas.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
