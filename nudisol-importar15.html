@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 15</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 15 — Gran Canaria y Lanzarote completos</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 15</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── GRAN CANARIA — NORTE ──────────────────────────────────────
+  { nombre: 'Playa El Confital', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.149, lng: -15.434, descripcion: 'Playa nudista en Las Palmas de Gran Canaria, norte. Acceso a pie 10 min. Cala tranquila y aislada del ruido urbano.' },
+  { nombre: 'Playa del Juncal', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.102, lng: -15.703, descripcion: 'Playa nudista en Agaete, norte de Gran Canaria. Bahía en paraje natural protegido. Aguas cristalinas para snorkel. Acceso en todoterreno más 15 min a pie.' },
+  { nombre: 'Playa de Guayedra', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.098, lng: -15.706, descripcion: 'Playa nudista en Agaete, norte de Gran Canaria. Accesible en coche y a pie. Zona rocosa con tramos de arena. Discreta y poco transitada.' },
+  { nombre: 'Playa de Punta Gorda', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.091, lng: -15.716, descripcion: 'Playa nudista en Agaete. Rincón virgen del noroeste de Gran Canaria. Sin infraestructuras.' },
+  { nombre: 'Playa de Faneroque', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.089, lng: -15.721, descripcion: 'Playa nudista en Agaete, también conocida como Faneroke. Acceso difícil por pista de tierra. Total tranquilidad y aguas cristalinas.' },
+  { nombre: 'Playa de Sotavento — Agaete', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.087, lng: -15.724, descripcion: 'Playa nudista en Agaete, noroeste de Gran Canaria. Entorno volcánico salvaje sin servicios.' },
+  { nombre: 'Playa del Caletón de los Cangrejos', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.151, lng: -15.649, descripcion: 'Cala nudista en Gáldar, norte de Gran Canaria. Pequeña y recóndita, acceso a pie.' },
+  { nombre: 'Playa de La Redonda', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.148, lng: -15.651, descripcion: 'Playa nudista pintoresca y poco conocida en Gáldar. Arena dorada y ambiente tranquilo.' },
+  { nombre: 'Playa de Las Salinas — Gran Canaria', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.139, lng: -15.443, descripcion: 'Pequeña cala naturista en el norte de Gran Canaria. Rodeada de entorno natural y rocoso. Privacidad y calma.' },
+  { nombre: 'Playa de El Risco', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.073, lng: -15.774, descripcion: 'Playa nudista de piedras en el Parque Natural de Tamadaba, Agaete. Acceso por camino sin asfaltar. Una de las más salvajes de Gran Canaria.' },
+
+  // ── GRAN CANARIA — SUR ────────────────────────────────────────
+  { nombre: 'Playa del Besudo', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 27.751, lng: -15.613, descripcion: 'Playa nudista en el sur de Gran Canaria. Serena y natural rodeada de paisaje desértico. Entre Pasito Blanco y Arguineguín.' },
+  { nombre: 'Playa de Tiritaña', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 27.791, lng: -15.698, descripcion: 'Cala nudista aislada en el suroeste de Gran Canaria. Solo acceso a pie por camino costero. Aguas cristalinas y total soledad.' },
+
+  // ── LANZAROTE — ZONA PAPAGAYO (YAIZA) COMPLETO ───────────────
+  { nombre: 'Playa Mujeres — Calera', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.848, lng: -13.776, descripcion: 'Playa nudista en Yaiza, Lanzarote. Bordeada por acantilados rocosos. Zona nudista designada en el extremo sur. Aguas tranquilas y arena blanca.' },
+  { nombre: 'Playa Caleta del Congrio', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.855, lng: -13.778, descripcion: 'Playa nudista en Yaiza. 130m de arena fina y dorada en impresionante paisaje volcánico. Junto a camping, fácil acceso.' },
+  { nombre: 'Playa La Cera — Cerita', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.856, lng: -13.779, descripcion: 'Playa nudista en Yaiza. 400m de arena fina y blanca, sin apenas oleaje. Ideal para baño tranquilo.' },
+  { nombre: 'Playa La Cruz — Playa del Pozo', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.858, lng: -13.782, descripcion: 'Playa nudista en Yaiza. Una de las de mayor afluencia nudista de la zona Papagayo. Arena blanca y aguas cristalinas.' },
+  { nombre: 'Playa Montaña Bermeja', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.862, lng: -13.786, descripcion: 'Playa nudista aislada en Yaiza, cerca del Parque Nacional de Timanfaya. Arena negra volcánica de gran contraste paisajístico.' },
+  { nombre: 'Playa Puerto Muelas', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.864, lng: -13.788, descripcion: 'Playa nudista aislada en Yaiza. Dentro del Parque Natural de Los Ajaches. Arena blanca y entorno volcánico.' },
+  { nombre: 'Caleta del Fuego', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.847, lng: -13.772, descripcion: 'Playa nudista aislada en Yaiza. Arena oscura volcánica de la costa sur de Lanzarote.' },
+  { nombre: 'Caleta Larga', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.851, lng: -13.774, descripcion: 'Playa nudista aislada en Yaiza. Arena oscura y entorno natural de Los Ajaches.' },
+  { nombre: 'Playa El Cochino', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.853, lng: -13.775, descripcion: 'Playa nudista aislada en Yaiza, Lanzarote. Arena oscura en zona virgen.' },
+  { nombre: 'Playa La Mulata', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.961, lng: -13.571, descripcion: 'Playa nudista urbana en Yaiza, Lanzarote. Arena dorada y buen acceso.' },
+
+  // ── LANZAROTE — NORTE ─────────────────────────────────────────
+  { nombre: 'Playa del Risco', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 29.163, lng: -13.488, descripcion: 'Playa nudista aislada en Haría, Lanzarote. A los pies del Risco de Famara. Solo acceso a pie 1,5h o en barco. 2 km de playa virgen con vistas espectaculares.' },
+  { nombre: 'Caletón Blanco', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 29.149, lng: -13.459, descripcion: 'Playa nudista en Haría, cerca de Órzola, Lanzarote. Arena blanca y aguas turquesas. Refugios de piedra para protegerse del viento.' },
+  { nombre: 'Caleta del Mojón Blanco', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 29.148, lng: -13.461, descripcion: 'Cala nudista en Haría, Lanzarote. Arena blanca y rocas volcánicas. Zocos de piedra para privacidad.' },
+  { nombre: 'Playa de Órzola — zona nudista', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 29.212, lng: -13.439, descripcion: 'Zona nudista en Órzola, norte de Lanzarote. Una de las playas más exóticas de la isla con vistas a La Graciosa.' },
+  { nombre: 'Playa de Costa Teguise — zona nudista', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.999, lng: -13.513, descripcion: 'Zona nudista en Costa Teguise, Lanzarote. Paisaje rocoso, 400m de arenal. Buen acceso a pie y aparcamiento.' },
+  { nombre: 'Playa de Guasimeta', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.946, lng: -13.603, descripcion: 'Playa nudista cerca del aeropuerto de Lanzarote. Poco concurrida, con vistas a los aviones aterrizando rasante. Arena oscura.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
