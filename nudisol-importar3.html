@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 3 Alicante</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 3 — Alicante completo</h2>
+<button id="btn" onclick="importar()">🚀 Importar Alicante</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── ALICANTE — CIUDAD ─────────────────────────────────────────
+  { nombre: 'Cala Cantalar', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.356, lng: -0.423, descripcion: 'Cala nudista en el Cabo de las Huertas, muy cerca de la ciudad de Alicante. Rodeada de rocas y vegetación mediterránea. Una de las favoritas de los nudistas alicantinos.' },
+  { nombre: 'Cala Cantalars', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.354, lng: -0.421, descripcion: 'Playa nudista semiurbana en Alicante capital. Acceso desde el Cabo de las Huertas.' },
+
+  // ── CAMPELLO ──────────────────────────────────────────────────
+  { nombre: 'Playa de les Llomes de Reises', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.432, lng: -0.387, descripcion: 'Playa nudista en El Campello. Zona tranquila frecuentada por naturistas de la comarca.' },
+  { nombre: 'Cala del Cuartel', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.441, lng: -0.381, descripcion: 'Cala nudista aislada en El Campello, también conocida como Playa de la Lloma. Acceso a pie.' },
+
+  // ── VILLAJOYOSA ───────────────────────────────────────────────
+  { nombre: 'Racó Conill', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.499, lng: -0.244, descripcion: 'Cala nudista gay-friendly en Villajoyosa / La Vila Joiosa. Aislada y de difícil acceso, frecuentada por nudistas y comunidad LGTBI+.' },
+
+  // ── BENIDORM ──────────────────────────────────────────────────
+  { nombre: 'Cala Almadraba', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.541, lng: -0.131, descripcion: 'Cala nudista en Benidorm, cerca de la Punta de les Caletes. Pequeña y tranquila, acoge también a bañistas textiles.' },
+  { nombre: 'Cala del Tío Ximo', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.543, lng: -0.128, descripcion: 'Cala nudista en Benidorm junto a la Cueva del Barbero. Acceso a pie por camino costero.' },
+
+  // ── ALTEA ─────────────────────────────────────────────────────
+  { nombre: 'Playa de la Olla', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.599, lng: -0.051, descripcion: 'Playa nudista en Altea. Mezcla de guijarros y arena con vistas al Mediterráneo y la Sierra de Bernia. Ambiente relajado y tranquilo.' },
+  { nombre: 'Playa Solsida', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.593, lng: -0.041, descripcion: 'Playa nudista aislada en Altea, también conocida como Playa Galera. Acceso a pie por sendero costero.' },
+  { nombre: 'Cala de la Barra Grande', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.588, lng: -0.036, descripcion: 'Cala nudista aislada en Altea. Aguas cristalinas y entorno rocoso mediterráneo.' },
+
+  // ── L\'ALFÀS DEL PI ───────────────────────────────────────────
+  { nombre: 'Cala del Amerador', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.574, lng: -0.063, descripcion: 'Cala nudista aislada en L\'Alfàs del Pi. Pequeña y tranquila, acceso solo a pie por camino de cabras.' },
+
+  // ── JÁVEA ─────────────────────────────────────────────────────
+  { nombre: 'Cala de Agua Dolç', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.811, lng: 0.197, descripcion: 'Cala nudista aislada en Denia. Aguas cristalinas y rocas. Muy cerca de la Reserva Marina del Cabo de San Antonio.' },
+  { nombre: 'Cala de los Judíos', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.763, lng: 0.181, descripcion: 'Cala nudista escondida en Jávea. Pequeña y privada, rodeada de acantilados. Acceso por sendero entre rocas y vegetación mediterránea.' },
+  { nombre: 'Playa La Barraca', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.798, lng: 0.222, descripcion: 'Playa nudista en Jávea, cerca del Cabo de la Nao. Aguas turquesas y entorno natural protegido.' },
+
+  // ── DENIA ─────────────────────────────────────────────────────
+  { nombre: 'Les Rotes — zona nudista', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.839, lng: 0.108, descripcion: 'Zona nudista en Les Rotes, Denia. Conjunto de calas rocosas junto a la Reserva Marina del Cabo de San Antonio. Parking vigilado.' },
+
+  // ── SANTA POLA ────────────────────────────────────────────────
+  { nombre: 'Playa de la Gola', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.179, lng: -0.544, descripcion: 'Única playa nudista de Santa Pola. Zona tranquila en el extremo sur del municipio.' },
+
+  // ── ELCHE ─────────────────────────────────────────────────────
+  { nombre: 'Los Saladares', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.209, lng: -0.589, descripcion: 'Playa nudista de casi 2 km en Elche, antigua zona de salinas. Con bandera azul y servicios completos: área infantil, deportiva, duchas y aseos.' },
+
+  // ── TORREVIEJA ────────────────────────────────────────────────
+  { nombre: 'Playa de La Mata — zona nudista', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 37.988, lng: -0.726, descripcion: 'Zona nudista en la Playa de La Mata, Torrevieja. Extensa playa con zona naturista en el extremo norte, junto a la laguna de La Mata.' },
+  { nombre: 'Playa del Acequión', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 37.977, lng: -0.686, descripcion: 'Zona nudista en Torrevieja. Playa urbana con zona naturista señalizada.' },
+
+  // ── ORIHUELA COSTA ────────────────────────────────────────────
+  { nombre: 'Cala Mosca', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 37.931, lng: -0.697, descripcion: 'Cala nudista en Orihuela Costa. Pequeña y aislada, acceso a pie por camino costero.' },
+  { nombre: 'Cala Capitán', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 37.924, lng: -0.694, descripcion: 'Cala nudista aislada en Orihuela Costa. Aguas cristalinas y entorno rocoso protegido.' },
+
+  // ── GUARDAMAR ─────────────────────────────────────────────────
+  { nombre: 'Playa de Guardamar — zona nudista', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.078, lng: -0.654, descripcion: 'Zona nudista en la extensa playa de Guardamar del Segura, entre los pinos y las dunas del Parque Natural de las Dunas.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares de Alicante...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
