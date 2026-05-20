@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 9</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 9 — Interior España y País Vasco</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 9</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── PAÍS VASCO — MÁS PLAYAS ──────────────────────────────────
+  { nombre: 'Playa de Azkorri', categoria: 'Playa / Cala', provincia: 'Vizcaya', comunidad: 'País Vasco', lat: 43.412, lng: -2.983, descripcion: 'Playa nudista en Getxo, Vizcaya. Arena blanca y oleaje del Cantábrico. Frecuentada por naturistas del área de Bilbao.' },
+  { nombre: 'Playa de Barinatxe', categoria: 'Playa / Cala', provincia: 'Vizcaya', comunidad: 'País Vasco', lat: 43.406, lng: -2.989, descripcion: 'Playa nudista en Getxo, Vizcaya. Arena dorada y aguas del Cantábrico. Popular entre naturistas bilbainos.' },
+  { nombre: 'Playa de Muriola', categoria: 'Playa / Cala', provincia: 'Vizcaya', comunidad: 'País Vasco', lat: 43.411, lng: -2.782, descripcion: 'Playa nudista en Sopelana, Vizcaya. Acceso a pie, nudismo habitual.' },
+  { nombre: 'Cala Tximistarri', categoria: 'Playa / Cala', provincia: 'Guipúzcoa', comunidad: 'País Vasco', lat: 43.303, lng: -2.003, descripcion: 'Cala nudista en San Sebastián (Donostia). Pequeña y aislada, acceso a pie por sendero costero.' },
+  { nombre: 'Playa de Los Frailes', categoria: 'Playa / Cala', provincia: 'Guipúzcoa', comunidad: 'País Vasco', lat: 43.364, lng: -1.789, descripcion: 'Playa nudista en Hondarribia, Guipúzcoa. Acceso a pie, aguas frías del Cantábrico.' },
+  { nombre: 'Playa de Medata', categoria: 'Playa / Cala', provincia: 'Guipúzcoa', comunidad: 'País Vasco', lat: 43.296, lng: -2.349, descripcion: 'Playa nudista en Deba, Guipúzcoa. Nudismo habitual en esta cala de la costa vasca.' },
+  { nombre: 'Playa de Zarautz — zona nudista', categoria: 'Playa / Cala', provincia: 'Guipúzcoa', comunidad: 'País Vasco', lat: 43.285, lng: -2.173, descripcion: 'Zona nudista en Zarautz, Guipúzcoa. Playa urbana con zona naturista en el extremo oeste.' },
+
+  // ── NAVARRA — INTERIOR ────────────────────────────────────────
+  { nombre: 'Pantano de Alloz', categoria: 'Paraje natural', provincia: 'Navarra', comunidad: 'Navarra', lat: 42.682, lng: -1.878, descripcion: 'Zona naturista en el Pantano de Alloz, entre Alloz y Lerate, Navarra. Aguas cálidas en verano, entorno rural navarro.' },
+  { nombre: 'Pantano de Yesa — Ruesta', categoria: 'Paraje natural', provincia: 'Navarra', comunidad: 'Navarra', lat: 42.622, lng: -1.148, descripcion: 'Zona naturista en el Pantano de Yesa, Ruesta. Aguas turquesas y entorno pirenaico. Muy frecuentada por naturistas del norte de España.' },
+
+  // ── ARAGÓN — INTERIOR ─────────────────────────────────────────
+  { nombre: 'Río Aigüeta de Barbaruéns', categoria: 'Paraje natural', provincia: 'Huesca', comunidad: 'Aragón', lat: 42.547, lng: 0.417, descripcion: 'Zona naturista en el río Aigüeta de Barbaruéns, Seira, Valle de Benasque. Aguas frías de montaña y entorno pirenaico espectacular.' },
+  { nombre: 'Pantano de la Sotonera', categoria: 'Paraje natural', provincia: 'Huesca', comunidad: 'Aragón', lat: 42.113, lng: -0.618, descripcion: 'Zona naturista en el Pantano de la Sotonera, Alcalá de Gurrea. Aguas cálidas en verano, entorno de humedales.' },
+  { nombre: 'Río Ara — zona naturista', categoria: 'Paraje natural', provincia: 'Huesca', comunidad: 'Aragón', lat: 42.512, lng: 0.147, descripcion: 'Zona naturista en el río Ara entre Aínsa y Fiscal. Aguas cristalinas del Pirineo aragonés, pozas naturales.' },
+  { nombre: 'Río Gállego — zona naturista', categoria: 'Paraje natural', provincia: 'Zaragoza', comunidad: 'Aragón', lat: 41.717, lng: -0.779, descripcion: 'Zona naturista en el río Gállego entre San Juan de Mozarrifar y Villanueva de Gállego. Popular entre naturistas zaragozanos.' },
+  { nombre: 'Río Ulldemó — Beceite', categoria: 'Paraje natural', provincia: 'Teruel', comunidad: 'Aragón', lat: 40.782, lng: 0.099, descripcion: 'Zona naturista en el río Ulldemó, Beceite, Teruel. Pozas naturales de aguas cristalinas en las Sierras de Beceite.' },
+
+  // ── EXTREMADURA — MÁS PARAJES ─────────────────────────────────
+  { nombre: 'Los Pilones — Garganta de los Infiernos', categoria: 'Paraje natural', provincia: 'Cáceres', comunidad: 'Extremadura', lat: 40.122, lng: -5.759, descripcion: 'Zona naturista en Los Pilones, Garganta de los Infiernos, Jerte. Pozas naturales de aguas cristalinas en la Reserva Natural. Una de las más conocidas de Extremadura.' },
+  { nombre: 'Garganta de Cuartos', categoria: 'Paraje natural', provincia: 'Cáceres', comunidad: 'Extremadura', lat: 40.089, lng: -5.648, descripcion: 'Zona naturista en la Garganta de Cuartos, Losar de la Vera. Pozas naturales entre rocas graníticas en el Valle del Jerte.' },
+
+  // ── MADRID — MÁS PARAJES ──────────────────────────────────────
+  { nombre: 'La Pedriza — zona naturista', categoria: 'Paraje natural', provincia: 'Madrid', comunidad: 'Madrid', lat: 40.717, lng: -3.877, descripcion: 'Zona naturista en La Pedriza, Manzanares el Real. Pozas entre las rocas graníticas del Parque Regional de la Cuenca Alta del Manzanares.' },
+  { nombre: 'Río Lozoya — Hoya Encavera', categoria: 'Paraje natural', provincia: 'Madrid', comunidad: 'Madrid', lat: 40.936, lng: -3.779, descripcion: 'Zona naturista en el Río Lozoya, Lozoya. Pozas naturales en la Sierra de Guadarrama, aguas frías y cristalinas.' },
+  { nombre: 'Pantano del Burguillo', categoria: 'Paraje natural', provincia: 'Ávila', comunidad: 'Castilla y León', lat: 40.388, lng: -4.882, descripcion: 'Zona naturista en el Pantano del Burguillo, El Barraco. Aguas cálidas en verano y playas de arena natural.' },
+
+  // ── CASTILLA Y LEÓN — MÁS ────────────────────────────────────
+  { nombre: 'Pantano del Porma', categoria: 'Paraje natural', provincia: 'León', comunidad: 'Castilla y León', lat: 42.981, lng: -5.199, descripcion: 'Zona naturista en el Pantano del Porma, Boñar. Aguas tranquilas rodeadas de montaña leonesa.' },
+  { nombre: 'Pantano de la Cuerda del Pozo', categoria: 'Paraje natural', provincia: 'Soria', comunidad: 'Castilla y León', lat: 41.896, lng: -2.751, descripcion: 'Zona naturista en el Pantano de la Cuerda del Pozo, Soria. Varias zonas frecuentadas por naturistas sorianoss. Aguas cálidas en verano.' },
+  { nombre: 'Pantano de Ricobayo', categoria: 'Paraje natural', provincia: 'Zamora', comunidad: 'Castilla y León', lat: 41.582, lng: -5.982, descripcion: 'Zona naturista en el Pantano de Ricobayo del Esla, Zamora. Aguas tranquilas y entorno de dehesa zamorana.' },
+  { nombre: 'Pantano de Aguilar', categoria: 'Paraje natural', provincia: 'Palencia', comunidad: 'Castilla y León', lat: 42.791, lng: -4.302, descripcion: 'Zona naturista en el Pantano de Aguilar de Campoo, Palencia. Aguas cálidas del embalse entre montañas palentinas.' },
+
+  // ── ÁLAVA ─────────────────────────────────────────────────────
+  { nombre: 'Pantano de Arroyabe', categoria: 'Paraje natural', provincia: 'Álava', comunidad: 'País Vasco', lat: 42.891, lng: -2.541, descripcion: 'Zona naturista en el Pantano de Arroyabe, Álava. Playas y campas de uso naturista en el embalse alavés.' },
+
+  // ── CATALUÑA — INTERIOR ───────────────────────────────────────
+  { nombre: 'Pantano de Sant Ponç', categoria: 'Paraje natural', provincia: 'Lleida', comunidad: 'Cataluña', lat: 41.979, lng: 1.606, descripcion: 'Zona naturista en el Pantano de Sant Ponç, Solsona. Aguas cálidas en verano y entorno montañoso del Prepirineo catalán.' },
+  { nombre: 'El Fonoll — Poble Naturista', categoria: 'Alojamiento / Resort', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 41.491, lng: 1.231, descripcion: 'Antiguo pueblo restaurado como complejo naturista en el Vall del Corb, Pasanant. Más de 200 ha de bosque con sendas. Camping, albergues, apartamentos y cabañas. Referente del naturismo de interior.' },
+
+  // ── MENORCA — MÁS CALAS ───────────────────────────────────────
+  { nombre: 'Cala Calderer', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 40.033, lng: 4.065, descripcion: 'Cala nudista en Es Mercadal, Menorca. Acceso a pie por camino de la costa norte. Aguas cristalinas y entorno virgen.' },
+  { nombre: 'Cala de Sa Torreta', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.967, lng: 4.267, descripcion: 'Cala nudista en Mahón, Menorca. Pequeña y aislada, acceso a pie. Una de las joyas ocultas de Menorca.' },
+  { nombre: 'Playa de Es Grau', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.988, lng: 4.242, descripcion: 'Zona nudista en Es Grau, Menorca. Dentro del Parque Natural de S\'Albufera des Grau. Laguna y playa protegidas.' },
+  { nombre: 'Playa des Mago', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.488, lng: 2.529, descripcion: 'Playa nudista en Magaluf, Mallorca. Una de las pocas playas nudistas de la zona de Calvià.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
