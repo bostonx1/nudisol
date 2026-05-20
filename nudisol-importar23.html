@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 23</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 23 — Girona Alt Empordà y Castellón completo</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 23</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── GIRONA — ALT EMPORDÀ COMPLETO ────────────────────────────
+  { nombre: 'Playa de la Gola — Sant Pere Pescador', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.188, lng: 3.101, descripcion: 'Playa nudista de 125m en la desembocadura del río Fluvià, Sant Pere Pescador. Paraje casi virgen y muy tranquilo. Alt Empordà.' },
+  { nombre: 'Playa de Can Comes — Castelló d\'Empúries', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.247, lng: 3.111, descripcion: 'Playa nudista en Castelló d\'Empúries, Alt Empordà. Serena y natural dentro del Parque Natural dels Aiguamolls de l\'Empordà.' },
+  { nombre: 'Platja de les Dunes — L\'Escala', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.131, lng: 3.153, descripcion: 'Playa nudista amplia y poco masificada en L\'Escala. Zona nudista en el extremo norte junto al Hotel Riomar. Windsurfing y nudismo conviven.' },
+  { nombre: 'Platja Sa Boadella — Lloret de Mar', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.691, lng: 2.840, descripcion: 'Playa nudista en Lloret de Mar con certificación Bandera Azul. 250m, arena gruesa. Socorristas y duchas. Parte norte reservada a naturistas. Acceso por GI-682.' },
+  { nombre: 'Camping Naturista Relax-Nat — Palamós', categoria: 'Camping', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.849, lng: 3.138, descripcion: 'Camping naturista en Palamós, junto a la Playa de El Castell. Acceso directo a calas nudistas de la Costa Brava. Referente del naturismo en Girona.' },
+  { nombre: 'Playa de Pals — zona nudista', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.974, lng: 3.159, descripcion: '3,5 km de playa en Pals. Zona nudista en el área del Daro y junto a las antenas. Nudismo creciente, ambiente casi como Vera en el norte.' },
+
+  // ── CASTELLÓN — COMPLETO ──────────────────────────────────────
+  { nombre: 'Playa Riu de la Sénia', categoria: 'Playa / Cala', provincia: 'Castellón', comunidad: 'Comunidad Valenciana', lat: 40.526, lng: 0.444, descripcion: 'Playa nudista en Vinaròs, norte de Castellón. Arena clara con franjas rocosas. Aguas transparentes y muy tranquilas. Zona poco concurrida incluso en verano.' },
+  { nombre: 'Platgetes de Bellver', categoria: 'Playa / Cala', provincia: 'Castellón', comunidad: 'Comunidad Valenciana', lat: 40.054, lng: 0.129, descripcion: 'Playa nudista semiurbana en Oropesa del Mar. Costa Azahar. Arena dorada. Acceso desde Benicàssim por la costa.' },
+  { nombre: 'Playa Torre Bellver', categoria: 'Playa / Cala', provincia: 'Castellón', comunidad: 'Comunidad Valenciana', lat: 40.048, lng: 0.127, descripcion: 'Playa nudista entre Oropesa del Mar y Benicàssim. Entorno natural aislado, acantilados y vegetación. Destaca la torre de vigilancia histórica.' },
+  { nombre: 'Playa Torrenostra', categoria: 'Playa / Cala', provincia: 'Castellón', comunidad: 'Comunidad Valenciana', lat: 40.179, lng: 0.244, descripcion: 'Playa nudista en Torreblanca. Linda al sur con el Parque Natural del Prat de Cabanes. Urbana con paseo marítimo, aparcamiento y acceso para discapacitados. Bandera Azul.' },
+  { nombre: 'Playa Cuartel Vell — Cabanes', categoria: 'Playa / Cala', provincia: 'Castellón', comunidad: 'Comunidad Valenciana', lat: 40.151, lng: 0.222, descripcion: 'Playa nudista aislada en Cabanes. Arena dorada de la Costa Azahar. Junto al Camping nudista del Cudolá.' },
+  { nombre: 'Camping Nudista del Cudolá — Cabanes', categoria: 'Camping', provincia: 'Castellón', comunidad: 'Comunidad Valenciana', lat: 40.153, lng: 0.224, descripcion: 'Camping nudista en Cabanes, Castellón. A 1,5 km de la Playa Cuartel Vell. Instalaciones naturistas en la Costa Azahar.' },
+  { nombre: 'Playa Belcaire — Moncofa', categoria: 'Playa / Cala', provincia: 'Castellón', comunidad: 'Comunidad Valenciana', lat: 39.798, lng: -0.146, descripcion: 'Playa nudista en Moncofa, sur de Castellón. También conocida como Tamarit. Apta para perros también. Costa Azahar.' },
+  { nombre: 'Els Terrers — Benicàssim', categoria: 'Playa / Cala', provincia: 'Castellón', comunidad: 'Comunidad Valenciana', lat: 40.066, lng: 0.083, descripcion: 'Playa nudista en Benicàssim, la más conocida de la provincia. Aguas cristalinas y arena fina. Una de las dos verdaderamente nudistas de Castellón.' },
+  { nombre: 'Playa Tres Calas — Alcalà de Xivert', categoria: 'Playa / Cala', provincia: 'Castellón', comunidad: 'Comunidad Valenciana', lat: 40.310, lng: 0.312, descripcion: 'Tres pequeñas calas nudistas en Alcalà de Xivert. Rocas que las aíslan visualmente. Una de las zonas con más tradición naturista de Castellón.' },
+
+  // ── VALENCIA — MÁS ZONAS ──────────────────────────────────────
+  { nombre: 'Playa L\'Ahuir — Gandía', categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 38.984, lng: -0.148, descripcion: 'Playa nudista y para perros en Gandía. Más de 2 km de arena dorada con dunas naturales. Ambiente tranquilo y poco concurrido. Una de las mejores de la Comunidad Valenciana.' },
+  { nombre: 'Playa del Dosel — Cullera', categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.154, lng: -0.218, descripcion: 'Playa nudista en Cullera, más de 3 km de arena dorada rodeada de dunas. Muy poco concurrida, zona de piscina natural en acantilados cercanos.' },
+
+  // ── ASOCIACIONES PENDIENTES ───────────────────────────────────
+  { nombre: 'Asociación Naturista de Aragón — ANA', categoria: 'Club / Asociación', provincia: 'Zaragoza', comunidad: 'Aragón', lat: 41.649, lng: -0.887, descripcion: 'Asociación Naturista de Aragón con sede en Zaragoza. Federada a la FEN. Promueve el naturismo en pantanos, ríos y parajes del interior aragonés.' },
+  { nombre: 'Asociación Naturista de Cantabria', categoria: 'Club / Asociación', provincia: 'Cantabria', comunidad: 'Cantabria', lat: 43.462, lng: -3.810, descripcion: 'Asociación naturista de Cantabria federada a la FEN. Promueve el nudismo en las playas salvajes de la costa cántabra.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
