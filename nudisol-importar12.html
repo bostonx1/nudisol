@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 12</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 12 — Últimos rincones</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 12</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── SEVILLA — PISCINAS Y ASOCIACIONES ────────────────────────
+  { nombre: 'Spa Aqua & Salud — sesiones nudistas', categoria: 'Piscina / Spa', provincia: 'Sevilla', comunidad: 'Andalucía', lat: 37.388, lng: -5.997, descripcion: 'Spa en Sevilla con sesiones nudistas organizadas por la asociación DxN el primer sábado de cada mes. C/ Virgen de Robledo, nº 1.' },
+  { nombre: 'Desnudos por Naturaleza — Sevilla', categoria: 'Club / Asociación', provincia: 'Sevilla', comunidad: 'Andalucía', lat: 37.362, lng: -5.973, descripcion: 'Asociación naturista en Mairena del Aljarafe, Sevilla. Organiza sesiones de spa nudista mensual y actividades naturistas en Andalucía.' },
+
+  // ── ÁVILA — INTERIOR ──────────────────────────────────────────
+  { nombre: 'Charca El Tudón de la Sala', categoria: 'Paraje natural', provincia: 'Ávila', comunidad: 'Castilla y León', lat: 40.214, lng: -4.918, descripcion: 'Zona naturista en la charca El Tudón, Gavilanes-Casavieja, Ávila. Poza natural en la sierra de Gredos.' },
+  { nombre: 'Río Arbillas — Poyales del Hoyo', categoria: 'Paraje natural', provincia: 'Ávila', comunidad: 'Castilla y León', lat: 40.198, lng: -5.128, descripcion: 'Zona naturista en el Río Arbillas, Poyales del Hoyo-Arenas de San Pedro. Pozas naturales en la ladera sur de Gredos.' },
+  { nombre: 'Cinco Lagunas — Navalperal de Tormes', categoria: 'Paraje natural', provincia: 'Ávila', comunidad: 'Castilla y León', lat: 40.261, lng: -5.291, descripcion: 'Zona naturista en las Cinco Lagunas, Navalperal de Tormes. Lagunas de alta montaña en el macizo de Gredos.' },
+
+  // ── SEGOVIA — INTERIOR ────────────────────────────────────────
+  { nombre: 'Las Calderas del Río Cambrones', categoria: 'Paraje natural', provincia: 'Segovia', comunidad: 'Castilla y León', lat: 40.887, lng: -4.012, descripcion: 'Zona naturista en Las Calderas del Río Cambrones, La Granja de San Ildefonso. Pozas naturales de aguas cristalinas en la sierra segoviana.' },
+  { nombre: 'Embalse del Pontón Alto', categoria: 'Paraje natural', provincia: 'Segovia', comunidad: 'Castilla y León', lat: 40.892, lng: -4.018, descripcion: 'Zona naturista en el Embalse del Pontón Alto, La Granja de San Ildefonso. Aguas tranquilas rodeadas de pinar.' },
+  { nombre: 'Embalse de Linares del Arroyo', categoria: 'Paraje natural', provincia: 'Segovia', comunidad: 'Castilla y León', lat: 41.417, lng: -3.617, descripcion: 'Zona naturista en el Embalse de Linares del Arroyo, Maderuelo. Aguas cálidas en verano y paisaje interior castellano.' },
+
+  // ── CÁCERES — MÁS PARAJES ────────────────────────────────────
+  { nombre: 'Río Árrago — Hernán-Pérez', categoria: 'Paraje natural', provincia: 'Cáceres', comunidad: 'Extremadura', lat: 40.173, lng: -6.521, descripcion: 'Zona naturista en el Río Árrago, cerca de Hernán-Pérez. Aguas cristalinas y entorno de dehesa extremeña.' },
+  { nombre: 'Embalse de Gabriel y Galán', categoria: 'Paraje natural', provincia: 'Cáceres', comunidad: 'Extremadura', lat: 40.196, lng: -6.078, descripcion: 'Zona naturista en el Embalse de Gabriel y Galán. Aguas cálidas en verano, uno de los embalses más grandes de Extremadura.' },
+
+  // ── LEÓN — MÁS PARAJES ───────────────────────────────────────
+  { nombre: 'Pantano de Barcena', categoria: 'Paraje natural', provincia: 'León', comunidad: 'Castilla y León', lat: 42.601, lng: -6.521, descripcion: 'Zona naturista en el Pantano de Bárcena, Cubillos del Sil-Ponferrada. Aguas tranquilas del Bierzo leonés.' },
+  { nombre: 'Pantano de Matalavilla', categoria: 'Paraje natural', provincia: 'León', comunidad: 'Castilla y León', lat: 42.817, lng: -6.398, descripcion: 'Zona naturista en el Pantano de Matalavilla, El Bierzo. Entorno de montaña leonesa y aguas frescas.' },
+  { nombre: 'Río Torío — Vegacervera', categoria: 'Paraje natural', provincia: 'León', comunidad: 'Castilla y León', lat: 42.851, lng: -5.531, descripcion: 'Zona naturista en el Río Torío, Vegacervera. Pozas naturales en el Valle de Vegacervera.' },
+
+  // ── MENORCA — MÁS CALAS ───────────────────────────────────────
+  { nombre: 'Cala Macarelleta', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.926, lng: 3.826, descripcion: 'Cala nudista en Ciutadella, Menorca. Aguas turquesas espectaculares y arena blanca fina. Una de las más bonitas de España. Solo acceso a pie.' },
+  { nombre: 'Cala Trebalúger', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.906, lng: 4.012, descripcion: 'Cala nudista aislada en Es Migjorn Gran, Menorca. Solo accesible en barca o a pie por camino largo. Aguas cristalinas.' },
+  { nombre: 'Cala Binigaus', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.908, lng: 4.038, descripcion: 'Playa nudista en Es Migjorn Gran, Menorca. Una de las más frecuentadas por naturistas. Arena blanca y aguas turquesas.' },
+  { nombre: 'Cala en Turqueta', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.932, lng: 3.821, descripcion: 'Cala nudista en Ciutadella, Menorca. Aguas turquesas y arena blanca. Acceso a pie por camino señalizado.' },
+  { nombre: 'Cala Galdana — zona nudista', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.933, lng: 3.949, descripcion: 'Zona nudista en Cala Galdana, Ferreries, Menorca. Parte de la cala con presencia habitual de naturistas.' },
+
+  // ── IBIZA — MÁS CALAS ────────────────────────────────────────
+  { nombre: 'Cala d\'Hort', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.872, lng: 1.232, descripcion: 'Zona nudista en Cala d\'Hort, Sant Josep, Ibiza. Vistas espectaculares al islote de Es Vedrà. Aguas cristalinas.' },
+  { nombre: 'Playa de Ses Salines — Ibiza', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.869, lng: 1.401, descripcion: 'Zona nudista en Ses Salines, Sant Josep, Ibiza. Playa de aguas cristalinas y ambiente naturista consolidado.' },
+  { nombre: 'Playa de Es Cavallet', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.872, lng: 1.417, descripcion: 'Playa nudista y gay-friendly en Ses Salines, Ibiza. Dentro del Parque Natural de Ses Salines. Arena blanca y aguas turquesas.' },
+
+  // ── FORMENTERA — MÁS PLAYAS ───────────────────────────────────
+  { nombre: 'Platja de Migjorn', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.682, lng: 1.469, descripcion: 'Zona nudista en la Platja de Migjorn, Formentera. Extensa playa de 5 km con zona naturista en el extremo este.' },
+  { nombre: 'Cala en Baster', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.718, lng: 1.453, descripcion: 'Cala nudista en Formentera. Pequeña y tranquila, aguas cristalinas.' },
+
+  // ── BARCELONA — SPA NUDISTA ───────────────────────────────────
+  { nombre: 'ZT Hotels Spa nudista — Barcelona', categoria: 'Piscina / Spa', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.387, lng: 2.170, descripcion: 'Spa nudista en Barcelona organizado por la asociación DxN. Sesiones mensuales. Reserva por email: minoshvo@zthotels.com.' },
+  { nombre: 'Serena Spa — Hotel Meliá Sarrià', categoria: 'Piscina / Spa', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.392, lng: 2.128, descripcion: 'Spa nudista en el Hotel Meliá Sarrià, Barcelona. Sesiones mensuales organizadas por DxN. Reserva: spameliasarria@spaserena.com.' },
+
+  // ── LLEIDA — INTERIOR ─────────────────────────────────────────
+  { nombre: 'Río Noguera Pallaresa — zona naturista', categoria: 'Paraje natural', provincia: 'Lleida', comunidad: 'Cataluña', lat: 42.387, lng: 0.891, descripcion: 'Zona naturista en el Río Noguera Pallaresa, Lleida. Pozas naturales en el Pirineo catalán, aguas cristalinas y entorno montañoso.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
