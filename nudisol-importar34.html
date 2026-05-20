@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 34</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 34 — Valencia completo</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 34</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── SAGUNTO ───────────────────────────────────────────────────
+  { nombre: 'Playa Corinto-Malvarrosa — Sagunto', categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.711, lng: -0.227, descripcion: 'Playa nudista oficial en Sagunto. 2 km de arena fina y gruesa cerrada por dunas y vegetación mediterránea. Reconocida por el Ayuntamiento. 80% de nudistas. Cordón dunar, lavapiés y socorrista.' },
+  { nombre: 'Playa de Almardà — Sagunto', categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.714, lng: -0.229, descripcion: 'Playa nudista en Sagunto, parte del conjunto Almardà-Corinto-Malvarrosa. Norte del término de Sagunto, zona más tranquila.' },
+  { nombre: 'Racó de Mar — Canet d\'En Berenguer', categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.682, lng: -0.208, descripcion: 'Zona nudista en el extremo norte de Racó de Mar, Canet d\'En Berenguer. Amplio arenal de arena fina y aguas cristalinas.' },
+
+  // ── VALENCIA CIUDAD ───────────────────────────────────────────
+  { nombre: 'Playa de Pinedo — zona nudista', categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.418, lng: -0.326, descripcion: 'Zona nudista en Pinedo, Valencia. Desde la "Casa Negra" hasta la fábrica de Plexi. Arena fina y dorada, aguas tranquilas. Acceso desde la rotonda del Autocine Star.' },
+  { nombre: 'Playa de L\'Arbre del Gos', categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.410, lng: -0.329, descripcion: 'Playa nudista en Valencia. Una de las mejores de la Comunidad Valenciana. Junto a Pinedo. Arena dorada aislada en el Parque Natural de la Albufera.' },
+  { nombre: 'Playa de La Garrofera', categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.395, lng: -0.334, descripcion: 'Playa nudista de 1,5 km en el Parque Natural de la Albufera, Valencia. Arena fina, dunas y vegetación. Aguas cálidas del Mediterráneo.' },
+  { nombre: 'Playa de La Dehesa — Lago del Saler', categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.378, lng: -0.335, descripcion: 'Playa nudista de 5 km en el Parque Natural de la Albufera junto a El Saler. Arena fina y dorada, entorno natural excepcional. Acceso por camino de cemento a la izquierda de la carretera.' },
+
+  // ── CULLERA ───────────────────────────────────────────────────
+  { nombre: 'Playa Mareny de Sant Llorenç', categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.216, lng: -0.233, descripcion: 'Playa nudista oficial en Cullera. 900m de arena dorada. Reconocida oficialmente, 90% nudistas en fines de semana. Ideal para niños: arena fina y acceso al agua progresivo. Cordón de dunas con adelfas.' },
+  { nombre: 'Playa de El Brosquil', categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.176, lng: -0.231, descripcion: 'Playa nudista en Cullera, 5 km del centro. Arena y dunas con pinares, entorno virgen y salvaje. Autorizada también para perros. Muy tranquila y poco frecuentada.' },
+
+  // ── OLIVA ─────────────────────────────────────────────────────
+  { nombre: 'Playa de L\'Aigua Blanca — Oliva', categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 38.913, lng: -0.073, descripcion: 'Playa nudista en la desembocadura del río Bullent, Oliva-Pego. Marjal del Pego-Oliva. Dunas naturales y paseo que separa la playa de los chalets. Ambiente naturista tranquilo.' },
+
+  // ── DÉNIA ─────────────────────────────────────────────────────
+  { nombre: 'Les Rotes — La Cala — Dénia', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.828, lng: 0.096, descripcion: 'Cala nudista de 180m al final del paseo de Les Rotes, Dénia. Acceso por escalera estrecha. Aguas turquesas ideales para buceo. Junto a Marineta Cassiana, El Trampolí y Arenetes.' },
+
+  // ── ALICANTE — MÁS CALAS ──────────────────────────────────────
+  { nombre: 'Isla de Tabarca — calas nudistas', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.165, lng: -0.476, descripcion: 'Calas nudistas en la zona oeste de la Isla de Tabarca. Puerta de la Trancada o San Gabriel, pequeñas calas rocosas discretas. Reserva marina. Solo acceso en barco desde Alicante o Santa Pola.' },
+  { nombre: 'Playa de Los Saladares — Alicante', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.348, lng: -0.437, descripcion: 'Playa nudista semiurbana protegida en Alicante. Sin paseo marítimo, arena natural. Zona nudista consolidada.' },
+  { nombre: 'Cala de los Judíos — Cabo de las Huertas', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.344, lng: -0.419, descripcion: 'La cala más extensa del Cabo de las Huertas, Alicante. Nudismo habitual en entorno rocoso mediterráneo.' },
+  { nombre: 'Cala Cantalars — Cabo de las Huertas', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.342, lng: -0.417, descripcion: 'Cala nudista semiurbana en el Cabo de las Huertas, Alicante. Una de las calas del promontorio.' },
+  { nombre: 'Playa de La Olla — Altea', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.601, lng: -0.060, descripcion: 'Playa nudista entre los puertos deportivos de Altea. Aparcamiento, chiringuito, restaurante y socorrista. Una de las mejor equipadas de la Costa Blanca.' },
+  { nombre: 'Playa Mascarat Norte — Altea', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.597, lng: -0.063, descripcion: 'Playa nudista dentro del Parque Natural de la Sierra Helada, Altea. Aparcamiento amplio, chiringuito, restaurante y socorrista.' },
+  { nombre: 'Racó del Conill — Villajoyosa', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.512, lng: -0.221, descripcion: 'Cala nudista gay-friendly de 100m en Villajoyosa, a 3 km del centro. Idónea para nudismo, pesca y buceo. Aislada por su difícil acceso.' },
+  { nombre: 'Playa de El Rebollo — Elche', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.145, lng: -0.643, descripcion: 'Playa nudista en Elche, entre La Marina y la desembocadura del río Segura. Arena fina natural.' },
+  { nombre: 'ANVA — Asociación Naturista Valenciana', categoria: 'Club / Asociación', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.469, lng: -0.376, descripcion: 'Asociación Naturista Valenciana federada a la FEN. Promueve el nudismo en la Comunidad Valenciana y gestiona el reconocimiento oficial de las playas naturistas valencianas.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
