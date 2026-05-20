@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 22</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 22 — Murcia, Cádiz y Málaga más completos</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 22</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── MURCIA — MÁS PLAYAS ───────────────────────────────────────
+  { nombre: 'Playa Cueva de Lobos', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.519, lng: -1.268, descripcion: 'Primera playa declarada nudista en España, en Mazarrón. 90m de longitud, acceso por sendero GR-92 desde Bolnuevo. Sin servicios, grado de ocupación medio.' },
+  { nombre: 'Playa de El Rafal — Águilas', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.398, lng: -1.606, descripcion: 'Playa nudista en Águilas, cedida por el Ayuntamiento a los naturistas. 300m entre Cala El Charco y Rambla Elena. Una de las dos joyas nudistas de Águilas.' },
+  { nombre: 'Playa de Cala Cerrada — Águilas', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.401, lng: -1.609, descripcion: 'Segunda cala nudista de Águilas. Pequeña y aislada, aguas cristalinas del Mediterráneo murciano.' },
+  { nombre: 'Cala de los Dentoles', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.578, lng: -0.984, descripcion: 'Cala nudista en el Camping El Portús, Cartagena. Aguas cristalinas y muy buena valoración entre naturistas.' },
+  { nombre: 'Playa Calblanque — zona nudista', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.594, lng: -0.896, descripcion: 'Zona nudista en el Parque Regional de Calblanque, Cartagena. 300m de arena dorada protegida de gran valor paisajístico. Socorristas en temporada alta.' },
+
+  // ── CÁDIZ — MÁS PLAYAS ────────────────────────────────────────
+  { nombre: 'Playa de Bolonia', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.085, lng: -5.779, descripcion: 'Playa nudista icónica en Tarifa. 4 km de arena blanca junto a las ruinas romanas de Baelo Claudia. Extremo sur con nudismo tradicional. Duna de 30m, frente a África. Acceso gratuito.' },
+  { nombre: 'Playa de Valdevaqueros', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.058, lng: -5.728, descripcion: 'Playa nudista en Tarifa. Emblemática por kitesurf y windsurf. Zona nudista en el extremo oriental más tranquilo. Vistas del Estrecho de Gibraltar y dunas con pinares.' },
+  { nombre: 'Playa Arroyo del Cañuelo', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.147, lng: -5.856, descripcion: 'Playa nudista en Zahara de los Atunes, Tarifa. Entorno idílico de pinos verdes, arenas doradas y agua transparente. Sin edificaciones. Una de las más bellas de Cádiz.' },
+  { nombre: 'Playa de Sotogrande', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.275, lng: -5.382, descripcion: 'Playa nudista en San Roque, primera playa de Cádiz cruzando la frontera con Málaga. Más de 10 km de extensión. Arena gris mediterránea junto a la desembocadura del Río Guadiaro.' },
+  { nombre: 'Playa de Los Caños de Meca', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.181, lng: -6.034, descripcion: 'Playa nudista en Barbate. Una de las principales de Andalucía junto con Vera. 2.700m de arena dorada. Nudistas y textiles conviven. Al pie de los acantilados. Ambiente hippie histórico.' },
+  { nombre: 'Playa de Mangueta', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.215, lng: -6.052, descripcion: 'Playa nudista virgen en Vejer de la Frontera, La Palmar-Zahora. 8 km de longitud, arena amarilla fina. Zona nudista a 150m al norte del aparcamiento. Sin servicios, limpieza frecuente.' },
+  { nombre: 'Cala del Cañuelo — Faro de Camarina', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.182, lng: -6.035, descripcion: 'Pequeña cala nudista tranquila junto al Faro de Camarina, Barbate. Rincón resguardado entre vegetación.' },
+
+  // ── MÁLAGA — MÁS PLAYAS ───────────────────────────────────────
+  { nombre: 'Playa El Candado — zona nudista', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.732, lng: -4.334, descripcion: 'Zona nudista en Playa El Candado, Málaga capital. Semiurbana con uso naturista en zona aislada. Una de las pocas nudistas cerca de Málaga ciudad.' },
+  { nombre: 'Playa de Artola — Cabopino', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.489, lng: -4.745, descripcion: 'Playa nudista gay-friendly en Marbella, en las Dunas de Artola. Zona natural protegida. Frente al Puerto de Cabopino. Arena dorada y ambiente relajado.' },
+  { nombre: 'Cala del Pino — Nerja', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.744, lng: -3.876, descripcion: 'Cala nudista aislada en Nerja, Málaga. Aguas cristalinas y entorno natural protegido de Maro-Cerro Gordo.' },
+
+  // ── ALICANTE — MÁS CALAS ──────────────────────────────────────
+  { nombre: 'Cala de la Ermita', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.614, lng: -0.069, descripcion: 'Cala nudista en Calpe, Alicante. Pequeña y aislada bajo el Peñón de Ifach. Aguas cristalinas de la Costa Blanca.' },
+  { nombre: 'Playa de Almadrava — Denia', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.863, lng: 0.125, descripcion: 'Zona nudista en Denia, Alicante. Playa aislada en el Parque Natural del Montgó. Nudismo habitual.' },
+  { nombre: 'Playa El Arenal — zona nudista', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.777, lng: 0.166, descripcion: 'Zona nudista en El Arenal de Jávea. Extremo norte de la playa con uso naturista habitual.' },
+  { nombre: 'Cala Llebeig', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.659, lng: -0.007, descripcion: 'Cala nudista aislada en Benidorm, Alicante. Solo acceso a pie por sendero costero. Aguas cristalinas y total soledad.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
