@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 33</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 33 — Barcelona completo (Sitges + Maresme)</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 33</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── BARCELONA — SITGES / GARRAF ───────────────────────────────
+  { nombre: 'Playa Els Balmins', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.225, lng: 1.805, descripcion: 'Playa nudista gay-friendly en Sitges. 512m x 42m de arena dorada junto al espigón del puerto deportivo. Bandera Azul, duchas y socorristas. La más accesible y completa de Sitges.' },
+  { nombre: 'Cala Morisca — Garraf', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.264, lng: 1.860, descripcion: 'Cala nudista semisalvaje bajo los acantilados del Parc del Garraf, Sitges. A 7 km del centro. Pequeña y escondida entre acantilados. Ambiente relajado y muy íntimo.' },
+  { nombre: 'Platja de la Desenrocada — Cala dels Gegants', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.211, lng: 1.795, descripcion: 'Playa nudista aislada en Sitges. También conocida como Cala dels Gegants. Arena dorada y aguas limpias. Acceso por sendero GR-92. Entre Sitges y Vilanova.' },
+
+  // ── BARCELONA CIUDAD ──────────────────────────────────────────
+  { nombre: 'Platja de la Mora — Badalona', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.446, lng: 2.244, descripcion: 'Playa nudista urbana en Badalona. Arena dorada, acceso fácil. La opción nudista más cercana al norte de Barcelona ciudad.' },
+
+  // ── BARCELONA — MARESME ───────────────────────────────────────
+  { nombre: 'Cala Naiara — Montgat', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.464, lng: 2.274, descripcion: 'Cala nudista en Montgat. Una de las más apreciadas por los incondicionales del Maresme. Ambiente local muy consolidado.' },
+  { nombre: 'Playa de Ponent — El Masnou', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.484, lng: 2.311, descripcion: 'Zona nudista en la Playa de Ponent, El Masnou. Muy apreciada por naturistas locales. Fácil acceso en tren desde Barcelona.' },
+  { nombre: 'Playa de Ocata — El Masnou', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.487, lng: 2.316, descripcion: 'Zona nudista en la Playa de Ocata, El Masnou. Playa urbana del Maresme con tradición naturista. Acceso directo desde la estación de tren.' },
+  { nombre: 'La Musclera — Caldes d\'Estrac', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.573, lng: 2.543, descripcion: 'Playa nudista en Caldes d\'Estrac (Caldetes), Maresme. 620m x 30m de arena. Referente del nudismo en el Maresme norte. A 50 km de Barcelona. Ambiente tranquilo y familiar.' },
+  { nombre: 'La Picòrdia — Arenys de Mar', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.578, lng: 2.548, descripcion: 'Playa nudista en Arenys de Mar. También conocida como Primera Playa. 100% nudista. Arenys tiene tres playas y dos con zonas naturistas. La más valorada de la zona.' },
+  { nombre: 'Sant Simó — Vilassar de Mar', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.512, lng: 2.391, descripcion: 'Zona nudista en la Playa de Sant Simó, Vilassar de Mar. Playa urbana del Maresme con zona naturista bien establecida.' },
+  { nombre: 'Cala d\'en Pere — Calella', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.614, lng: 2.658, descripcion: 'Cala nudista en Calella de Mar, Maresme. Una de cuatro pequeñas calas junto al Faro de Calella. Agua cristalina, rodeada de rocas y pinos. Muy pintoresca.' },
+  { nombre: 'Playa de la Cabra — Sant Pol/Calella', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.606, lng: 2.641, descripcion: 'Playa nudista entre Sant Pol de Mar y Calella. También conocida como Playa de la Cabra. Zona nudista más cercana a Calella. Pequeña, rodeada de rocas y con mucho encanto.' },
+  { nombre: 'Playa del Coco — Maresme', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.620, lng: 2.668, descripcion: 'Playa nudista del Maresme, 80m x 80m. Zona nudista desde el espigón del puerto. Playa urbana con chiringuitos y servicios. Convive nudistas y textiles.' },
+
+  // ── TARRAGONA — MÁS PLAYAS ────────────────────────────────────
+  { nombre: 'Playa de l\'Arrabassada — Tarragona', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 41.109, lng: 1.260, descripcion: 'Zona nudista en Playa de l\'Arrabassada, Tarragona ciudad. 1,5 km de playa semiurbana con tradición naturista en el extremo norte.' },
+  { nombre: 'Cala Fonda — Waikiki Tarragona', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 41.102, lng: 1.251, descripcion: 'La playa nudista más cercana al centro de Tarragona. Solo acceso a pie por el Bosc de la Marquesa. 200m de arena dorada y aguas cristalinas. Sin servicios. La llaman "Waikiki de Tarragona".' },
+  { nombre: 'Cala Savinosa — Tarragona', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 41.104, lng: 1.253, descripcion: 'Playa nudista semiurbana de 350m en Tarragona. Pequeña bahía casi virgen. Con duchas y servicios. A 6 km del centro.' },
+  { nombre: 'Els Muntanyans — Torredembarra', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 41.148, lng: 1.398, descripcion: 'Playa nudista en Torredembarra, 2 km de dunas y vegetación autóctona. Espacio de Interés Natural. Zona nudista señalizada. Con servicios.' },
+  { nombre: 'Playa de El Torn — L\'Hospitalet de l\'Infant', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 40.879, lng: 0.831, descripcion: 'Considerada una de las mejores playas nudistas de toda España. 1.600m de arena dorada en L\'Hospitalet de l\'Infant. Camping El Templo del Sol contiguo. Dos chiringuitos, uno 100% nudista. Ambiente internacional.' },
+  { nombre: 'Playa de la Marquesa — Delta del Ebro', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 40.769, lng: 0.820, descripcion: 'Playa nudista amplia y virgen en el Parque Natural del Delta del Ebro, Deltebre. 4.500m de longitud con dunas. Zona nudista en el extremo más tranquilo. Sin servicios. Acceso por TV-3451 o en barco.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
