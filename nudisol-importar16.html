@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 16</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 16 — Asturias completo</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 16</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── ASTURIAS — OCCIDENTE (de oeste a este) ────────────────────
+  { nombre: 'Playa de Mexota', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.556, lng: -6.988, descripcion: 'Playa nudista en Tapia de Casariego, también conocida como A Mixota. Gran belleza con islote original. Aguas cristalinas. Arena blanca de 240m. Costa Verde occidental.' },
+  { nombre: 'Playa de Barayo', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.561, lng: -6.614, descripcion: 'Playa nudista en Valdés, también conocida como La Vega. 670m de arenal aislado al final de una reserva natural. Protegida, acceso solo a pie. Dunas y vegetación.' },
+  { nombre: 'Playa de Otur', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.553, lng: -6.597, descripcion: 'Playa nudista en Valdés, extremo occidental del concejo. Uso compartido nudistas y textiles.' },
+  { nombre: 'Playa El Moro', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.578, lng: -6.727, descripcion: 'Playa nudista en Navia, también conocida como Peñafurada. 200m de arena oscura. Semiurbana, uso compartido. Acceso a pie fácil.' },
+  { nombre: 'Playa de Oleiros', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.572, lng: -6.201, descripcion: 'Playa nudista en Cudillero. Uso compartido nudistas y textiles. Entorno rural asturiano.' },
+  { nombre: 'Playa del Sablón — Playón de Bayas', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.576, lng: -6.040, descripcion: 'Playa nudista en Castrillón. Extensa y con zona nudista consolidada.' },
+  { nombre: 'Playa del Cuerno', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.576, lng: -5.981, descripcion: 'Playa nudista en Castrillón. Costa Verde asturiana, nudismo habitual.' },
+  { nombre: 'Playa Requexinos', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.573, lng: -5.946, descripcion: 'Playa nudista aislada en Castrillón. 170m de arena oscura. Entorno natural protegido de la Costa Verde.' },
+
+  // ── ASTURIAS — GIJÓN Y GOZÓN ─────────────────────────────────
+  { nombre: 'Playa de Xagó', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.603, lng: -5.917, descripcion: 'Playa nudista en Gozón. 2 km de gran ensenada rectilínea. Espacio agreste y aislado. Uso compartido nudistas y textiles.' },
+  { nombre: 'Playa de Agüilera', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.624, lng: -5.898, descripcion: 'Playa nudista en Gozón. 380m de arena dorada, ocupación baja. Entorno de acantilados.' },
+  { nombre: 'Playa de Serín', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.569, lng: -5.727, descripcion: 'Playa nudista en Gijón. Señalizada como "playa no textil". Acceso por camino asfaltado con aparcamiento gratuito. Arena y piedras.' },
+  { nombre: 'Playa Peñarrubia', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.541, lng: -5.691, descripcion: 'Playa nudista semiurbana en Gijón. Arena dorada de la Costa Verde. Una de las más accesibles de Asturias.' },
+  { nombre: 'Playa de El Riconín', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.591, lng: -5.528, descripcion: 'Playa nudista en Gijón, primera playa asturiana en aceptar perros. 250m de longitud. Tradición nudista antigua. Duchas, aseos, parking y socorristas.' },
+  { nombre: 'Playa de Peña María', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.588, lng: -5.521, descripcion: 'Playa nudista en Gozón, en el arenal de Xivares. La más occidental del concejo de Gozón.' },
+
+  // ── ASTURIAS — LLANES Y ORIENTE ───────────────────────────────
+  { nombre: 'Playa de Torimbia', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.443, lng: -4.793, descripcion: 'La más famosa playa nudista de Asturias, en Llanes. Herradura de arena blanca espectacular rodeada de acantilados. La playa nudista más vieja de Asturias. En temporada alta tiene chiringuitos, duchas y socorristas.' },
+  { nombre: 'Playa de Portiellu de Cué', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.448, lng: -4.814, descripcion: 'Playa nudista aislada en Llanes. Arena blanca y aguas cristalinas del Cantábrico oriental.' },
+  { nombre: 'Playa de San Martín — Llanes', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.451, lng: -4.821, descripcion: 'Playa nudista aislada en Llanes. Arena blanca y oleaje moderado. Entorno natural protegido.' },
+  { nombre: 'Playa de La Atalaya — Cazonera', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.449, lng: -4.819, descripcion: 'Cala nudista de unos 100m en Llanes. Paisaje protegido, arena y piedras, oleaje moderado. El baño no es peligroso.' },
+  { nombre: 'Playa Buerres', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.467, lng: -5.131, descripcion: 'Playa nudista en Soto del Barco. Uso nudista habitual en zona aislada.' },
+
+  // ── ASTURIAS — GOZÓN (más playas) ─────────────────────────────
+  { nombre: 'Playa de Verdicio', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.617, lng: -5.881, descripcion: 'Playa nudista en Gozón. Acceso a pie, entorno de acantilados del cabo Peñas.' },
+  { nombre: 'Playa de Llumeres', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.619, lng: -5.876, descripcion: 'Cala nudista en Gozón. Pequeña y aislada, acceso difícil. Aguas muy frías del Cantábrico.' },
+  { nombre: 'Playa de Arnao', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.571, lng: -5.968, descripcion: 'Playa nudista en Castrillón. Uso naturista habitual en zona apartada.' },
+  { nombre: 'Playa del Espartal', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.569, lng: -5.947, descripcion: 'Playa nudista en Castrillón. Arena oscura y aguas del Cantábrico. Acceso por sendero.' },
+  { nombre: 'Asociación Naturista de Asturias — ASNA', categoria: 'Club / Asociación', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.362, lng: -5.849, descripcion: 'Asociación naturista de Asturias federada a la FEN. Organiza actividades naturistas y promueve el nudismo en toda la costa asturiana.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
