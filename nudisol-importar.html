@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Nudisol — Importar Lugares</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; }
+  .err { color: #F87171; }
+  .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador de Lugares Naturistas</h2>
+<p style="color:rgba(255,255,255,0.6);margin-bottom:16px;">Este script importa todos los lugares naturistas de España a Firestore.</p>
+<button id="btn" onclick="importar()">🚀 Importar todos los lugares</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const ADMIN_EMAIL = 'plopezcastello@gmail.com';
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user || user.email !== ADMIN_EMAIL) {
+    log('❌ Acceso denegado. Inicia sesión como admin.', 'err');
+    document.getElementById('btn').disabled = true;
+  } else {
+    log(`✅ Conectado como ${user.email}`, 'ok');
+  }
+});
+
+const lugares = [
+  // ── ANDALUCÍA ──────────────────────────────────────────────────
+  { nombre: 'Playa de Vera', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 37.234, lng: -1.834, descripcion: 'La playa nudista más famosa de España. 14 km de costa naturista con urbanizaciones, comercios y servicios exclusivamente nudistas. En 2013 batió el récord Guinness de baño colectivo desnudo.' },
+  { nombre: 'Playa El Playazo', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.741, lng: -1.958, descripcion: 'Playa nudista en Rodalquilar, dentro del Parque Natural Cabo de Gata. Aguas cristalinas y entorno salvaje.' },
+  { nombre: 'Playa de los Muertos', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 37.108, lng: -1.847, descripcion: 'Una de las playas más espectaculares de España. Aguas de color turquesa intenso y canto blanco. Nudismo habitual en toda la playa.' },
+  { nombre: 'Playa El Algarrobico', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 37.121, lng: -1.871, descripcion: 'Playa nudista en Carboneras, entorno natural protegido.' },
+  { nombre: 'Playa de Bolonia', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.079, lng: -5.760, descripcion: 'Una de las más bellas de España. Zona nudista consolidada entre las ruinas romanas de Baelo Claudia y la gran duna. Ambiente tranquilo y familiar.' },
+  { nombre: 'Los Caños de Meca', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.193, lng: -6.030, descripcion: 'Playa nudista tradicional en Barbate. Muy popular entre naturistas y surfistas. Entorno natural privilegiado.' },
+  { nombre: 'Playa El Chorrito', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.088, lng: -5.751, descripcion: 'Zona nudista entre Bolonia y Punta Paloma, en Tarifa. Aparece en rankings mundiales de mejores playas nudistas.' },
+  { nombre: 'Playa de Zahara de los Atunes', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.133, lng: -5.849, descripcion: 'Extensa playa con zona nudista en Barbate. Aguas limpias y entorno natural.' },
+  { nombre: 'Playa de Cantarriján', categoria: 'Playa / Cala', provincia: 'Granada', comunidad: 'Andalucía', lat: 36.730, lng: -3.859, descripcion: 'Playa nudista oficial en Almuñécar, dentro del Paraje Natural Acantilados de Maro-Cerro Gordo. Más de 50 años de tradición nudista. Aguas turquesa.' },
+  { nombre: 'Playa de Maro', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.743, lng: -3.832, descripcion: 'Playa nudista junto a Nerja, en zona protegida. Aguas cristalinas y gran tranquilidad.' },
+  { nombre: 'Cabopino — Dunas de Artola', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.494, lng: -4.730, descripcion: 'Playa nudista en Marbella con complejo dunar protegido. Una de las más conocidas de la Costa del Sol.' },
+  { nombre: 'Playa de Almayate', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.720, lng: -4.122, descripcion: 'Playa nudista en Vélez-Málaga con camping naturista adyacente.' },
+  { nombre: 'Costa Natura Resort', categoria: 'Alojamiento / Resort', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.421, lng: -5.148, descripcion: 'Resort naturista familiar en Estepona. Más de 100 apartamentos frente al mar. Restaurante, piscinas y playa privada nudista.' },
+  { nombre: 'Camping Naturista Almanat', categoria: 'Camping', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.726, lng: -4.108, descripcion: 'Camping naturista en Almayate Alto junto al mar. Ambiente tranquilo y muy bien valorado por la comunidad naturista.' },
+  { nombre: 'Playa Nueva Umbría', categoria: 'Playa / Cala', provincia: 'Huelva', comunidad: 'Andalucía', lat: 37.204, lng: -7.017, descripcion: 'Única playa nudista oficial de Huelva. 10 km de arena fina en el Paraje Natural Marismas del Piedras. Sin bares ni comercios, ambiente natural puro.' },
+  { nombre: 'Cuesta Maneli', categoria: 'Playa / Cala', provincia: 'Huelva', comunidad: 'Andalucía', lat: 37.117, lng: -6.817, descripcion: 'Playa nudista en Almonte, dentro del Parque Nacional de Doñana. Acceso a pie por pasarelas de madera entre dunas y pinos.' },
+
+  // ── MURCIA ────────────────────────────────────────────────────
+  { nombre: 'El Portús', categoria: 'Camping', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.584, lng: -0.989, descripcion: 'El camping naturista más grande de España. Situado en una cala del Mar Menor. Playa nudista, piscinas, restaurante, spa y actividades. Abierto todo el año.' },
+  { nombre: 'Camping Naturista El Zorro', categoria: 'Camping', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.671, lng: -1.701, descripcion: 'Camping naturista en 7 hectáreas de paraje natural interior cerca de Lorca. Alojamiento B&B en contacto con la naturaleza.' },
+  { nombre: 'Playa Carabassí', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.198, lng: -0.618, descripcion: 'Playa nudista en Elche dentro del Paraje Natural de El Hondo. Arena blanca y aguas tranquilas del Mediterráneo.' },
+  { nombre: 'Playa El Ambolo', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.741, lng: 0.182, descripcion: 'Cala nudista en Jávea rodeada de acantilados. Acceso a pie, aguas cristalinas.' },
+  { nombre: 'Cala del Médico', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.607, lng: -0.078, descripcion: 'Cala nudista en L\'Alfàs del Pi. Pequeña y tranquila, frecuentada por naturistas locales.' },
+
+  // ── VALENCIA ──────────────────────────────────────────────────
+  { nombre: "Playa l'Ahuir", categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 38.935, lng: -0.137, descripcion: 'Playa nudista en Gandía. 800 metros de arena blanca y aguas tranquilas. Señalizada, con duchas y acceso para personas con discapacidad.' },
+  { nombre: 'Playa El Saler', categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.328, lng: -0.330, descripcion: 'Playa nudista en Valencia, junto a la Albufera. Zona nudista en el extremo sur, entorno natural protegido.' },
+  { nombre: 'Playa de Pinedo', categoria: 'Playa / Cala', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.414, lng: -0.331, descripcion: 'Playa nudista a 20 minutos del centro de Valencia. Zona nudista en el extremo sur. Acceso en transporte público.' },
+
+  // ── CASTELLÓN ────────────────────────────────────────────────
+  { nombre: 'Platgetes de Bellver', categoria: 'Playa / Cala', provincia: 'Castellón', comunidad: 'Comunidad Valenciana', lat: 40.076, lng: 0.107, descripcion: 'Playas nudistas en Oropesa del Mar. Ambiente tranquilo y aguas limpias.' },
+  { nombre: 'Playa Riu de la Sénia', categoria: 'Playa / Cala', provincia: 'Castellón', comunidad: 'Comunidad Valenciana', lat: 40.481, lng: 0.471, descripcion: 'Playa nudista en Vinaròs, frontera con Tarragona. Arena fina y aguas del Mediterráneo norte.' },
+
+  // ── CATALUÑA ──────────────────────────────────────────────────
+  { nombre: 'Playa Mar Bella', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.398, lng: 2.207, descripcion: 'Playa nudista urbana en Barcelona. 500 metros de playa en el barrio del Poblenou. Frecuentada por gente joven. Bandera Azul.' },
+  { nombre: "Platja de l'Home Mort", categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.199, lng: 1.784, descripcion: 'Playa nudista en Sitges con más de 50 años de tradición. 400 metros de arena turquesa rodeada de acantilados.' },
+  { nombre: 'Punta de la Tordera', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.654, lng: 2.764, descripcion: 'Playa nudista en Malgrat de Mar en la desembocadura del río Tordera.' },
+  { nombre: 'Playa de la Picòrdia', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.571, lng: 2.551, descripcion: 'Cala nudista en Arenys de Mar rodeada de acantilados. A 40 minutos de Barcelona.' },
+  { nombre: 'Cala Sa Boadella', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.696, lng: 2.851, descripcion: 'Cala nudista en Lloret de Mar. Rodeada de pinos, aguas cristalinas.' },
+  { nombre: 'Platja de la Illa Roja', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.049, lng: 3.178, descripcion: 'Playa nudista en Begur. Una de las más bellas de la Costa Brava, con aguas turquesas.' },
+  { nombre: 'Cala Murtra', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.239, lng: 3.167, descripcion: 'Cala nudista en Roses. Aguas cristalinas y ambiente tranquilo.' },
+  { nombre: 'Playa Sant Pere Pescador', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.183, lng: 3.099, descripcion: 'Playa nudista en el Parque Natural dels Aiguamolls de l\'Empordà. Vistas al Cap de Creus.' },
+  { nombre: 'Camping El Templo del Sol', categoria: 'Camping', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 41.127, lng: 1.248, descripcion: 'Camping naturista de referencia en España, en Vandellós. Acceso directo a playa nudista, piscina, bar, restaurante. Instalaciones de arquitectura hispano-árabe.' },
+
+  // ── BALEARES ──────────────────────────────────────────────────
+  { nombre: 'Ses Illetes', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.671, lng: 1.393, descripcion: 'La playa nudista más famosa de Formentera. Aguas turquesas espectaculares, arena blanca. Una de las mejores de Europa.' },
+  { nombre: 'Es Trenc', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.339, lng: 2.993, descripcion: 'Playa nudista en Mallorca. 4 km de arena blanca y fina en zona protegida. Ambiente naturista consolidado.' },
+  { nombre: 'Cala Comte', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.979, lng: 1.225, descripcion: 'Cala nudista en Ibiza con vistas a los islotes de Cala Conta. Atardeceres espectaculares.' },
+  { nombre: 'Cala Pregonda', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 40.056, lng: 3.946, descripcion: 'Cala nudista en Menorca. Acceso solo a pie o en barca. Aguas cristalinas y arena roja.' },
+
+  // ── CANARIAS ──────────────────────────────────────────────────
+  { nombre: 'Playa de Maspalomas', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 27.740, lng: -15.586, descripcion: 'Playa nudista en Gran Canaria entre la Playa del Inglés y el Faro de Maspalomas. Dunas espectaculares. Muy visitada por turistas europeos.' },
+  { nombre: 'Playa La Pájara', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.147, lng: -14.265, descripcion: 'La playa nudista más grande de España, en Fuerteventura. Kilómetros de arena dorada y vientos ideales para kitesurf.' },
+  { nombre: 'Playa del Papagayo', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.845, lng: -13.763, descripcion: 'Playa nudista en Lanzarote dentro del Parque Natural Los Ajaches. Aguas azul turquesa y entorno volcánico.' },
+  { nombre: 'Playa de arena negra — La Orotava', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.413, lng: -16.473, descripcion: 'Playa nudista de arena negra volcánica en La Orotava, Tenerife. Entorno virgen y salvaje.' },
+
+  // ── GALICIA ───────────────────────────────────────────────────
+  { nombre: 'Praia de Area Longa', categoria: 'Playa / Cala', provincia: 'Lugo', comunidad: 'Galicia', lat: 43.771, lng: -7.682, descripcion: 'Playa nudista en la costa luguesa. Arena blanca y aguas frías del Atlántico. Entorno virgen.' },
+  { nombre: 'Praia de Frouxeira', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.658, lng: -8.117, descripcion: 'Primera playa nudista oficial de Galicia. Arena blanca y fina entre acantilados. Bandera Azul habitual.' },
+  { nombre: 'Praia dos Alemáns — Cíes', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.222, lng: -8.900, descripcion: 'Playa nudista en las Islas Cíes (Reserva de la Biosfera). Aforo controlado, aguas cristalinas gélidas. Una de las más salvajes de España.' },
+  { nombre: 'Praia da Barra', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.431, lng: -8.783, descripcion: 'Playa nudista a 45 minutos de Vigo. Aguas cristalinas y ambiente tranquilo.' },
+
+  // ── ASTURIAS ─────────────────────────────────────────────────
+  { nombre: 'Playa de Verdicio', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.623, lng: -5.935, descripcion: 'Playa nudista histórica de Asturias desde los años 60. Bahía con aguas turquesa rodeada de acantilados. Acceso por camino asfaltado desde Niembru.' },
+  { nombre: 'Playón de Bayas', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.575, lng: -6.378, descripcion: 'Una de las playas nudistas más extensas de Asturias. 2 km de arenal nudista.' },
+  { nombre: 'Playa de Xagó', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.612, lng: -6.040, descripcion: 'Extensa playa nudista en Gozón. Arena fina y entorno de dunas.' },
+  { nombre: 'Playa del Silencio', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.568, lng: -6.245, descripcion: '500 metros de playa nudista rodeada de acantilados en Llanes. Solo acceso a pie. Aforo para 20 vehículos.' },
+  { nombre: 'Playas de Mutriku', categoria: 'Playa / Cala', provincia: 'Guipúzcoa', comunidad: 'País Vasco', lat: 43.310, lng: -2.388, descripcion: '7 playas nudistas entre Saturrarán y Kardala, en Mutriku. 2,5 km de costa nudista entre acantilados. Villa pesquera histórica.' },
+
+  // ── CANTABRIA ────────────────────────────────────────────────
+  { nombre: 'Playa de Covachos', categoria: 'Playa / Cala', provincia: 'Cantabria', comunidad: 'Cantabria', lat: 43.435, lng: -3.807, descripcion: 'Playa nudista en Piélagos dentro del Parque Natural de las Dunas. Más de 2,5 km de arenal.' },
+
+  // ── ARAGÓN ───────────────────────────────────────────────────
+  { nombre: 'Casapirineos', categoria: 'Alojamiento / Resort', provincia: 'Huesca', comunidad: 'Aragón', lat: 42.538, lng: -0.423, descripcion: 'Alojamiento naturista en los Pirineos reconocido por la FEN. Ideal para nudistas amantes de la montaña.' },
+
+  // ── EXTREMADURA ──────────────────────────────────────────────
+  { nombre: 'Camping Naturista Benquerencia', categoria: 'Camping', provincia: 'Cáceres', comunidad: 'Extremadura', lat: 39.451, lng: -5.892, descripcion: 'Camping naturista de interior en antigua finca rural cerca de Benquerencia. Pocos plazas, ambiente íntimo.' },
+
+  // ── TARRAGONA ────────────────────────────────────────────────
+  { nombre: 'Playa del Torn', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 40.924, lng: 0.768, descripcion: 'Playa nudista en Vandellós con acceso directo desde el camping Templo del Sol. Entorno natural protegido.' },
+  { nombre: 'Playa del Fangar', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 40.749, lng: 0.710, descripcion: 'Playa nudista en el Delta del Ebro. 2 km de dunas y marismas saladas. Ecosistema único.' },
+
+  // ── COMUNIDADES NATURISTAS / CLUBS ───────────────────────────
+  { nombre: 'Urbanización Vera Natura', categoria: 'Urbanización', provincia: 'Almería', comunidad: 'Andalucía', lat: 37.231, lng: -1.831, descripcion: 'La mayor urbanización nudista de España en Vera Playa. Apartamentos, comercios, restaurantes y servicios 100% nudistas.' },
+  { nombre: 'Club Naturista Almanat', categoria: 'Club / Asociación', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.726, lng: -4.108, descripcion: 'Club naturista en Almayate con instalaciones propias, piscina y zona de playa.' },
+  { nombre: 'Asociación Naturista Valenciana', categoria: 'Club / Asociación', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.470, lng: -0.376, descripcion: 'Asociación naturista de Valencia con actividades regulares para socios.' },
+
+  // ── PARAJES NATURALES ─────────────────────────────────────────
+  { nombre: 'Río Genil — Zona naturista', categoria: 'Paraje natural', provincia: 'Granada', comunidad: 'Andalucía', lat: 37.215, lng: -3.612, descripcion: 'Zona de baño naturista en el río Genil, en la Vega de Granada. Popular entre naturistas del interior.' },
+  { nombre: 'Pantano de Iznájar', categoria: 'Paraje natural', provincia: 'Córdoba', comunidad: 'Andalucía', lat: 37.257, lng: -4.310, descripcion: 'Zona de baño naturista en el embalse más grande de Andalucía. Aguas tranquilas y entorno rural.' },
+  { nombre: 'Río Turia — Zona naturista', categoria: 'Paraje natural', provincia: 'Valencia', comunidad: 'Comunidad Valenciana', lat: 39.623, lng: -0.891, descripcion: 'Zona de baño naturista en el río Turia, aguas arriba de Valencia. Frecuentada por naturistas locales.' },
+  { nombre: 'Embalse de Alcántara', categoria: 'Paraje natural', provincia: 'Cáceres', comunidad: 'Extremadura', lat: 39.687, lng: -6.879, descripcion: 'Zona de baño naturista en el embalse de Alcántara. Aguas cálidas en verano y entorno de dehesa extremeña.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Importando...';
+
+  const resumen = document.getElementById('resumen');
+  let ok = 0, skip = 0, err = 0;
+
+  log(`📦 Iniciando importación de ${lugares.length} lugares...`, 'info');
+
+  for (const lugar of lugares) {
+    try {
+      // Verificar si ya existe
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        log(`⏭️ Ya existe: ${lugar.nombre} (${lugar.provincia})`, 'info');
+        skip++;
+        continue;
+      }
+
+      await addDoc(collection(db, 'lugares'), {
+        ...lugar,
+        creado: serverTimestamp(),
+        actualizado: serverTimestamp()
+      });
+      log(`✅ Añadido: ${lugar.nombre} — ${lugar.provincia}`, 'ok');
+      ok++;
+
+      // Pequeña pausa para no saturar Firestore
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) {
+      log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err');
+      err++;
+    }
+  }
+
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  resumen.textContent = `✅ ${ok} lugares añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Importación completada';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo;
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
