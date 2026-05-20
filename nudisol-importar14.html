@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 14</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 14 — Tenerife completo y Huelva</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 14</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── TENERIFE — SUR ────────────────────────────────────────────
+  { nombre: 'Playa de La Pelada', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.028, lng: -16.521, descripcion: 'Playa nudista en Granadilla de Abona, sur de Tenerife. Arena y paisaje volcánico.' },
+  { nombre: 'Montaña Roja — zona nudista', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.032, lng: -16.527, descripcion: 'Zona nudista junto a la Montaña Roja, Granadilla de Abona. Arena fina y entorno volcánico singular.' },
+  { nombre: 'Playa La Mareta', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.029, lng: -16.523, descripcion: 'Playa nudista en Granadilla de Abona, sur de Tenerife. Aguas tranquilas y arena volcánica.' },
+  { nombre: 'Montaña Amarilla', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.012, lng: -16.673, descripcion: 'Zona nudista en Arona, sur de Tenerife. Arena oscura entre rocas volcánicas amarillas.' },
+  { nombre: 'Playa de Los Colmenares', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.038, lng: -16.587, descripcion: 'Playa nudista en San Miguel de Abona, sur de Tenerife. Aislada y tranquila.' },
+  { nombre: 'Playa Diego Hernández', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.107, lng: -16.757, descripcion: 'Playa nudista en Adeje, sur de Tenerife, también conocida como Playa Blanca. Arena dorada y aguas cristalinas. Acceso a pie por camino costero.' },
+  { nombre: 'Los Morteros', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.104, lng: -16.754, descripcion: 'Cala nudista en Adeje, sur de Tenerife. Escondida en bahía tranquila. Aguas serenas y ambiente relajado.' },
+  { nombre: 'Playa El Callao', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.013, lng: -16.678, descripcion: 'Playa nudista en Arona, sur de Tenerife. Arena oscura volcánica.' },
+  { nombre: 'Playa Los Enojados', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.011, lng: -16.675, descripcion: 'Playa nudista semiurbana en Arona, también conocida como Los Sajonados. Arena oscura de la costa sur.' },
+  { nombre: 'Playa Cueva de la Arena', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.172, lng: -16.465, descripcion: 'Playa nudista aislada en Arico, este de Tenerife. Arena dorada y aguas tranquilas.' },
+  { nombre: 'La Playita — Granadilla', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.033, lng: -16.519, descripcion: 'Pequeña playa nudista en Granadilla de Abona. Rincón discreto y tranquilo.' },
+
+  // ── TENERIFE — NORTE Y METROPOLITANO ──────────────────────────
+  { nombre: 'Playa de Los Patos', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.413, lng: -16.471, descripcion: 'Playa nudista en La Orotava, norte de Tenerife. Arena negra volcánica y peñascos. Entorno privado ideal para el naturismo. Popular entre surfistas también.' },
+  { nombre: 'Playa El Ancón', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.411, lng: -16.469, descripcion: 'Cala nudista en La Orotava, también conocida como Santana. 200m de arena negra. Muy cerca de Los Patos, más pequeña y recogida.' },
+  { nombre: 'Playa Antequera', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.477, lng: -16.244, descripcion: 'Playa nudista aislada en Santa Cruz de Tenerife. Solo acceso a pie o en barca. Arena oscura y acantilados.' },
+  { nombre: 'Playa El Draguillo', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.574, lng: -16.190, descripcion: 'Playa nudista aislada en Santa Cruz de Tenerife, Parque Rural de Anaga. Arena oscura y oleaje fuerte. Muy salvaje.' },
+  { nombre: 'Playa Castro — La Fajana', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.397, lng: -16.579, descripcion: 'Playa nudista aislada en Los Realejos, norte de Tenerife, también conocida como La Fajana. Arena oscura volcánica.' },
+  { nombre: 'Playa El Camello', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.488, lng: -16.322, descripcion: 'Playa nudista en Tacoronte, norte de Tenerife. Arena negra volcánica y aguas del Atlántico norte.' },
+  { nombre: 'La Garañona', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.492, lng: -16.341, descripcion: 'Playa nudista entre Tacoronte y El Sauzal, norte de Tenerife. Cala aislada de arena negra.' },
+
+  // ── HUELVA — MÁS PLAYAS ───────────────────────────────────────
+  { nombre: 'Playa Rompeculos — Arenosillo', categoria: 'Playa / Cala', provincia: 'Huelva', comunidad: 'Andalucía', lat: 37.114, lng: -6.812, descripcion: 'Playa nudista en Moguer, también conocida como Arenosillo. 3 km rodeada de acantilados. Zona nudista en el margen izquierdo. Parking vigilado con pasarela de madera de 700m.' },
+  { nombre: 'Playa de Castilla — Doñana', categoria: 'Playa / Cala', provincia: 'Huelva', comunidad: 'Andalucía', lat: 37.019, lng: -6.517, descripcion: 'Playa nudista en Almonte, dentro del Parque Nacional de Doñana. 20 km de costa virgen con acantilados. Acceso solo por puntos señalizados.' },
+  { nombre: 'Playa del Pico del Loro', categoria: 'Playa / Cala', provincia: 'Huelva', comunidad: 'Andalucía', lat: 37.118, lng: -6.818, descripcion: 'Zona nudista en el Pico del Loro, Moguer. Extensa playa junto a Rompeculos en entorno natural virgen.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
