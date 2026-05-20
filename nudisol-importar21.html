@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 21</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 21 — Tarragona más, Delta Ebro y nuevas zonas</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 21</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── TARRAGONA — DELTA DEL EBRO COMPLETO ──────────────────────
+  { nombre: 'Playa del Serrallo — Delta del Ebro', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 40.773, lng: 0.789, descripcion: 'Playa nudista en Sant Jaume d\'Enveja, Delta del Ebro. 5 km de longitud, aguas tranquilas y sin servicios. Entorno natural único de lagunas y cultivos. Acceso por TV-3451.' },
+  { nombre: 'Playa de les Madrigueres', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 41.184, lng: 1.418, descripcion: 'Playa nudista en el Baix Penedès, 1.650m. Catalogada como Espacio de Interés Natural. Bandera Azul, vigilancia y limpieza. Acceso en tren desde Barcelona.' },
+  { nombre: 'Cala d\'Oques', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 40.879, lng: 0.831, descripcion: 'Cala nudista de 200m en L\'Hospitalet de l\'Infant. 90% nudista. Entre el Camping Cala d\'Oques (textil) y el Camping Templo del Sol (nudista). Pequeña y aislada entre acantilados de arena y pinar.' },
+  { nombre: 'Cala Xelin', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 40.881, lng: 0.834, descripcion: 'La mejor cala mixta nudista de Tarragona, en L\'Ametlla de Mar. Convivencia respetuosa entre nudistas y textiles. Entorno precioso muy valorado por la comunidad naturista.' },
+  { nombre: 'Cala Illot — L\'Ampolla', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 40.822, lng: 0.734, descripcion: 'Pequeña cala nudista entre L\'Ampolla y L\'Ametlla de Mar, Tarragona. Uso naturista habitual.' },
+  { nombre: 'AAPNT — Asociació d\'Amics de la Playa Nudista del Torn', categoria: 'Club / Asociación', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 40.878, lng: 0.829, descripcion: 'Asociación catalana que cuida y gestiona la Playa del Torn en L\'Hospitalet de l\'Infant. Base de operaciones del naturismo organizado en la Costa Dorada.' },
+
+  // ── MÁLAGA — MÁS PLAYAS ───────────────────────────────────────
+  { nombre: 'Playa de Almayate — Bajamar', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.745, lng: -4.148, descripcion: 'Playa nudista en Vélez-Málaga, también conocida como Bajamar. 2.800m de arena oscura aislada, rodeada de campos de cultivo. Camping naturista cercano.' },
+  { nombre: 'Playa Benalnatura', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.576, lng: -4.521, descripcion: 'Playa nudista gay-friendly semiurbana en Benalmádena. Arena oscura de la Costa del Sol.' },
+  { nombre: 'Playa Cantarriján', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.741, lng: -3.980, descripcion: 'Una de las playas nudistas más famosas de España, en el Parque Natural Maro-Cerro Gordo, Almuñécar. Dos bahías protegidas por acantilados de vértigo. Aguas turquesas del Caribe. En verano solo acceso en autobús lanzadera.' },
+
+  // ── GIRONA — ÚLTIMAS CALAS ────────────────────────────────────
+  { nombre: 'Playa de Sant Pere Pescador', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.183, lng: 3.098, descripcion: 'Playa nudista semiurbana en Sant Pere Pescador, Alt Empordà. Extensa franja de arena fina, recomendable para deportes acuáticos y naturismo.' },
+  { nombre: 'Cala Murtra — Roses', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.249, lng: 3.173, descripcion: 'Cala nudista en Roses accesible solo por barco. Completamente virgen. Muy apreciada por la privacidad total que ofrece.' },
+  { nombre: 'L\'Illa Roja — Begur', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.963, lng: 3.224, descripcion: 'Una de las playas nudistas más conocidas de la Costa Brava, entre Begur y Pals. Toma el nombre de la gran roca rojiza. Pinar mediterráneo, paredes resquebrajadas y aguas cristalinas.' },
+
+  // ── BARCELONA — ZONA SITGES MÁS ──────────────────────────────
+  { nombre: 'Platja de L\'Home Mort', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.213, lng: 1.801, descripcion: 'Playa nudista gay-friendly en Sitges, también conocida como Roses. Aislada y de arena dorada. Acceso por sendero GR-92.' },
+
+  // ── ALICANTE — MÁS PLAYAS ────────────────────────────────────
+  { nombre: 'Cala del Moraig', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.736, lng: 0.184, descripcion: 'Cala nudista en Benitatxell (Poble Nou de Benitatxell), Alicante. Gruta marina espectacular, aguas cristalinas. Una de las mejores calas para buceo del litoral valenciano.' },
+  { nombre: 'Playa de la Granadella', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.754, lng: 0.202, descripcion: 'Cala nudista en Jávea (Xàbia), Alicante. Rodeada de pinos y acantilados. Aguas turquesas del Cap de la Nau. Acceso por carretera y a pie.' },
+  { nombre: 'Playa del Portixol', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.748, lng: 0.198, descripcion: 'Cala nudista en Jávea, Alicante. Pequeña y aislada junto al Cap de la Nau. Aguas cristalinas y total privacidad.' },
+  { nombre: 'Cala Fustera', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.697, lng: 0.082, descripcion: 'Cala nudista en Benissa, Alicante. Pequeña con zona naturista. Aguas cristalinas de la Costa Blanca norte.' },
+  { nombre: 'Playa de Toix', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.622, lng: -0.065, descripcion: 'Playa nudista en Calpe (Calp), Alicante. Zona naturista en playa aislada bajo los acantilados del Peñón de Ifach.' },
+  { nombre: 'Cala del Charco Verde', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.559, lng: -0.117, descripcion: 'Cala nudista en Altea, Alicante. Pequeña y tranquila, entorno natural de la Costa Blanca.' },
+  { nombre: 'Playa de la Mina — El Campello', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.418, lng: -0.384, descripcion: 'Playa nudista en El Campello, Alicante. Zona naturista en playa aislada al norte de Alicante capital.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
