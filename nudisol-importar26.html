@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 26</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 26 — Girona completo y últimos rincones</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 26</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── GIRONA — ÚLTIMAS CALAS ────────────────────────────────────
+  { nombre: 'Playa de Sa Conca — Cadaqués', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.278, lng: 3.277, descripcion: 'Playa nudista al sur de Cadaqués. Acceso fácil con aparcamiento cercano. Entorno rocoso con pendiente al entrar al agua. Mayor grado de ocupación por su accesibilidad.' },
+  { nombre: 'Cala Fredosa — Cadaqués', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.293, lng: 3.284, descripcion: 'Cala nudista en Cadaqués. Entorno virgen del Cap de Creus. Una de las varias calas naturistas del municipio junto a Sa Conca, Cala Nans y Cala Jugadora.' },
+  { nombre: 'Cala Roques Planes — Calonge', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.799, lng: 3.056, descripcion: 'Cala nudista en Sant Antoni de Calonge. Muy valorada por la comunidad nudista por sus rocas erosionadas características. Espacio singular en la Costa Brava.' },
+  { nombre: 'Platja Senyor Ramón — Santa Cristina d\'Aro', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.771, lng: 3.011, descripcion: 'Playa nudista semiurbana en Santa Cristina d\'Aro. A 11 km del centro, en la urbanización Rosamar. Acceso cómodo con aparcamiento propio.' },
+
+  // ── ALICANTE — ÚLTIMAS CALAS ──────────────────────────────────
+  { nombre: 'Cala Advocat', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.752, lng: 0.196, descripcion: 'Cala nudista aislada en Jávea, Alicante. Pequeña y rocosa, acceso a pie por sendero costero del Cap de la Nau.' },
+  { nombre: 'Playa de Cala Blanca — Xàbia', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.779, lng: 0.190, descripcion: 'Cala nudista en Jávea, Alicante. Aguas turquesas y entorno natural del parque natural del Montgó.' },
+  { nombre: 'Playa de Benissero', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.736, lng: 0.126, descripcion: 'Zona nudista en Benissa, Alicante. Playa aislada de la Costa Blanca norte.' },
+  { nombre: 'Cala Racó del Corb — Dénia', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.848, lng: 0.117, descripcion: 'Cala nudista en Dénia, dentro del Parque Natural del Montgó. Aguas cristalinas y entorno virgen.' },
+
+  // ── CÁDIZ — ÚLTIMAS PLAYAS ────────────────────────────────────
+  { nombre: 'Playa de Zahara de los Atunes', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.140, lng: -5.842, descripcion: 'Zona nudista en Zahara de los Atunes, Barbate. Extensa playa con zona naturista en el extremo sur. Aguas atlánticas y vientos de Levante.' },
+  { nombre: 'Playa de Caños de Meca — zona gay', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.180, lng: -6.036, descripcion: 'Zona gay nudista en las calas más alejadas de Los Caños de Meca, Barbate. Ambiente cada vez más íntimo conforme se alejan del acceso principal.' },
+  { nombre: 'Playa de Los Castillejos — Tarifa', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.063, lng: -5.735, descripcion: 'Zona nudista en Tarifa. Playa virgen en entorno de dunas y monte bajo. Una de las más solitarias de la Costa de la Luz.' },
+
+  // ── GRANADA — ÚLTIMAS PLAYAS ──────────────────────────────────
+  { nombre: 'Playa del Cotobro — Almuñécar', categoria: 'Playa / Cala', provincia: 'Granada', comunidad: 'Andalucía', lat: 36.728, lng: -3.871, descripcion: 'Zona nudista en Cotobro, Almuñécar. Punto de acceso a las calas nudistas de El Muerto y Cala El Pino por el camino del Paseo Marítimo.' },
+
+  // ── ASTURIAS — ÚLTIMAS PLAYAS ─────────────────────────────────
+  { nombre: 'Playa de Aguilera — Gozón', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.624, lng: -5.898, descripcion: 'Playa nudista en Gozón. 380m de arena dorada, ocupación baja. Entorno de acantilados del Cabo Peñas.' },
+  { nombre: 'Playa de Mexota — Tapia', categoria: 'Playa / Cala', provincia: 'Asturias', comunidad: 'Asturias', lat: 43.556, lng: -6.988, descripcion: 'Playa nudista en Tapia de Casariego. Gran belleza con islote original. Aguas cristalinas. 240m de arena blanca de la Costa Verde occidental.' },
+
+  // ── CANTABRIA — ÚLTIMAS ───────────────────────────────────────
+  { nombre: 'Playa de Comillas — zona nudista', categoria: 'Playa / Cala', provincia: 'Cantabria', comunidad: 'Cantabria', lat: 43.383, lng: -4.293, descripcion: 'Zona nudista cerca de Comillas, Cantabria. Caleta tranquila al amparo de los acantilados, junto a la playa de Oyambre.' },
+
+  // ── INTERIOR — ÚLTIMOS PARAJES ────────────────────────────────
+  { nombre: 'Pantano de San Juan — La Isleta nudista', categoria: 'Paraje natural', provincia: 'Madrid', comunidad: 'Madrid', lat: 40.375, lng: -4.360, descripcion: 'Playa nudista oficial en la isleta del Pantano de San Juan, Pelayos de la Presa. El único punto autorizado por las autoridades para nudismo en Madrid. Acceso por la entrada más difícil.' },
+  { nombre: 'Pozas de La Morcuera', categoria: 'Paraje natural', provincia: 'Madrid', comunidad: 'Madrid', lat: 40.782, lng: -3.838, descripcion: 'Pozas naturales en la Sierra de Guadarrama, zona de La Morcuera, Madrid. Aguas cristalinas de montaña donde el nudismo es habitual.' },
+  { nombre: 'Garganta de Bohoyo — Ávila', categoria: 'Paraje natural', provincia: 'Ávila', comunidad: 'Castilla y León', lat: 40.282, lng: -5.387, descripcion: 'Zona naturista en la Garganta de Bohoyo, Gredos. Pozas naturales en el Valle de Tormes. Aguas cristalinas y entorno montañoso espectacular.' },
+  { nombre: 'Río Dulce — Sigüenza', categoria: 'Paraje natural', provincia: 'Guadalajara', comunidad: 'Castilla-La Mancha', lat: 41.071, lng: -2.638, descripcion: 'Zona naturista en el Río Dulce, Sigüenza, Guadalajara. Parque Natural del Barranco del Río Dulce. Aguas cristalinas y buitres leonados sobrevolando.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
