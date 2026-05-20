@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 32</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 32 — Galicia Lugo + País Vasco completo</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 32</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── GALICIA — LUGO ────────────────────────────────────────────
+  { nombre: 'Praia Area Brava — Os Alemáns', categoria: 'Playa / Cala', provincia: 'Lugo', comunidad: 'Galicia', lat: 43.567, lng: -7.256, descripcion: 'La única playa de tradición nudista consolidada de Lugo, en Foz. También conocida como Os Alemáns o Alemanes. Arena blanca fina, aislada. Mariña lucense, 150m de playa virgen.' },
+  { nombre: 'Praia Arealonga — Burela', categoria: 'Playa / Cala', provincia: 'Lugo', comunidad: 'Galicia', lat: 43.658, lng: -7.359, descripcion: 'Playa naturista en Burela, Lugo. Entorno natural y tranquilo rodeada de acantilados y vegetación de la Mariña lucense. Aguas verdes cristalinas.' },
+  { nombre: 'Playa del Carreirón — Illa de Arousa', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.558, lng: -8.890, descripcion: 'Playa nudista en el Parque Natural del Carreirón, Illa de Arousa. Solo acceso a pie. Arenas blancas, zonas arboladas y aguas muy tranquilas. Joyas natural de las Rías Baixas.' },
+  { nombre: 'Praia As Furnas — Xuño', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 42.710, lng: -8.972, descripcion: 'Playa nudista en Xuño, Porto do Son. Arena fina blanca en paraje virgen. Junto a Área Longa, referentes del naturismo en la Costa da Morte.' },
+
+  // ── PAÍS VASCO — VIZCAYA COMPLETO ────────────────────────────
+  { nombre: 'Barinatxe — La Salvaje', categoria: 'Playa / Cala', provincia: 'Vizcaya', comunidad: 'País Vasco', lat: 43.364, lng: -2.998, descripcion: 'La playa nudista más conocida del País Vasco, en Sopela/Getxo. 752m de arena oscura. Los locales la llaman "La Salvaje". Zona nudista en el lateral izquierdo. 80% gente joven. Cuidado con corrientes.' },
+  { nombre: 'Gorrondatxe — Azkorri', categoria: 'Playa / Cala', provincia: 'Vizcaya', comunidad: 'País Vasco', lat: 43.375, lng: -3.010, descripcion: 'Playa nudista de 844m en Getxo. También conocida como Azkorri. Acantilados espectaculares. Paseo que la une con Algorta con vistas únicas a la costa vasca.' },
+  { nombre: 'Muriola — Barrika', categoria: 'Playa / Cala', provincia: 'Vizcaya', comunidad: 'País Vasco', lat: 43.379, lng: -2.975, descripcion: 'Playa nudista aislada de arena dorada en Barrika, Vizcaya. Entorno natural virgen de la costa vasca. 600m de longitud.' },
+  { nombre: 'Meñakoz — Barrika/Sopela', categoria: 'Playa / Cala', provincia: 'Vizcaya', comunidad: 'País Vasco', lat: 43.372, lng: -2.986, descripcion: 'Playa nudista aislada en Barrika/Sopela. Costa brava vasca, acantilados y ambiente salvaje. Muy apreciada por surfistas y nudistas.' },
+  { nombre: 'Cala de Lapatza — Natxitua', categoria: 'Playa / Cala', provincia: 'Vizcaya', comunidad: 'País Vasco', lat: 43.390, lng: -2.597, descripcion: 'Paraíso nudista en Ea, Vizcaya. Completamente aislada y rodeada de montañas. Combina lo mejor del monte y el mar. Sin servicios. Arena escasa pero entorno espectacular. Ideal para snorkel.' },
+  { nombre: 'Cala de Antzoras — Mundaka', categoria: 'Playa / Cala', provincia: 'Vizcaya', comunidad: 'País Vasco', lat: 43.401, lng: -2.692, descripcion: 'Pequeña cala nudista de 200m a dos pasos de la mítica Mundaka, Vizcaya. Rodeada de peñascos. Ambiente íntimo y tranquilo.' },
+  { nombre: 'Ogeia — Ispaster', categoria: 'Playa / Cala', provincia: 'Vizcaya', comunidad: 'País Vasco', lat: 43.373, lng: -2.594, descripcion: 'Playa nudista en Ispaster, Vizcaya. La playa más natural de la zona, rodeada de flora y fauna autóctona vasca. Entorno completamente virgen.' },
+  { nombre: 'Playa de Barrika', categoria: 'Playa / Cala', provincia: 'Vizcaya', comunidad: 'País Vasco', lat: 43.376, lng: -2.978, descripcion: 'Playa nudista de 600m en Barrika, Vizcaya. Aislada y con entorno natural. Una de las opciones naturistas del litoral vizcaíno.' },
+
+  // ── PAÍS VASCO — GUIPÚZCOA COMPLETO ──────────────────────────
+  { nombre: 'Playa de Saturraran — Mutriku', categoria: 'Playa / Cala', provincia: 'Guipúzcoa', comunidad: 'País Vasco', lat: 43.297, lng: -2.388, descripcion: 'Playa nudista en Mutriku, Guipúzcoa, cerca de la frontera con Vizcaya. Entorno natural muy virgen. Arena oscura y aguas atlánticas.' },
+  { nombre: 'Playa de Agiti — San Sebastián', categoria: 'Playa / Cala', provincia: 'Guipúzcoa', comunidad: 'País Vasco', lat: 43.307, lng: -2.072, descripcion: 'Una de las playas nudistas más grandes de Euskadi, 580m al oeste de Donostia. Costa agreste con bolos y arena oscura. Referente del naturismo en Guipúzcoa.' },
+  { nombre: 'Playa de Zarautz — zona nudista', categoria: 'Playa / Cala', provincia: 'Guipúzcoa', comunidad: 'País Vasco', lat: 43.289, lng: -2.164, descripcion: 'Zona nudista en el extremo este de la playa de Zarautz, junto al campo de golf. 2,5 km de arena dorada, meca mundial del surf. Nudismo habitual en el extremo más tranquilo.' },
+  { nombre: 'Playa Azabaratza — Pasaia', categoria: 'Playa / Cala', provincia: 'Guipúzcoa', comunidad: 'País Vasco', lat: 43.334, lng: -1.929, descripcion: 'Playa nudista aislada en Pasaia, Guipúzcoa. Entorno salvaje de la costa vasca oriental.' },
+  { nombre: 'Los Frailes — Hondarribia', categoria: 'Playa / Cala', provincia: 'Guipúzcoa', comunidad: 'País Vasco', lat: 43.366, lng: -1.789, descripcion: 'Playa nudista en Hondarribia, Guipúzcoa. 62m de arena aislada. También conocida como Asturiaga o El Fraile. La más oriental del País Vasco, a un paso de Francia.' },
+  { nombre: 'Pantano de Ullibarri-Gamboa — nudista', categoria: 'Paraje natural', provincia: 'Álava', comunidad: 'País Vasco', lat: 42.883, lng: -2.541, descripcion: 'Zona naturista en el Pantano de Ullibarri-Gamboa, Álava. Embalse de interior del País Vasco donde el nudismo es habitual entre los naturistas vascos.' },
+
+  // ── NAVARRA — MÁS ZONAS ───────────────────────────────────────
+  { nombre: 'Río Irati — pozas nudistas', categoria: 'Paraje natural', provincia: 'Navarra', comunidad: 'Navarra', lat: 42.788, lng: -1.218, descripcion: 'Zona naturista en el Río Irati a su paso por el Bosque de Irati, Navarra. Pozas naturales en el hayedo más grande de Europa. Aguas cristalinas y entorno mágico.' },
+  { nombre: 'Río Bidasoa — zona naturista', categoria: 'Paraje natural', provincia: 'Navarra', comunidad: 'Navarra', lat: 43.177, lng: -1.633, descripcion: 'Zona naturista en el Río Bidasoa, norte de Navarra. Aguas fronterizas con Francia. Nudismo habitual en zonas aisladas del río pirenaico.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
