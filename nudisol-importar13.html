@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 13</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 13 — Almería completo y más Girona/Barcelona</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 13</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── ALMERÍA — CABO DE GATA COMPLETO ──────────────────────────
+  { nombre: 'Cala del Plomo', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.891, lng: -2.033, descripcion: 'Cala nudista en Níjar, Cabo de Gata. Arena fina enclaustrada entre roquedales. Una de las más discretas y menos frecuentadas del parque.' },
+  { nombre: 'Cala de los Amarillos', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.754, lng: -2.021, descripcion: 'Cala nudista en Níjar, acceso a pie desde Los Genoveses. Una de las más bonitas del Cabo de Gata. Aguas cristalinas y total soledad.' },
+  { nombre: 'Cala Príncipe', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.752, lng: -2.018, descripcion: 'Cala nudista en Níjar, Cabo de Gata. Pequeña y aislada, entre acantilados volcánicos.' },
+  { nombre: 'Cala de la Media Luna', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.748, lng: -2.015, descripcion: 'Cala nudista en Níjar, Cabo de Gata. Forma de media luna con aguas turquesas. Una de las más fotogénicas del parque.' },
+  { nombre: 'Playa del Barronal', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.745, lng: -2.012, descripcion: 'Playa nudista en Níjar, Cabo de Gata. Entorno natural virgen entre acantilados volcánicos.' },
+  { nombre: 'Cala de la Polacra', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.917, lng: -2.007, descripcion: 'Cala nudista en Níjar, Cabo de Gata. Aislada y tranquila, acceso a pie.' },
+  { nombre: 'Cala Carbón', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.749, lng: -2.014, descripcion: 'Cala nudista en Níjar, Cabo de Gata. Pequeña y salvaje, entre los Genoveses y Monsul.' },
+  { nombre: 'Cala de San Pedro', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.964, lng: -1.993, descripcion: 'Cala nudista en Las Negras, Níjar. Solo accesible a pie por el camino de ronda o en barca. Aguas cristalinas y una fuente de agua dulce. Comunidad hippie histórica.' },
+  { nombre: 'Playa de Las Granatillas', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 37.141, lng: -1.843, descripcion: 'Playa nudista en Mojácar. Una de las tres principales junto a Castillo de Macenas y El Sombrerico. Arena dorada.' },
+  { nombre: 'Playa Castillo de Macenas', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 37.139, lng: -1.841, descripcion: 'Playa nudista en Mojácar. Lleva el nombre de la fortificación histórica visible desde la carretera. Una de las tres principales nudistas de Mojácar.' },
+  { nombre: 'Playa El Sombrerico', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 37.143, lng: -1.845, descripcion: 'Cala nudista en Mojácar. Aguas claras y entorno natural intacto. Ideal para snorkel.' },
+  { nombre: 'Cala Bordenares', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 37.145, lng: -1.847, descripcion: 'Cala nudista en Mojácar. Rocas volcánicas y arena, zona naturista popular para buceo.' },
+  { nombre: 'Playa Cerrillos', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.771, lng: -2.706, descripcion: 'Playa nudista aislada en Roquetas de Mar. Arena gruesa y entorno natural.' },
+  { nombre: 'Playa Punta Entinas Sabinar', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.709, lng: -2.742, descripcion: 'Playa nudista en Roquetas de Mar dentro del Paraje Natural Punta Entinas-Sabinar. Zona protegida con laguna salada.' },
+  { nombre: 'Playa La Juana', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.744, lng: -3.019, descripcion: 'Playa nudista aislada en Adra, Almería. Arena oscura en el extremo occidental de la provincia.' },
+  { nombre: 'Camping Naturista El Portús — Cala Aguilar', categoria: 'Camping', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.576, lng: -0.987, descripcion: 'Cala naturista dentro del Camping El Portús en Cartagena. Acceso exclusivo para campistas. Cala de aguas cristalinas.' },
+
+  // ── GIRONA — MÁS CALAS ───────────────────────────────────────
+  { nombre: 'Playa del Borró', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.387, lng: 3.162, descripcion: 'Playa nudista virgen en Cap Ras, entre Llançà y Colera. Piedras y grava, mar en calma. En el lateral derecho hay una pequeña cala más aislada, El Borró Petit. Aguas cristalinas de poca profundidad.' },
+  { nombre: 'El Borró Petit', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.388, lng: 3.163, descripcion: 'Cala nudista aislada junto al Borró, Colera. Difícil acceso que garantiza total soledad. Arena fina y clara, aguas cristalinas.' },
+  { nombre: 'Cala del Pi — Portbou', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.429, lng: 3.163, descripcion: 'Primera playa nudista accesible en coche tras cruzar la frontera francesa, en Portbou. Guijarros y relieve accidentado. Tranquilidad garantizada.' },
+  { nombre: 'Punta d\'Es Borró', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.391, lng: 3.166, descripcion: 'Playa nudista aislada en Colera. La más al norte de la Costa Brava antes de Francia.' },
+  { nombre: 'Platja de la Cadena', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.848, lng: 3.137, descripcion: 'Playa nudista aislada en Palamós. Arena dorada y aguas tranquilas de la Costa Brava.' },
+  { nombre: 'Cala Figuera — Lloret de Mar', categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.689, lng: 2.838, descripcion: 'Cala nudista en Lloret de Mar, La Selva. Arena gruesa y rodeada de acantilados. A 3 km de Tossa de Mar.' },
+  { nombre: "Cala d'En Carles", categoria: 'Playa / Cala', provincia: 'Girona', comunidad: 'Cataluña', lat: 41.712, lng: 2.906, descripcion: 'Cala nudista en Tossa de Mar, cerca de Santa María de Llorell. Arena fina y aguas cristalinas.' },
+  { nombre: 'Camping Mas Pericot', categoria: 'Camping', provincia: 'Girona', comunidad: 'Cataluña', lat: 42.317, lng: 2.847, descripcion: 'Camping naturista interior cerca de Maçanet de Cabrenys. Entorno de montaña del Empordà. Alternativa al camping de playa.' },
+
+  // ── BARCELONA — MÁS PLAYAS ────────────────────────────────────
+  { nombre: 'Platja de la Desenrocada', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.213, lng: 1.793, descripcion: 'Playa nudista en Sitges, también conocida como Cala dels Gegants. Aislada y de arena dorada.' },
+  { nombre: 'Cala Gogo — zona nudista', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.796, lng: 3.042, descripcion: 'Zona nudista en Cala Gogo, Palamós. Playa de camping con zona naturista.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
