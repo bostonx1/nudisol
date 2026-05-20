@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 37</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 37 — Almería Cabo de Gata completo + últimas zonas</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 37</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── ALMERÍA — CABO DE GATA COMPLETO ──────────────────────────
+  { nombre: 'Cala Rajá — Cabo de Gata', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.737, lng: -2.186, descripcion: 'Cala nudista de difícil acceso pasado el faro de Cabo de Gata, en la carretera a Vela Blanca. Aguas cristalinas con el Dedo de Dios cercano. Se puede llegar a nado a calas más al sur.' },
+  { nombre: 'Cala Carbón — Cabo de Gata', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.731, lng: -2.183, descripcion: 'Cala nudista aislada en Cabo de Gata. Una de las tres calas escondidas entre el faro y Vela Blanca. Aguas muy cristalinas y entorno volcánico.' },
+  { nombre: 'Cala Arena — Cabo de Gata', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.728, lng: -2.180, descripcion: 'Cala nudista en Cabo de Gata. Entre Cala Rajá y Cala Carbón. Rincón recoleto del Parque Natural.' },
+  { nombre: 'Cala Higuera — San José', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.765, lng: -2.099, descripcion: 'Cala nudista virgen cerca de San José, Níjar. Pequeña y alejada del bullicio. Ideal para nudismo en total tranquilidad. Acceso a pie.' },
+  { nombre: 'Playa de la Fabriquilla — Cabo de Gata', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.748, lng: -2.202, descripcion: 'Playa nudista menos concurrida cerca de la localidad de Cabo de Gata. Ambiente relajado y experiencia más privada. Sin masificación.' },
+  { nombre: 'Cala de Enmedio — Níjar', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.752, lng: -2.017, descripcion: 'Considerada la cala más bonita de Almería, en Níjar. Parque Natural Cabo de Gata. Aguas turquesas y arena blanca volcánica. Acceso a pie. Un lugar donde la naturaleza es pura obra de arte.' },
+  { nombre: 'Playa Las Negras — zona nudista', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.972, lng: -1.988, descripcion: 'Zona nudista en Las Negras, Níjar. Entorno pintoresco de pueblo pesquero con arena oscura. Comunidad acogedora y ambiente social.' },
+  { nombre: 'Playa de la Fabriquilla — Almería capital', categoria: 'Playa / Cala', provincia: 'Almería', comunidad: 'Andalucía', lat: 36.832, lng: -2.419, descripcion: 'Zona nudista en La Fabriquilla, Almería capital. Playa oscura con nudismo habitual en el extremo.' },
+
+  // ── MURCIA — ÚLTIMAS CALAS ────────────────────────────────────
+  { nombre: 'Cala del Barco — Cartagena', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.618, lng: -0.862, descripcion: 'Cala nudista aislada en el Parque Regional de Calblanque, Cartagena. Arena dorada y aguas muy limpias. Una de las más espectaculares del litoral murciano.' },
+  { nombre: 'Cala Arturo — Cartagena', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.621, lng: -0.869, descripcion: 'Cala nudista en Calblanque, Cartagena. Entorno virgen protegido del Parque Regional. Acceso a pie por sendero costero.' },
+  { nombre: 'Playa La Baña — Águilas', categoria: 'Playa / Cala', provincia: 'Murcia', comunidad: 'Murcia', lat: 37.403, lng: -1.599, descripcion: 'Playa nudista aislada en Águilas. Arena dorada y aguas cristalinas del sur de Murcia.' },
+
+  // ── CÁDIZ — ÚLTIMAS PENDIENTES ────────────────────────────────
+  { nombre: 'Playa de La Cortadura — Cádiz', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.524, lng: -6.249, descripcion: 'Zona nudista en La Cortadura, San Fernando/Cádiz. Playa de 3 km entre duna de arena dorada. Zona nudista delimitada por el Ayuntamiento de San Fernando.' },
+  { nombre: 'Los Corrales — Rota', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.634, lng: -6.363, descripcion: 'Zona nudista en Los Corrales, Rota, norte de la bahía de Cádiz. Uso nudista tradicional.' },
+  { nombre: 'Playa de La Jara — Sanlúcar de Barrameda', categoria: 'Playa / Cala', provincia: 'Cádiz', comunidad: 'Andalucía', lat: 36.777, lng: -6.350, descripcion: 'Zona nudista en La Jara, Sanlúcar de Barrameda. Al norte de Bajo de Guía. Uso nudista tradicional.' },
+  { nombre: 'Arroyo Vaquero — Estepona', categoria: 'Playa / Cala', provincia: 'Málaga', comunidad: 'Andalucía', lat: 36.426, lng: -5.145, descripcion: 'Playa nudista urbana en Estepona, también conocida como Guadalobón. Arena oscura de la Costa del Sol occidental. La más cercana a Costa Natura.' },
+
+  // ── COMUNIDAD VALENCIANA — ÚLTIMAS ────────────────────────────
+  { nombre: 'Cala del Amerador — L\'Alfàs del Pi', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.582, lng: -0.049, descripcion: 'Cala nudista aislada en L\'Alfàs del Pi, Alicante. Costa Blanca. Acceso a pie por sendero costero.' },
+  { nombre: 'Calas del Cabo Peñas — Orihuela', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 37.934, lng: -0.740, descripcion: 'Calas nudistas en el Cabo de las Palas, Orihuela costa. Arena dorada y aguas cristalinas del extremo sur de la Costa Blanca.' },
+  { nombre: 'Cala del Cuartel — El Campello', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.418, lng: -0.383, descripcion: 'Cala nudista aislada en El Campello, también conocida como Lloma de Reixes. Acceso a pie.' },
+  { nombre: 'Cala del Penyal — Calpe', categoria: 'Playa / Cala', provincia: 'Alicante', comunidad: 'Comunidad Valenciana', lat: 38.624, lng: -0.054, descripcion: 'Cala nudista aislada en Calpe bajo el Peñón de Ifach. Aguas cristalinas. Solo acceso a pie.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
