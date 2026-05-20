@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Fix Provincias</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 6px; }
+  p { color: rgba(255,255,255,0.7); font-size:13px; margin-bottom:12px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 420px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; } .skip { color: #94A3B8; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; margin-right: 8px; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; font-weight: bold; }
+</style>
+</head>
+<body>
+<h2>🔧 Nudisol — Corrector de Provincias</h2>
+<p>Corrige "Las Palmas" → isla real, "Baleares" → isla real, "Álava" → correcto, etc. También normaliza comunidades autónomas.</p>
+<button onclick="previsualizar()">👁 Previsualizar cambios</button>
+<button onclick="migrar()" style="background:#1A6B72">✅ Aplicar correcciones</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+// ─── TABLA DE CORRECCIONES ────────────────────────────────────────────────────
+// Función que dado un doc decide qué provincia e isla debe tener
+function corregir(data) {
+  const nombre = data.nombre || '';
+  const lat = data.lat || 0;
+  const lng = data.lng || 0;
+  const provActual = data.provincia || '';
+  const comActual = data.comunidad || '';
+
+  let prov = provActual;
+  let com = comActual;
+
+  // ── CANARIAS: Las Palmas → isla real ──────────────────────────
+  if (provActual === 'Las Palmas') {
+    // Lanzarote: lat > 28.8 && lng < -13.4
+    if (lat > 28.7 && lat < 29.3 && lng < -13.3 && lng > -14.0) prov = 'Lanzarote';
+    // Fuerteventura: lat 27.6-28.7 lng -14.5 a -13.7
+    else if (lat >= 27.6 && lat <= 28.7 && lng >= -14.6 && lng <= -13.7) prov = 'Fuerteventura';
+    // Gran Canaria: lat 27.6-28.2 lng -15.8 a -15.2
+    else if (lat >= 27.6 && lat <= 28.2 && lng >= -15.9 && lng <= -15.1) prov = 'Gran Canaria';
+    else prov = 'Las Palmas'; // fallback
+    com = 'Canarias';
+  }
+  // Santa Cruz de Tenerife → isla real
+  if (provActual === 'Santa Cruz de Tenerife' || provActual === 'Tenerife') {
+    if (lat >= 28.0 && lat <= 28.6 && lng >= -17.4 && lng <= -17.0) prov = 'La Gomera';
+    else if (lat >= 27.6 && lat <= 28.1 && lng >= -18.2 && lng <= -17.7) prov = 'El Hierro';
+    else if (lat >= 28.4 && lat <= 29.4 && lng >= -18.1 && lng <= -17.7) prov = 'La Palma';
+    else prov = 'Tenerife';
+    com = 'Canarias';
+  }
+
+  // ── BALEARES: provincia genérica → isla real ──────────────────
+  if (provActual === 'Baleares' || provActual === 'Illes Balears') {
+    // Menorca: lat 39.8-40.1 lng 3.8-4.4
+    if (lat >= 39.8 && lat <= 40.1 && lng >= 3.7 && lng <= 4.4) prov = 'Menorca';
+    // Ibiza: lat 38.8-39.1 lng 1.1-1.6
+    else if (lat >= 38.8 && lat <= 39.1 && lng >= 1.1 && lng <= 1.6) prov = 'Ibiza';
+    // Formentera: lat 38.6-38.8 lng 1.3-1.6
+    else if (lat >= 38.6 && lat <= 38.8 && lng >= 1.3 && lng <= 1.6) prov = 'Formentera';
+    // Mallorca: resto
+    else prov = 'Mallorca';
+    com = 'Baleares';
+  }
+
+  // ── PAÍS VASCO: Álava → Álava ─────────────────────────────────
+  if (provActual === 'Alava' || provActual === 'Álava') { prov = 'Álava'; com = 'País Vasco'; }
+  if (provActual === 'Vizcaya' || provActual === 'Bizkaia') { prov = 'Vizcaya'; com = 'País Vasco'; }
+  if (provActual === 'Guipúzcoa' || provActual === 'Gipuzkoa') { prov = 'Guipúzcoa'; com = 'País Vasco'; }
+
+  // ── COMUNIDADES INCORRECTAS ───────────────────────────────────
+  if (prov === 'Lanzarote' || prov === 'Fuerteventura' || prov === 'Gran Canaria' || prov === 'Tenerife' || prov === 'La Palma' || prov === 'La Gomera' || prov === 'El Hierro') com = 'Canarias';
+  if (prov === 'Mallorca' || prov === 'Menorca' || prov === 'Ibiza' || prov === 'Formentera') com = 'Baleares';
+  if (prov === 'A Coruña' || prov === 'Pontevedra' || prov === 'Lugo' || prov === 'Ourense') com = 'Galicia';
+  if (prov === 'Asturias') com = 'Asturias';
+  if (prov === 'Cantabria') com = 'Cantabria';
+  if (prov === 'Navarra') com = 'Navarra';
+  if (prov === 'Huesca' || prov === 'Zaragoza' || prov === 'Teruel') com = 'Aragón';
+  if (prov === 'Girona' || prov === 'Barcelona' || prov === 'Tarragona' || prov === 'Lleida') com = 'Cataluña';
+  if (prov === 'Castellón' || prov === 'Valencia' || prov === 'Alicante') com = 'Comunidad Valenciana';
+  if (prov === 'Murcia') com = 'Murcia';
+  if (prov === 'Almería' || prov === 'Granada' || prov === 'Málaga' || prov === 'Cádiz' || prov === 'Huelva' || prov === 'Sevilla' || prov === 'Córdoba' || prov === 'Jaén') com = 'Andalucía';
+  if (prov === 'Madrid') com = 'Madrid';
+  if (prov === 'Ávila' || prov === 'Burgos' || prov === 'León' || prov === 'Palencia' || prov === 'Salamanca' || prov === 'Segovia' || prov === 'Soria' || prov === 'Valladolid' || prov === 'Zamora') com = 'Castilla y León';
+  if (prov === 'Albacete' || prov === 'Ciudad Real' || prov === 'Cuenca' || prov === 'Guadalajara' || prov === 'Toledo') com = 'Castilla-La Mancha';
+  if (prov === 'Cáceres' || prov === 'Badajoz') com = 'Extremadura';
+  if (prov === 'La Rioja') com = 'La Rioja';
+
+  const cambia = prov !== provActual || com !== comActual;
+  return { prov, com, cambia };
+}
+
+window.previsualizar = async () => {
+  document.getElementById('log').innerHTML = '';
+  log('🔍 Leyendo todos los documentos...', 'info');
+  const snap = await getDocs(collection(db, 'lugares'));
+  let cambios = 0;
+  for (const d of snap.docs) {
+    const data = d.data();
+    const { prov, com, cambia } = corregir(data);
+    if (cambia) {
+      log(`📝 "${data.nombre}" | ${data.provincia} → ${prov} | ${data.comunidad} → ${com}`, 'info');
+      cambios++;
+    }
+  }
+  log(`\n📊 Total documentos: ${snap.size} | Cambios pendientes: ${cambios}`, 'ok');
+  document.getElementById('resumen').textContent = `${cambios} documentos necesitan corrección de ${snap.size} totales`;
+};
+
+window.migrar = async () => {
+  document.getElementById('log').innerHTML = '';
+  log('⚙️ Aplicando correcciones...', 'info');
+  const snap = await getDocs(collection(db, 'lugares'));
+  let ok = 0, skip = 0, err = 0;
+  for (const d of snap.docs) {
+    const data = d.data();
+    const { prov, com, cambia } = corregir(data);
+    if (!cambia) { skip++; continue; }
+    try {
+      await updateDoc(doc(db, 'lugares', d.id), { provincia: prov, comunidad: com });
+      log(`✅ "${data.nombre}" → ${prov} / ${com}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 80));
+    } catch(e) {
+      log(`❌ Error en "${data.nombre}": ${e.message}`, 'err');
+      err++;
+    }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} corregidos | ${skip} ya correctos | ${err} errores`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} corregidos | ⏭️ ${skip} ya estaban bien | ❌ ${err} errores`;
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
