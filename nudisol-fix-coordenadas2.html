@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Fix Coordenadas v2</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 6px; }
+  p { color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 16px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 420px; overflow-y: auto; font-size: 12px; line-height: 1.7; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; } .skip { color: #94A3B8; }
+  .btns { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 20px; font-size: 14px; font-weight: bold; cursor: pointer; }
+  button.sec { background: #1A6B72; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  #resumen { margin-top: 12px; font-size: 13px; color: #F5C840; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px; display:none; }
+  #barra-wrap { margin-top: 10px; background: rgba(255,255,255,0.1); border-radius:8px; height:10px; overflow:hidden; display:none; }
+  #barra { height:100%; background: linear-gradient(90deg,#F5C840,#4ADE80); width:0%; transition: width 0.3s; border-radius:8px; }
+  #pct { color: rgba(255,255,255,0.5); font-size:12px; margin-top:4px; }
+</style>
+</head>
+<body>
+<h2>🗺️ Nudisol — Corrector Coordenadas v2 (segunda pasada)</h2>
+<p>Solo procesa los lugares SIN coords_fuente (los no encontrados en la v1).<br>
+Usa queries más limpias e inteligentes. ~1 seg/lugar.</p>
+
+<div class="btns">
+  <button id="btn-start" onclick="iniciar()">🚀 Segunda pasada</button>
+  <button id="btn-stop" class="sec" onclick="detener()" disabled>⏹ Detener</button>
+</div>
+
+<div id="barra-wrap"><div id="barra"></div></div>
+<div id="pct"></div>
+<div id="resumen"></div>
+<div id="log" style="margin-top:12px;"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+let parar = false;
+let stats = { ok: 0, noEncontrado: 0, err: 0, total: 0 };
+
+onAuthStateChanged(auth, user => {
+  if (!user) log('❌ Inicia sesión como admin.', 'err');
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+// ── LIMPIEZA DEL NOMBRE ───────────────────────────────────────
+function limpiarNombre(nombre) {
+  // Quitar todo lo que va después de — o - (aclaraciones)
+  let n = nombre.split('—')[0].split(' - ')[0].trim();
+
+  // Quitar palabras genéricas que confunden a Nominatim
+  const quitar = [
+    'zona nudista', 'zona naturista', 'zona gay', 'zona natural',
+    'playa nudista', 'playa naturista', 'playa de la', 'playa de',
+    'cala de la', 'cala de', 'cala del', 'playa del', 'playa los',
+    'naturista', 'nudista', 'gay-friendly', 'gay friendly',
+    'camping naturista', 'asociación naturista', 'asociacion naturista',
+  ];
+  for (const q of quitar) {
+    n = n.toLowerCase().replace(q, '').trim();
+  }
+
+  // Capitalizar primera letra
+  n = n.charAt(0).toUpperCase() + n.slice(1);
+  return n.trim();
+}
+
+// ── GENERAR QUERIES PARA NOMINATIM ───────────────────────────
+function generarQueries(lugar) {
+  const nombreLimpio = limpiarNombre(lugar.nombre);
+  const nombreOriginal = lugar.nombre.split('—')[0].trim();
+  const provincia = lugar.provincia || '';
+  const comunidad = lugar.comunidad || '';
+
+  const queries = [];
+
+  // Query 1: nombre limpio + provincia
+  if (nombreLimpio && provincia) queries.push(`${nombreLimpio}, ${provincia}, Spain`);
+
+  // Query 2: nombre original simplificado + provincia
+  if (nombreOriginal !== nombreLimpio && provincia) queries.push(`${nombreOriginal}, ${provincia}, Spain`);
+
+  // Query 3: nombre limpio + comunidad
+  if (nombreLimpio && comunidad) queries.push(`${nombreLimpio}, ${comunidad}, Spain`);
+
+  // Query 4: solo nombre limpio + Spain
+  if (nombreLimpio) queries.push(`${nombreLimpio}, Spain`);
+
+  // Query 5: si tiene "Cala X" → probar también "Playa X"
+  if (nombreLimpio.toLowerCase().startsWith('cala ')) {
+    const sinCala = nombreLimpio.replace(/^cala /i, '');
+    queries.push(`Playa ${sinCala}, ${provincia}, Spain`);
+    queries.push(`${sinCala}, ${provincia}, Spain`);
+  }
+
+  // Query 6: si tiene "Playa X" → probar también "Cala X"
+  if (nombreLimpio.toLowerCase().startsWith('playa ')) {
+    const sinPlaya = nombreLimpio.replace(/^playa /i, '');
+    queries.push(`${sinPlaya}, ${provincia}, Spain`);
+  }
+
+  // Eliminar duplicados
+  return [...new Set(queries)];
+}
+
+async function buscarCoordenadas(lugar) {
+  const queries = generarQueries(lugar);
+
+  for (const q of queries) {
+    try {
+      await sleep(300);
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=es`;
+      const res = await fetch(url, {
+        headers: { 'Accept-Language': 'es', 'User-Agent': 'Nudisol/1.0 (nudisol.app)' }
+      });
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+        // Validar España peninsular + islas
+        if (lat >= 27.5 && lat <= 44 && lng >= -18.5 && lng <= 5) {
+          return { lat, lng, query: q, displayName: data[0].display_name };
+        }
+      }
+    } catch(e) {}
+  }
+  return null;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+window.detener = () => {
+  parar = true;
+  log('⏹ Proceso detenido.', 'info');
+  document.getElementById('btn-stop').disabled = true;
+};
+
+window.iniciar = async () => {
+  parar = false;
+  stats = { ok: 0, noEncontrado: 0, err: 0, total: 0 };
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('btn-stop').disabled = false;
+  document.getElementById('barra-wrap').style.display = 'block';
+  document.getElementById('resumen').style.display = 'none';
+
+  log('📦 Cargando lugares SIN coordenadas corregidas...', 'info');
+
+  let lugares = [];
+  try {
+    const snap = await getDocs(collection(db, 'lugares'));
+    snap.forEach(d => {
+      const data = d.data();
+      // Solo los que NO tienen coords_fuente (no fueron encontrados en v1)
+      if (!data.coords_fuente) {
+        lugares.push({ id: d.id, ...data });
+      }
+    });
+  } catch(e) {
+    log('❌ Error: ' + e.message, 'err');
+    return;
+  }
+
+  stats.total = lugares.length;
+  log(`📍 ${lugares.length} lugares sin coordenadas corregidas. Iniciando...`, 'info');
+  log(`⏱️ Tiempo estimado: ~${Math.round(lugares.length * 1.5 / 60)} minutos`, 'info');
+
+  let procesados = 0;
+
+  for (const lugar of lugares) {
+    if (parar) break;
+
+    procesados++;
+    const pct = Math.round(procesados / stats.total * 100);
+    document.getElementById('barra').style.width = pct + '%';
+    document.getElementById('pct').textContent = `${procesados}/${stats.total} (${pct}%) — ✅ ${stats.ok} · ⚠️ ${stats.noEncontrado} · ❌ ${stats.err}`;
+
+    try {
+      const resultado = await buscarCoordenadas(lugar);
+
+      if (resultado) {
+        await updateDoc(doc(db, 'lugares', lugar.id), {
+          lat: resultado.lat,
+          lng: resultado.lng,
+          coords_fuente: 'nominatim_v2',
+          coords_query: resultado.query
+        });
+        log(`✅ ${lugar.nombre} → ${resultado.lat.toFixed(4)}, ${resultado.lng.toFixed(4)} [${resultado.query}]`, 'ok');
+        stats.ok++;
+      } else {
+        log(`⚠️ Sin resultado: ${lugar.nombre} (${lugar.provincia})`, 'info');
+        stats.noEncontrado++;
+      }
+    } catch(e) {
+      log(`❌ ${lugar.nombre} — ${e.message}`, 'err');
+      stats.err++;
+    }
+
+    await sleep(900);
+  }
+
+  const resEl = document.getElementById('resumen');
+  resEl.style.display = 'block';
+  resEl.innerHTML = `
+    🎉 <strong>Segunda pasada completada</strong><br>
+    ✅ Nuevos corregidos: ${stats.ok}<br>
+    ⚠️ Aún sin encontrar: ${stats.noEncontrado}<br>
+    ❌ Errores: ${stats.err}<br>
+    📍 Procesados: ${procesados}/${stats.total}
+  `;
+
+  log(`\n🎉 FIN v2: ${stats.ok} nuevos corregidos, ${stats.noEncontrado} sin encontrar.`, 'info');
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-stop').disabled = true;
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo;
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
