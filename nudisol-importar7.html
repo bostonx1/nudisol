@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 7</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 7 — Barcelona y Tarragona</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 7</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── BARCELONA ─────────────────────────────────────────────────
+  { nombre: 'Els Balmins', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.222, lng: 1.803, descripcion: 'Playa nudista gay-friendly en Sitges. Urbana y muy popular. Ambiente festivo y relajado. Una de las más conocidas de la provincia.' },
+  { nombre: 'Cala Morisca', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.218, lng: 1.799, descripcion: 'Cala nudista aislada en Sitges, entre acantilados. Aguas transparentes y arena fina, rodeada de naturaleza.' },
+  { nombre: 'Platja de la Mora', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.426, lng: 2.232, descripcion: 'Playa nudista urbana en Badalona. Arena dorada de la Costa del Maresme.' },
+  { nombre: 'Playa de la Ricarda', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.304, lng: 2.082, descripcion: 'Playa nudista en el Delta del Llobregat, El Prat de Llobregat. Con parking y transporte público. Duchas y papeleras. Tranquila y natural.' },
+  { nombre: 'Playa de La Murtra', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.294, lng: 2.071, descripcion: 'Playa nudista aislada en Viladecans, también conocida como Playa de las Filipinas. Menos conocida y muy tranquila.' },
+  { nombre: 'Cala La Vinyeta', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.606, lng: 2.661, descripcion: 'Cala nudista en Calella, entre acantilados y pinos. Acceso cruzando la vía del tren. Con baños y duchas.' },
+  { nombre: 'Platja Musclera — zona nudista', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.603, lng: 2.658, descripcion: 'Zona nudista en la Playa Musclera, Calella. Parte del complejo de playas de Calella de Mar.' },
+  { nombre: 'Playa Gran de Pals — zona nudista', categoria: 'Playa / Cala', provincia: 'Barcelona', comunidad: 'Cataluña', lat: 41.973, lng: 3.157, descripcion: 'Zona nudista en la Playa Gran de Pals, Girona. 3,5 km de arena y dunas en bahía natural con camping y hoteles. Nudismo muy común.' },
+
+  // ── TARRAGONA — COSTA DORADA COMPLETA ─────────────────────────
+  { nombre: 'Platja Fonda — Cala Waikiki', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 41.069, lng: 1.267, descripcion: 'Playa nudista aislada en Tarragona, también conocida como Waikiki. 200m de ancho, aguas transparentes como el Caribe. Catalogada por National Geographic entre las 21 mejores de Cataluña.' },
+  { nombre: 'Playa La Savinosa', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 41.098, lng: 1.277, descripcion: 'Playa nudista semiurbana en Tarragona. 350m en pequeña bahía casi virgen, sin paseo marítimo. A poca distancia del centro de Tarragona.' },
+  { nombre: 'Cala de la Roca Plana', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 41.087, lng: 1.272, descripcion: 'Cala nudista aislada en Tarragona. Arena dorada, entorno natural y aguas tranquilas del Mediterráneo.' },
+  { nombre: 'Els Muntanyans', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 41.144, lng: 1.383, descripcion: 'Playa nudista en Torredembarra, dentro del Plan de Espacio de Interés Natural. Dunas y maresmes protegidos. 350m señalizada para nudismo.' },
+  { nombre: 'Playa Calabeig', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 41.137, lng: 1.369, descripcion: 'Playa nudista en Altafulla. Una de las mejor conservadas de la Costa Dorada.' },
+  { nombre: 'Playa La Marquesa', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 40.723, lng: 0.798, descripcion: 'Playa nudista en el Delta del Ebro, Deltebre. 4,5 km de dunas de arena fina. Entorno del Parque Natural del Delta. Rodeada de lagunas y cultivos.' },
+  { nombre: 'Punta del Fangar', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 40.749, lng: 0.710, descripcion: 'Playa nudista aislada en Deltebre, Delta del Ebro. Arena dorada en la punta del delta. Entorno único de gran valor ecológico.' },
+  { nombre: 'El Trabucador', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 40.614, lng: 0.668, descripcion: 'Playa nudista de 6,5 km en el Delta del Ebro. Popular para atardeceres y nudismo. Lengua de arena entre el mar y la laguna de la Encanyissada.' },
+  { nombre: 'Torrent del Pi', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 40.878, lng: 0.831, descripcion: 'Cala nudista en L\'Ametlla de Mar, también conocida como Cala Mosques. Dentro del Parque Natural del Delta. Ruta GR92 cercana.' },
+  { nombre: 'Playa del Migjorn', categoria: 'Playa / Cala', provincia: 'Tarragona', comunidad: 'Cataluña', lat: 40.706, lng: 0.821, descripcion: 'Playa nudista en el Delta del Ebro. Entorno natural protegido de gran valor paisajístico.' },
+
+  // ── CASTELLÓN (más) ───────────────────────────────────────────
+  { nombre: 'Cala Sol de Riu', categoria: 'Playa / Cala', provincia: 'Castellón', comunidad: 'Comunidad Valenciana', lat: 40.488, lng: 0.468, descripcion: 'Cala nudista aislada en Vinaròs. Arena dorada de la Costa Azahar, acceso a pie.' },
+  { nombre: 'Playa de la Renegà', categoria: 'Playa / Cala', provincia: 'Castellón', comunidad: 'Comunidad Valenciana', lat: 40.042, lng: 0.122, descripcion: 'Playa nudista aislada en Oropesa del Mar. Entorno natural protegido.' },
+  { nombre: 'Cala Mundina', categoria: 'Playa / Cala', provincia: 'Castellón', comunidad: 'Comunidad Valenciana', lat: 40.535, lng: 0.426, descripcion: 'Cala nudista en Peñíscola. Pequeña y aislada, aguas cristalinas del Mediterráneo norte.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
