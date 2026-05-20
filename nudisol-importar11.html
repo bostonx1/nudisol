@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 11</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 11 — Canarias completo</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 11</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── FUERTEVENTURA ─────────────────────────────────────────────
+  { nombre: 'Playa de Sotavento — Jandía', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.117, lng: -14.293, descripcion: 'Playa nudista en Pájara, Fuerteventura, también conocida como Costa Calma. Extensa playa de laguna con aguas turquesas, ideal para windsur. Zona nudista consolidada.' },
+  { nombre: 'Playa de Grandes Playas', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.721, lng: -13.878, descripcion: 'Playa nudista en Corralejo, Fuerteventura. Interminable extensión de arena en el Parque Natural de las Dunas. Paisajes vírgenes espectaculares.' },
+  { nombre: 'Playa El Viejo Rey', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.089, lng: -14.411, descripcion: 'Playa nudista aislada en Pájara, Fuerteventura. Arena dorada y entorno completamente virgen del Parque Natural de Jandía.' },
+  { nombre: 'Playa Butihondo', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.103, lng: -14.347, descripcion: 'Playa nudista semiurbana en Pájara, Fuerteventura. Arena dorada de la costa sur de Jandía.' },
+  { nombre: 'Playa Las Coloradas', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.097, lng: -14.356, descripcion: 'Playa nudista aislada en Pájara, Fuerteventura. Arena oscura volcánica de la costa suroeste.' },
+  { nombre: 'Playa Morro de Potala', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.093, lng: -14.363, descripcion: 'Playa nudista aislada en Pájara, Fuerteventura. Arena dorada en entorno virgen.' },
+  { nombre: 'Playa Ugan', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.086, lng: -14.398, descripcion: 'Playa nudista aislada en Pájara, Fuerteventura. Arena oscura volcánica, acceso difícil.' },
+
+  // ── LANZAROTE ─────────────────────────────────────────────────
+  { nombre: 'Playa de Papagayo', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.845, lng: -13.763, descripcion: 'Playa nudista en el Parque Natural Los Ajaches, Lanzarote. Aguas azul turquesa y entorno volcánico único. Una de las más espectaculares de Canarias.' },
+  { nombre: 'Playa de Famara', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 29.092, lng: -13.548, descripcion: 'Extensa playa nudista en Lanzarote. Arena dorada y oleaje para surf. Vistas espectaculares al Archipiélago Chinijo y La Graciosa.' },
+
+  // ── LA GRACIOSA ───────────────────────────────────────────────
+  { nombre: 'Playa de La Cocina', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 29.234, lng: -13.521, descripcion: 'Playa nudista en La Graciosa, la única isla habitada del Archipiélago Chinijo. Arena blanca y aguas cristalinas. Acceso en ferry desde Órzola.' },
+  { nombre: 'Playa de Las Conchas', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 29.267, lng: -13.508, descripcion: 'Playa nudista en La Graciosa. La más espectacular de la isla, al norte. Oleaje fuerte del Atlántico y arena blanca virgen.' },
+
+  // ── LA PALMA ──────────────────────────────────────────────────
+  { nombre: 'Playa de Los Tarajales', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.638, lng: -17.899, descripcion: 'Única playa nudista habilitada de La Palma desde 2014. 760m de longitud y 90m de anchura. La más joven de las nudistas de Canarias.' },
+  { nombre: 'Playa de Puerto Naos — zona nudista', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.618, lng: -17.921, descripcion: 'Zona nudista en Puerto Naos, La Palma. Arena negra volcánica y aguas templadas del Atlántico.' },
+
+  // ── LA GOMERA ─────────────────────────────────────────────────
+  { nombre: 'Playa del Inglés — Valle Gran Rey', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.075, lng: -17.344, descripcion: 'Playa nudista histórica en Valle Gran Rey, La Gomera. Relacionada con el movimiento hippie de los años 70. Una de las más conocidas de la isla.' },
+  { nombre: 'Playa El Guincho', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.093, lng: -17.108, descripcion: 'Playa nudista en San Sebastián de La Gomera. Pequeña y hermosa, aguas cristalinas y paisaje espectacular. Con duchas y papeleras.' },
+  { nombre: 'Playa de Abalo', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.097, lng: -17.111, descripcion: 'Playa nudista en San Sebastián de La Gomera. Cala tranquila de arena oscura.' },
+  { nombre: 'Playa de Iguala', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.072, lng: -17.347, descripcion: 'Playa nudista en Valle Gran Rey, La Gomera. Arena oscura y aguas tranquilas.' },
+  { nombre: 'Puerto del Trigo — Alojera', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.183, lng: -17.324, descripcion: 'Playa nudista en Alojera, Vallehermoso, La Gomera. Cala aislada de arena oscura.' },
+  { nombre: 'Playa La Sepultura', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.192, lng: -17.291, descripcion: 'Playa nudista en Vallehermoso, La Gomera. Pequeña cala de difícil acceso y gran belleza.' },
+  { nombre: 'Playa Argaga', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.076, lng: -17.352, descripcion: 'Playa nudista en Valle Gran Rey, La Gomera. Arena negra y barrancos verdes. Acceso a pie.' },
+  { nombre: 'Charco del Conde', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.078, lng: -17.346, descripcion: 'Zona nudista en Valle Gran Rey, La Gomera. Piscina natural de aguas tranquilas.' },
+
+  // ── EL HIERRO ─────────────────────────────────────────────────
+  { nombre: 'Playa de La Restinga — zona nudista', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 27.638, lng: -17.988, descripcion: 'Zona nudista en Puerto Naos, La Restinga, El Hierro. La isla más occidental de España. Aguas únicas para buceo.' },
+
+  // ── TENERIFE (más playas) ─────────────────────────────────────
+  { nombre: 'Playa de Almáciga', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.572, lng: -16.191, descripcion: 'Playa nudista en el norte de Tenerife, Parque Rural de Anaga. Arena oscura y oleaje fuerte. Entorno salvaje y virgen.' },
+  { nombre: 'Playa de San Marcos', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.364, lng: -16.706, descripcion: 'Zona nudista en San Marcos, Icod de los Vinos, Tenerife. Playa en acantilados volcánicos.' },
+
+  // ── GRAN CANARIA (más playas) ─────────────────────────────────
+  { nombre: 'Playa de Güigüi Chico', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 27.904, lng: -15.781, descripcion: 'Cala nudista junto a Güigüi en Gran Canaria. Solo accesible en barca. Completamente virgen.' },
+  { nombre: 'Playa de Tasartico', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 27.886, lng: -15.773, descripcion: 'Playa nudista aislada en Gran Canaria. Acceso por pista de tierra. Arena oscura y aguas tranquilas.' },
+  { nombre: 'Playa de Veneguera', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 27.862, lng: -15.741, descripcion: 'Playa nudista en Gran Canaria. Acceso por barranco. Arena y piedras, entorno virgen.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
