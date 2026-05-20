@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol Admin — Lugares</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#0D3D42">
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, serverTimestamp, orderBy, query } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const ADMIN_EMAIL = 'plopezcastello@gmail.com';
+
+  const app = initializeApp({
+    apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+    authDomain: "nudisol.firebaseapp.com",
+    projectId: "nudisol",
+    storageBucket: "nudisol.firebasestorage.app",
+    messagingSenderId: "222881387953",
+    appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+  });
+
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  let lugaresCache = [];
+  let editandoId = null;
+
+  onAuthStateChanged(auth, (user) => {
+    if (!user || user.email !== ADMIN_EMAIL) {
+      document.getElementById('acceso-denegado').style.display = 'flex';
+      document.getElementById('panel').style.display = 'none';
+      return;
+    }
+    document.getElementById('acceso-denegado').style.display = 'none';
+    document.getElementById('panel').style.display = 'block';
+    document.getElementById('admin-email').textContent = user.email;
+    cargarLugares();
+  });
+
+  // ── CARGAR LUGARES ───────────────────────────────────────────
+  async function cargarLugares() {
+    try {
+      const q = query(collection(db, 'lugares'), orderBy('provincia'), orderBy('nombre'));
+      const snap = await getDocs(q);
+      lugaresCache = [];
+      snap.forEach(d => lugaresCache.push({ id: d.id, ...d.data() }));
+      renderTabla(lugaresCache);
+      document.getElementById('total-lugares').textContent = lugaresCache.length;
+    } catch(e) {
+      console.error('Error cargando lugares:', e);
+    }
+  }
+
+  function renderTabla(lugares) {
+    const tbody = document.getElementById('tabla-body');
+    if (lugares.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#8A8A8A;">No hay lugares todavía. ¡Añade el primero!</td></tr>';
+      return;
+    }
+    tbody.innerHTML = lugares.map(l => `
+      <tr>
+        <td>
+          <div class="lugar-nombre">${l.nombre}</div>
+          <div class="lugar-provincia">${l.provincia}</div>
+        </td>
+        <td><span class="cat-badge" style="background:${catColor(l.categoria)}20;color:${catColor(l.categoria)};">${catIcono(l.categoria)} ${l.categoria}</span></td>
+        <td class="td-coords">${l.lat?.toFixed(4) || '—'}, ${l.lng?.toFixed(4) || '—'}</td>
+        <td class="td-desc">${(l.descripcion || '').substring(0, 60)}${(l.descripcion || '').length > 60 ? '...' : ''}</td>
+        <td>
+          <div class="btn-acciones">
+            <button class="btn-editar" onclick="abrirEditar('${l.id}')">✏️</button>
+            <button class="btn-borrar" onclick="confirmarBorrar('${l.id}', '${l.nombre.replace(/'/g, "\\'")}')">🗑️</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function catColor(cat) {
+    const map = {
+      'Playa / Cala': '#1A6B72',
+      'Paraje natural': '#2D6A4F',
+      'Camping': '#E8A020',
+      'Alojamiento / Resort': '#D45F3C',
+      'Piscina / Spa': '#6B4F9E',
+      'Club / Asociación': '#C00',
+      'Urbanización': '#4A4A4A',
+    };
+    return map[cat] || '#1A6B72';
+  }
+
+  function catIcono(cat) {
+    const map = {
+      'Playa / Cala': '🏖️',
+      'Paraje natural': '🌲',
+      'Camping': '🏕️',
+      'Alojamiento / Resort': '🏨',
+      'Piscina / Spa': '🏊',
+      'Club / Asociación': '🎭',
+      'Urbanización': '🏘️',
+    };
+    return map[cat] || '📍';
+  }
+
+  // ── NUEVO / EDITAR ───────────────────────────────────────────
+  window.abrirNuevo = () => {
+    editandoId = null;
+    document.getElementById('modal-titulo').textContent = 'Nuevo lugar';
+    document.getElementById('form-lugar').reset();
+    document.getElementById('modal').style.display = 'flex';
+  };
+
+  window.abrirEditar = (id) => {
+    const lugar = lugaresCache.find(l => l.id === id);
+    if (!lugar) return;
+    editandoId = id;
+    document.getElementById('modal-titulo').textContent = 'Editar lugar';
+    document.getElementById('f-nombre').value = lugar.nombre || '';
+    document.getElementById('f-categoria').value = lugar.categoria || '';
+    document.getElementById('f-provincia').value = lugar.provincia || '';
+    document.getElementById('f-comunidad').value = lugar.comunidad || '';
+    document.getElementById('f-lat').value = lugar.lat || '';
+    document.getElementById('f-lng').value = lugar.lng || '';
+    document.getElementById('f-descripcion').value = lugar.descripcion || '';
+    document.getElementById('f-web').value = lugar.web || '';
+    document.getElementById('f-telefono').value = lugar.telefono || '';
+    document.getElementById('modal').style.display = 'flex';
+  };
+
+  window.cerrarModal = () => {
+    document.getElementById('modal').style.display = 'none';
+    editandoId = null;
+  };
+
+  window.guardarLugar = async () => {
+    const nombre = document.getElementById('f-nombre').value.trim();
+    const categoria = document.getElementById('f-categoria').value;
+    const provincia = document.getElementById('f-provincia').value.trim();
+    const comunidad = document.getElementById('f-comunidad').value.trim();
+    const lat = parseFloat(document.getElementById('f-lat').value);
+    const lng = parseFloat(document.getElementById('f-lng').value);
+    const descripcion = document.getElementById('f-descripcion').value.trim();
+    const web = document.getElementById('f-web').value.trim();
+    const telefono = document.getElementById('f-telefono').value.trim();
+
+    if (!nombre || !categoria || !provincia || isNaN(lat) || isNaN(lng)) {
+      mostrarMsg('Rellena nombre, categoría, provincia y coordenadas.', false);
+      return;
+    }
+
+    const btn = document.getElementById('btn-guardar');
+    btn.disabled = true; btn.textContent = 'Guardando...';
+
+    const datos = { nombre, categoria, provincia, comunidad, lat, lng, descripcion, web, telefono, actualizado: serverTimestamp() };
+
+    try {
+      if (editandoId) {
+        await updateDoc(doc(db, 'lugares', editandoId), datos);
+        mostrarMsg('✅ Lugar actualizado.', true);
+      } else {
+        datos.creado = serverTimestamp();
+        await addDoc(collection(db, 'lugares'), datos);
+        mostrarMsg('✅ Lugar añadido.', true);
+      }
+      cerrarModal();
+      cargarLugares();
+    } catch(e) {
+      mostrarMsg('❌ Error al guardar.', false);
+    }
+    btn.disabled = false; btn.textContent = 'Guardar';
+  };
+
+  window.confirmarBorrar = (id, nombre) => {
+    if (!confirm(`¿Borrar "${nombre}"? Esta acción no se puede deshacer.`)) return;
+    deleteDoc(doc(db, 'lugares', id)).then(() => {
+      mostrarMsg('✅ Lugar eliminado.', true);
+      cargarLugares();
+    }).catch(() => mostrarMsg('❌ Error al borrar.', false));
+  };
+
+  // ── BÚSQUEDA Y FILTRO ────────────────────────────────────────
+  window.filtrar = () => {
+    const texto = document.getElementById('buscador').value.toLowerCase();
+    const cat = document.getElementById('filtro-cat').value;
+    const filtrados = lugaresCache.filter(l => {
+      const coincideTexto = !texto || l.nombre?.toLowerCase().includes(texto) || l.provincia?.toLowerCase().includes(texto);
+      const coincideCat = !cat || l.categoria === cat;
+      return coincideTexto && coincideCat;
+    });
+    renderTabla(filtrados);
+  };
+
+  // ── GEOCODIFICACIÓN AUTOMÁTICA ───────────────────────────────
+  window.geocodificar = async () => {
+    const nombre = document.getElementById('f-nombre').value.trim();
+    const provincia = document.getElementById('f-provincia').value.trim();
+    if (!nombre) { alert('Escribe el nombre del lugar primero.'); return; }
+    const query_geo = `${nombre} ${provincia} Spain`;
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query_geo)}&format=json&limit=1`);
+      const data = await res.json();
+      if (data.length > 0) {
+        document.getElementById('f-lat').value = parseFloat(data[0].lat).toFixed(6);
+        document.getElementById('f-lng').value = parseFloat(data[0].lon).toFixed(6);
+        mostrarMsg('📍 Coordenadas obtenidas automáticamente.', true);
+      } else {
+        mostrarMsg('No se encontraron coordenadas. Introdúcelas manualmente.', false);
+      }
+    } catch(e) {
+      mostrarMsg('Error obteniendo coordenadas.', false);
+    }
+  };
+
+  function mostrarMsg(msg, ok) {
+    const el = document.getElementById('msg-global');
+    el.textContent = msg;
+    el.style.background = ok ? '#e8f4ec' : '#fee';
+    el.style.color = ok ? '#2D6A4F' : '#c00';
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 3000);
+  }
+</script>
+
+<style>
+  :root {
+    --ocean: #0D3D42; --teal: #1A6B72; --coral: #D45F3C;
+    --sun: #F5C840; --sand: #F5EFE3; --white: #FDFAF5;
+    --text: #1A1A1A; --muted: #8A8A8A; --border: #E5E0D8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: #F0EBE3; min-height: 100vh; }
+
+  /* HEADER */
+  .header { background: var(--ocean); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; }
+  .header-logo { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 20px; color: white; }
+  .header-logo span { color: var(--sun); }
+  .header-badge { background: var(--coral); color: white; border-radius: 8px; padding: 3px 10px; font-size: 11px; font-family: 'Syne', sans-serif; font-weight: 700; }
+  .admin-info { font-size: 11px; color: rgba(255,255,255,0.5); }
+
+  /* MAIN */
+  .main { max-width: 1100px; margin: 0 auto; padding: 20px 16px; }
+
+  /* STATS */
+  .stats-row { display: flex; gap: 12px; margin-bottom: 20px; }
+  .stat-box { background: white; border-radius: 14px; padding: 14px 18px; flex: 1; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .stat-num { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 28px; color: var(--ocean); }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* TOOLBAR */
+  .toolbar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  .buscador { flex: 1; min-width: 180px; background: white; border: 1.5px solid var(--border); border-radius: 10px; padding: 9px 14px; font-size: 14px; color: var(--text); outline: none; font-family: 'DM Sans', sans-serif; }
+  .buscador:focus { border-color: var(--teal); }
+  .filtro-select { background: white; border: 1.5px solid var(--border); border-radius: 10px; padding: 9px 14px; font-size: 13px; color: var(--text); outline: none; font-family: 'DM Sans', sans-serif; }
+  .btn-nuevo { background: var(--coral); color: white; border: none; border-radius: 10px; padding: 10px 20px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap; }
+
+  /* TABLA */
+  .tabla-wrap { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+  table { width: 100%; border-collapse: collapse; }
+  thead { background: var(--ocean); }
+  thead th { padding: 12px 14px; text-align: left; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 11px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.5px; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #f9f6f1; }
+  td { padding: 12px 14px; font-size: 13px; color: var(--text); vertical-align: middle; }
+  .lugar-nombre { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: var(--ocean); }
+  .lugar-provincia { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .cat-badge { display: inline-block; border-radius: 8px; padding: 3px 9px; font-size: 11px; font-family: 'Syne', sans-serif; font-weight: 700; }
+  .td-coords { font-size: 11px; color: var(--muted); font-family: 'Space Grotesk', sans-serif; }
+  .td-desc { font-size: 12px; color: var(--muted); max-width: 200px; }
+  .btn-acciones { display: flex; gap: 6px; }
+  .btn-editar, .btn-borrar { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 14px; transition: background 0.15s; }
+  .btn-editar:hover { background: #e8f4ec; }
+  .btn-borrar:hover { background: #fee; }
+
+  /* MSG GLOBAL */
+  #msg-global { display: none; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-family: 'Syne', sans-serif; font-weight: 700; margin-bottom: 14px; }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 16px; }
+  .modal-box { background: white; border-radius: 20px; width: 100%; max-width: 540px; max-height: 90vh; overflow-y: auto; padding: 24px; }
+  .modal-titulo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: var(--ocean); margin-bottom: 20px; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-label { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-input { background: var(--sand); border: 1.5px solid transparent; border-radius: 10px; padding: 10px 12px; font-size: 14px; color: var(--text); font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s; }
+  .form-input:focus { border-color: var(--teal); background: white; }
+  .form-select { background: var(--sand); border: 1.5px solid transparent; border-radius: 10px; padding: 10px 12px; font-size: 14px; color: var(--text); font-family: 'DM Sans', sans-serif; outline: none; appearance: none; }
+  .form-textarea { background: var(--sand); border: 1.5px solid transparent; border-radius: 10px; padding: 10px 12px; font-size: 14px; color: var(--text); font-family: 'DM Sans', sans-serif; outline: none; resize: vertical; min-height: 80px; }
+  .form-textarea:focus { border-color: var(--teal); background: white; }
+
+  .coords-row { display: flex; gap: 8px; align-items: flex-end; }
+  .coords-row .form-group { flex: 1; }
+  .btn-geo { background: var(--teal); color: white; border: none; border-radius: 10px; padding: 10px 12px; font-size: 12px; font-family: 'Syne', sans-serif; font-weight: 700; cursor: pointer; white-space: nowrap; height: 42px; }
+
+  .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
+  .btn-cancelar { flex: 1; background: var(--sand); color: var(--text); border: none; border-radius: 12px; padding: 13px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .btn-guardar-modal { flex: 2; background: var(--coral); color: white; border: none; border-radius: 12px; padding: 13px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .btn-guardar-modal:disabled { opacity: 0.6; }
+
+  /* ACCESO DENEGADO */
+  #acceso-denegado { display: none; position: fixed; inset: 0; background: var(--ocean); align-items: center; justify-content: center; flex-direction: column; gap: 12px; }
+  .denegado-icon { font-size: 60px; }
+  .denegado-titulo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; color: white; }
+  .denegado-sub { font-size: 14px; color: rgba(255,255,255,0.5); }
+  .btn-volver-login { background: var(--coral); color: white; border: none; border-radius: 12px; padding: 12px 24px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; margin-top: 8px; }
+
+  @media (max-width: 600px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .td-coords, .td-desc { display: none; }
+    .stats-row { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ACCESO DENEGADO -->
+<div id="acceso-denegado">
+  <div class="denegado-icon">🔒</div>
+  <div class="denegado-titulo">Acceso restringido</div>
+  <div class="denegado-sub">Solo el administrador puede acceder a este panel.</div>
+  <button class="btn-volver-login" onclick="window.location.href='nudisol-login.html'">Volver al login</button>
+</div>
+
+<!-- PANEL -->
+<div id="panel" style="display:none;">
+
+  <div class="header">
+    <div>
+      <div class="header-logo">nudi<span>sol</span> <span class="header-badge">ADMIN</span></div>
+      <div class="admin-info" id="admin-email"></div>
+    </div>
+    <button onclick="window.location.href='nudisol-home.html'" style="background:rgba(255,255,255,0.1);color:white;border:none;border-radius:8px;padding:7px 14px;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;cursor:pointer;">← App</button>
+  </div>
+
+  <div class="main">
+    <div id="msg-global"></div>
+
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-num" id="total-lugares">—</div>
+        <div class="stat-label">Lugares registrados</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">50</div>
+        <div class="stat-label">Provincias de España</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">7</div>
+        <div class="stat-label">Categorías</div>
+      </div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+      <input class="buscador" id="buscador" type="text" placeholder="🔍 Buscar por nombre o provincia..." oninput="filtrar()">
+      <select class="filtro-select" id="filtro-cat" onchange="filtrar()">
+        <option value="">Todas las categorías</option>
+        <option>Playa / Cala</option>
+        <option>Paraje natural</option>
+        <option>Camping</option>
+        <option>Alojamiento / Resort</option>
+        <option>Piscina / Spa</option>
+        <option>Club / Asociación</option>
+        <option>Urbanización</option>
+      </select>
+      <button class="btn-nuevo" onclick="abrirNuevo()">+ Nuevo lugar</button>
+    </div>
+
+    <!-- TABLA -->
+    <div class="tabla-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre / Provincia</th>
+            <th>Categoría</th>
+            <th>Coordenadas</th>
+            <th>Descripción</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-body">
+          <tr><td colspan="5" style="text-align:center;padding:30px;color:#8A8A8A;">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVO/EDITAR -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)cerrarModal()">
+  <div class="modal-box">
+    <div class="modal-titulo" id="modal-titulo">Nuevo lugar</div>
+    <form id="form-lugar" onsubmit="return false;">
+      <div class="form-grid">
+
+        <div class="form-group full">
+          <label class="form-label">Nombre del lugar *</label>
+          <input class="form-input" id="f-nombre" type="text" placeholder="Ej: Playa de Vera">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Categoría *</label>
+          <select class="form-select" id="f-categoria">
+            <option value="">Selecciona...</option>
+            <option>Playa / Cala</option>
+            <option>Paraje natural</option>
+            <option>Camping</option>
+            <option>Alojamiento / Resort</option>
+            <option>Piscina / Spa</option>
+            <option>Club / Asociación</option>
+            <option>Urbanización</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Provincia *</label>
+          <select class="form-select" id="f-provincia">
+            <option value="">Selecciona...</option>
+            <option>Álava</option><option>Albacete</option><option>Alicante</option><option>Almería</option>
+            <option>Asturias</option><option>Ávila</option><option>Badajoz</option><option>Baleares</option>
+            <option>Barcelona</option><option>Burgos</option><option>Cáceres</option><option>Cádiz</option>
+            <option>Cantabria</option><option>Castellón</option><option>Ciudad Real</option><option>Córdoba</option>
+            <option>A Coruña</option><option>Cuenca</option><option>Girona</option><option>Granada</option>
+            <option>Guadalajara</option><option>Guipúzcoa</option><option>Huelva</option><option>Huesca</option>
+            <option>Jaén</option><option>León</option><option>Lleida</option><option>Lugo</option>
+            <option>Madrid</option><option>Málaga</option><option>Murcia</option><option>Navarra</option>
+            <option>Ourense</option><option>Palencia</option><option>Las Palmas</option><option>Pontevedra</option>
+            <option>La Rioja</option><option>Salamanca</option><option>Santa Cruz de Tenerife</option>
+            <option>Segovia</option><option>Sevilla</option><option>Soria</option><option>Tarragona</option>
+            <option>Teruel</option><option>Toledo</option><option>Valencia</option><option>Valladolid</option>
+            <option>Vizcaya</option><option>Zamora</option><option>Zaragoza</option>
+          </select>
+        </div>
+
+        <div class="form-group full">
+          <label class="form-label">Comunidad Autónoma</label>
+          <input class="form-input" id="f-comunidad" type="text" placeholder="Ej: Andalucía">
+        </div>
+
+        <div class="form-group full">
+          <label class="form-label">Coordenadas * <span style="font-weight:400;text-transform:none;font-size:10px;">(lat, lng — puedes obtenerlas automáticamente)</span></label>
+          <div class="coords-row">
+            <div class="form-group">
+              <input class="form-input" id="f-lat" type="number" step="0.000001" placeholder="Latitud (ej: 37.234)">
+            </div>
+            <div class="form-group">
+              <input class="form-input" id="f-lng" type="number" step="0.000001" placeholder="Longitud (ej: -1.834)">
+            </div>
+            <button class="btn-geo" type="button" onclick="geocodificar()">📍 Auto</button>
+          </div>
+        </div>
+
+        <div class="form-group full">
+          <label class="form-label">Descripción</label>
+          <textarea class="form-textarea" id="f-descripcion" placeholder="Describe el lugar, acceso, ambiente, características..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Web</label>
+          <input class="form-input" id="f-web" type="url" placeholder="https://...">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Teléfono</label>
+          <input class="form-input" id="f-telefono" type="tel" placeholder="+34 ...">
+        </div>
+
+      </div>
+
+      <div class="modal-btns">
+        <button class="btn-cancelar" type="button" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn-guardar-modal" id="btn-guardar" type="button" onclick="guardarLugar()">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+</body>
+</html>
