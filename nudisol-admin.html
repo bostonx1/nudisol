@@ -36,7 +36,7 @@
     }
     document.getElementById('acceso-denegado').style.display = 'none';
     document.getElementById('panel').style.display = 'block';
-    document.getElementById('admin-email').textContent = user.email;
+    document.getElementById('admin-email').textContent = 'pedro@nudisol.com';
     cargarLugares();
   });
 
@@ -67,7 +67,9 @@
           <div class="lugar-provincia">${l.provincia}</div>
         </td>
         <td><span class="cat-badge" style="background:${catColor(l.categoria)}20;color:${catColor(l.categoria)};">${catIcono(l.categoria)} ${l.categoria}</span></td>
-        <td class="td-coords">${l.lat?.toFixed(4) || '—'}, ${l.lng?.toFixed(4) || '—'}</td>
+        <td class="td-mapa">
+          ${l.lat && l.lng ? `<a href="https://www.google.com/maps?q=${l.lat},${l.lng}" target="_blank" class="btn-mapa">🗺️ Ver</a>` : '—'}
+        </td>
         <td class="td-desc">${(l.descripcion || '').substring(0, 60)}${(l.descripcion || '').length > 60 ? '...' : ''}</td>
         <td>
           <div class="btn-acciones">
@@ -268,7 +270,9 @@
   .lugar-nombre { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: var(--ocean); }
   .lugar-provincia { font-size: 11px; color: var(--muted); margin-top: 2px; }
   .cat-badge { display: inline-block; border-radius: 8px; padding: 3px 9px; font-size: 11px; font-family: 'Syne', sans-serif; font-weight: 700; }
-  .td-coords { font-size: 11px; color: var(--muted); font-family: 'Space Grotesk', sans-serif; }
+  .td-mapa { text-align: center; }
+  .btn-mapa { background: var(--teal); color: white; border-radius: 8px; padding: 5px 10px; font-size: 12px; font-family: 'Syne', sans-serif; font-weight: 700; text-decoration: none; display: inline-block; }
+  .btn-mapa:hover { background: var(--ocean); }
   .td-desc { font-size: 12px; color: var(--muted); max-width: 200px; }
   .btn-acciones { display: flex; gap: 6px; }
   .btn-editar, .btn-borrar { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 14px; transition: background 0.15s; }
@@ -311,7 +315,7 @@
 
   @media (max-width: 600px) {
     .form-grid { grid-template-columns: 1fr; }
-    .td-coords, .td-desc { display: none; }
+    .td-mapa, .td-desc { display: none; }
     .stats-row { flex-wrap: wrap; }
   }
 </style>
@@ -379,7 +383,7 @@
           <tr>
             <th>Nombre / Provincia</th>
             <th>Categoría</th>
-            <th>Coordenadas</th>
+            <th>Mapa</th>
             <th>Descripción</th>
             <th>Acciones</th>
           </tr>
