@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Importar Lote 6</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 20px; }
+  h2 { color: #F5C840; margin-bottom: 10px; }
+  #log { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+  .ok { color: #4ADE80; } .err { color: #F87171; } .info { color: #F5C840; }
+  button { background: #D45F3C; color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+  button:disabled { opacity: 0.5; }
+  #resumen { margin-top: 12px; font-size: 14px; color: #F5C840; }
+</style>
+</head>
+<body>
+<h2>🌿 Nudisol — Importador Lote 6 — Galicia, Canarias y Baleares</h2>
+<button id="btn" onclick="importar()">🚀 Importar lote 6</button>
+<div id="resumen"></div>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { log('❌ Inicia sesión como admin.', 'err'); document.getElementById('btn').disabled = true; }
+  else log(`✅ Conectado como ${user.email}`, 'ok');
+});
+
+const lugares = [
+  // ── GALICIA — A CORUÑA ───────────────────────────────────────
+  { nombre: 'Praia de Baleo', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.611, lng: -8.148, descripcion: 'Playa nudista semiurbana en Valdoviño, A Coruña. Arena dorada de la Costa de Galicia.' },
+  { nombre: 'Praia As Mirandas', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.416, lng: -8.228, descripcion: 'Playa nudista aislada en Ares, también conocida como La Barrosa. Arena oscura de la Costa de Galicia.' },
+  { nombre: 'Praia Bastiagueiro Pequeno', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.371, lng: -8.373, descripcion: 'Playa nudista aislada en Oleiros. Arena oscura, entorno natural protegido.' },
+  { nombre: 'Praia As Margaritas', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.368, lng: -8.369, descripcion: 'Playa nudista aislada en Oleiros, también conocida como Camposa. Arena blanca y dorada.' },
+  { nombre: 'Praia Atalaya', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.366, lng: -8.367, descripcion: 'Playa nudista aislada en Oleiros. Arena blanca y dorada de la Costa Gallega.' },
+  { nombre: 'Praia Canaval', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.364, lng: -8.365, descripcion: 'Playa nudista aislada en Oleiros. Arena blanca y dorada.' },
+  { nombre: 'Praia Armenteiro', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.358, lng: -8.261, descripcion: 'Playa nudista aislada en Sada. Arena oscura de la Ría de Betanzos.' },
+  { nombre: 'Praia Insua', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 43.407, lng: -8.177, descripcion: 'Playa nudista aislada en Pontedeume, también conocida como Carboeira. Arena dorada.' },
+  { nombre: 'Praia Xuño', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 42.751, lng: -8.979, descripcion: 'Playa nudista aislada en Porto do Son. Una de las primeras donde se practicó el nudismo en Galicia.' },
+  { nombre: 'Praia do Castro de Baroña', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 42.748, lng: -8.976, descripcion: 'Playa nudista casi virgen en Porto do Son, junto al famoso Castro de Baroña. Ensenada rodeada de dunas, pinos y eucaliptos.' },
+  { nombre: 'Praia de Corrubedo', categoria: 'Playa / Cala', provincia: 'A Coruña', comunidad: 'Galicia', lat: 42.556, lng: -9.025, descripcion: 'Playa nudista en el Parque Natural del Complejo Dunar de Corrubedo. Arena blanca y vegetación protegida. Entorno cada vez más frecuentado.' },
+
+  // ── GALICIA — PONTEVEDRA ──────────────────────────────────────
+  { nombre: 'Praia Fontaíña', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.224, lng: -8.737, descripcion: 'Playa nudista semiurbana en Vigo, también conocida como A Sirenita. 250m de longitud, muy concurrida en verano.' },
+  { nombre: 'Praia A Noiva', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.221, lng: -8.741, descripcion: 'Playa nudista aislada en Vigo. Pequeña, 70m de longitud, arena blanca y poco concurrida.' },
+  { nombre: 'Praia Muíños de Fortiñón', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.196, lng: -8.791, descripcion: 'Playa nudista semiurbana en Vigo, también conocida como Areal de Saiáns. Arena blanca fina.' },
+  { nombre: 'Praia Sartaxens', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.325, lng: -8.843, descripcion: 'Playa nudista aislada en Bueu. Pequeña y poco concurrida, vegetación mediterránea.' },
+  { nombre: 'Praia Aguieira', categoria: 'Playa / Cala', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.487, lng: -8.867, descripcion: 'Playa nudista aislada en O Grove. Arena dorada y aguas tranquilas de la Ría de Arousa.' },
+  { nombre: 'NATURIGAL — Asociación Naturista de Galicia', categoria: 'Club / Asociación', provincia: 'Pontevedra', comunidad: 'Galicia', lat: 42.431, lng: -8.645, descripcion: 'Asociación naturista de Galicia federada a la FEN. Organiza actividades y promueve el naturismo en toda Galicia.' },
+
+  // ── GALICIA — LUGO ───────────────────────────────────────────
+  { nombre: 'Praia Area Brava', categoria: 'Playa / Cala', provincia: 'Lugo', comunidad: 'Galicia', lat: 43.563, lng: -7.241, descripcion: 'Playa nudista aislada en Foz, también conocida como Os Alemáns. Arena blanca de la Costa de Galicia. Oleaje moderado.' },
+
+  // ── CANARIAS — GRAN CANARIA ───────────────────────────────────
+  { nombre: 'Playa del Inglés — zona nudista', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 27.757, lng: -15.574, descripcion: 'Playa nudista más famosa de Gran Canaria. 2,7 km de playa. Zona nudista marcada por los kioscos 4, 5 y 6. LGTBI+ friendly. Bandera Azul.' },
+  { nombre: 'Playa de Tiritaña', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 27.791, lng: -15.698, descripcion: 'Cala nudista aislada en Gran Canaria, al sur de la isla. Acceso a pie por camino costero.' },
+  { nombre: 'Playa de Güi Güi', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 27.901, lng: -15.779, descripcion: 'Playa nudista salvaje e inaccesible en Gran Canaria, solo en barca o trekking de 4h. Una de las más vírgenes de España.' },
+  { nombre: 'Caleta del Marrajo', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.147, lng: -14.279, descripcion: 'Cala nudista en Fuerteventura. Arena blanca volcánica y aguas cristalinas del Atlántico.' },
+  { nombre: 'Risco del Paso', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 28.051, lng: -14.314, descripcion: 'Playa nudista en Fuerteventura. Lagunas naturales de aguas turquesas y arena blanca. Entorno único.' },
+  { nombre: 'Charco del Palo', categoria: 'Urbanización', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 29.142, lng: -13.448, descripcion: 'Único pueblo naturista de España, en Lanzarote. Complejo residencial 100% nudista con piscinas, restaurantes y playa propia. Referente del naturismo europeo.' },
+  { nombre: 'Playa de Famara — zona nudista', categoria: 'Playa / Cala', provincia: 'Las Palmas', comunidad: 'Canarias', lat: 29.092, lng: -13.548, descripcion: 'Zona nudista en la Playa de Famara, Lanzarote. Extensa playa de arena dorada y oleaje para surf.' },
+
+  // ── CANARIAS — TENERIFE ───────────────────────────────────────
+  { nombre: 'Playa de Benijo', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.573, lng: -16.194, descripcion: 'Playa nudista salvaje en el norte de Tenerife. Arena y rocas volcánicas negras, oleaje fuerte. Entorno del Parque Rural de Anaga.' },
+  { nombre: 'Playa de Las Gaviotas', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.476, lng: -16.244, descripcion: 'Playa nudista en Santa Cruz de Tenerife. Una de las pocas playas nudistas cerca de la capital tinerfeña.' },
+
+  // ── CANARIAS — LA GOMERA ──────────────────────────────────────
+  { nombre: 'Playa de La Guancha', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.094, lng: -17.107, descripcion: 'Playa nudista en La Gomera, cerca de San Sebastián. 500m de bolos y arena negra. Entorno virgen y espectacular.' },
+  { nombre: 'Playa del Cabrito', categoria: 'Playa / Cala', provincia: 'Santa Cruz de Tenerife', comunidad: 'Canarias', lat: 28.051, lng: -17.208, descripcion: 'Playa nudista aislada en La Gomera. Solo accesible en barca. Aguas cristalinas y entorno completamente virgen.' },
+
+  // ── BALEARES — MALLORCA ───────────────────────────────────────
+  { nombre: 'Es Carbó', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.316, lng: 2.987, descripcion: 'Playa nudista aislada en Ses Salines, Mallorca, también conocida como Ses Roquetes. 1,5 km de longitud, acceso a pie.' },
+  { nombre: 'Cala en Gossalba', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.321, lng: 2.991, descripcion: 'Cala nudista aislada en Ses Salines, Mallorca. Aguas turquesas y entorno virgen protegido.' },
+  { nombre: 'Platja des Caragol', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.298, lng: 3.012, descripcion: 'Playa nudista en Santanyí, Mallorca. Solo acceso a pie o en barca. Arena blanca y aguas cristalinas, entorno virgen.' },
+  { nombre: 'Cala Varques', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.539, lng: 3.355, descripcion: 'Cala nudista aislada en Manacor, Mallorca. Acceso a pie por camino de tierra. Aguas turquesas y arena blanca.' },
+
+  // ── BALEARES — IBIZA ──────────────────────────────────────────
+  { nombre: 'Es Caná — zona nudista', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.968, lng: 1.584, descripcion: 'Zona nudista en Es Caná, Santa Eulalia, Ibiza. Playa semiurbana con zona naturista en el extremo norte.' },
+  { nombre: 'Cala Llenya', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 38.977, lng: 1.588, descripcion: 'Cala nudista en Santa Eulalia, Ibiza. Aguas tranquilas y arena fina.' },
+  { nombre: 'Cala Boix', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.010, lng: 1.601, descripcion: 'Playa nudista en Sant Joan de Labritja, Ibiza. Arena oscura y aguas cristalinas, entorno agreste.' },
+
+  // ── BALEARES — MENORCA ────────────────────────────────────────
+  { nombre: 'Cala del Pilar', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 40.065, lng: 3.832, descripcion: 'Cala nudista aislada en Ciutadella, Menorca. Solo acceso a pie, aguas cristalinas y arena blanca. Una de las más salvajes de Menorca.' },
+  { nombre: 'Cala Fustam', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.897, lng: 4.018, descripcion: 'Cala nudista aislada en Alaior, Menorca. Aguas turquesas y entorno natural protegido.' },
+  { nombre: 'Cala Escorxada', categoria: 'Playa / Cala', provincia: 'Baleares', comunidad: 'Baleares', lat: 39.891, lng: 4.019, descripcion: 'Cala nudista en Es Migjorn Gran, Menorca. Solo acceso a pie o en barca. Aguas cristalinas.' },
+];
+
+window.importar = async () => {
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  let ok = 0, skip = 0, err = 0;
+  log(`📦 Importando ${lugares.length} lugares...`, 'info');
+  for (const lugar of lugares) {
+    try {
+      const q = query(collection(db, 'lugares'), where('nombre', '==', lugar.nombre), where('provincia', '==', lugar.provincia));
+      const snap = await getDocs(q);
+      if (!snap.empty) { log(`⏭️ Ya existe: ${lugar.nombre}`, 'info'); skip++; continue; }
+      await addDoc(collection(db, 'lugares'), { ...lugar, creado: serverTimestamp(), actualizado: serverTimestamp() });
+      log(`✅ ${lugar.nombre}`, 'ok');
+      ok++;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) { log(`❌ Error: ${lugar.nombre} — ${e.message}`, 'err'); err++; }
+  }
+  log(`\n🎉 COMPLETADO: ${ok} añadidos, ${skip} ya existían, ${err} errores.`, 'info');
+  document.getElementById('resumen').textContent = `✅ ${ok} añadidos | ⏭️ ${skip} ya existían | ❌ ${err} errores`;
+  btn.textContent = '✅ Completado';
+};
+
+function log(msg, tipo = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = tipo; line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
