@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Editor de Coordenadas</title>
+<style>
+  body { font-family: monospace; background: #0D3D42; color: white; padding: 16px; margin:0; }
+  h2 { color: #F5C840; margin-bottom: 4px; font-size:16px; }
+  p { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 12px; }
+  .toolbar { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center; }
+  select, input { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color:white; border-radius:8px; padding:7px 10px; font-size:13px; font-family:monospace; }
+  select option { background:#0D3D42; }
+  button { background:#D45F3C; color:white; border:none; border-radius:8px; padding:8px 14px; font-size:12px; font-weight:bold; cursor:pointer; }
+  button.teal { background:#1A6B72; }
+  button.green { background:#2D6A4F; }
+  button.red { background:#7F1D1D; color:#FCA5A5; }
+  button.red:hover { background:#991B1B; }
+  button:disabled { opacity:0.4; }
+  #stats { color:#F5C840; font-size:12px; }
+  .lugar-card { background:rgba(0,0,0,0.25); border-radius:10px; padding:12px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.08); }
+  .lugar-nombre { font-weight:bold; color:white; font-size:13px; margin-bottom:2px; }
+  .lugar-info { color:#94A3B8; font-size:11px; margin-bottom:8px; }
+  .coords-row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  /* Campo único para pegar coords */
+  .coords-paste { 
+    width: 200px; font-size:12px; padding:5px 8px; 
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius:8px; background:rgba(255,255,255,0.1); color:white;
+    font-family:monospace;
+  }
+  .coords-paste.ok { border-color:#4ADE80; background:rgba(74,222,128,0.1); }
+  .coords-paste.err { border-color:#F87171; background:rgba(248,113,113,0.1); }
+  .coords-preview { color:#94A3B8; font-size:10px; margin-top:3px; }
+  a.maps-btn { background:#1A6B72; color:white; border-radius:6px; padding:5px 10px; font-size:11px; text-decoration:none; font-weight:bold; white-space:nowrap; }
+  .saved { color:#4ADE80; font-size:11px; margin-left:6px; }
+  #progreso { color:rgba(255,255,255,0.4); font-size:11px; margin-bottom:8px; }
+  .hint { color:#F5C840; font-size:10px; margin-bottom:12px; background:rgba(245,200,64,0.1); border-radius:6px; padding:8px 10px; }
+</style>
+</head>
+<body>
+<h2>✏️ Editor de Coordenadas — Nudisol</h2>
+<div class="hint">
+  💡 <strong>Cómo usarlo:</strong> Pulsa 🔍 Maps → busca la playa → clic derecho sobre el pin → clic en las coordenadas (se copian) → pega directamente en el campo. Formato automático: <code>40.9762, 0.8934</code>
+</div>
+
+<div class="toolbar">
+  <button onclick="cargar()">📦 Cargar</button>
+  <select id="filtro-prov" onchange="filtrar()"><option value="">Todas las provincias</option></select>
+  <input id="filtro-texto" placeholder="🔍 Buscar nombre..." oninput="filtrar()" style="width:160px;">
+  <span id="stats"></span>
+</div>
+<div id="progreso"></div>
+<div id="lista"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+let todos = [];
+let guardados = new Set();
+
+onAuthStateChanged(auth, u => {
+  if (!u) document.getElementById('stats').textContent = '❌ Inicia sesión';
+});
+
+window.cargar = async () => {
+  document.getElementById('stats').textContent = '⏳ Cargando...';
+  const snap = await getDocs(collection(db, 'lugares'));
+  todos = [];
+  snap.forEach(d => {
+    const data = d.data();
+    if (!data.coords_fuente) todos.push({ id: d.id, ...data });
+  });
+  todos.sort((a,b) => (a.provincia||'').localeCompare(b.provincia||'', 'es'));
+
+  const provs = [...new Set(todos.map(l => l.provincia).filter(Boolean))].sort((a,b) => a.localeCompare(b,'es'));
+  const sel = document.getElementById('filtro-prov');
+  sel.innerHTML = '<option value="">Todas las provincias</option>' +
+    provs.map(p => `<option value="${p}">${p} (${todos.filter(l=>l.provincia===p).length})</option>`).join('');
+
+  filtrar();
+};
+
+window.filtrar = () => {
+  const prov = document.getElementById('filtro-prov').value;
+  const txt = document.getElementById('filtro-texto').value.toLowerCase();
+  const filtrados = todos.filter(l =>
+    (!prov || l.provincia === prov) &&
+    (!txt || l.nombre.toLowerCase().includes(txt))
+  );
+  document.getElementById('stats').textContent = `📍 ${filtrados.length} sin corregir`;
+  renderizar(filtrados);
+};
+
+function parsearCoords(texto) {
+  // Acepta: "40.9762, 0.8934" o "40.9762,0.8934" o "40°58'N 0°53'E" etc.
+  const limpio = texto.replace(/[°'"]/g, ' ').trim();
+  // Patrón principal: dos números separados por coma o espacio
+  const match = limpio.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
+  if (!match) return null;
+  const lat = parseFloat(match[1]);
+  const lng = parseFloat(match[2]);
+  if (isNaN(lat) || isNaN(lng)) return null;
+  // Validar España
+  if (lat >= 27.5 && lat <= 44 && lng >= -18.5 && lng <= 5) return { lat, lng };
+  // Puede que estén invertidos
+  if (lng >= 27.5 && lng <= 44 && lat >= -18.5 && lat <= 5) return { lat: lng, lng: lat };
+  return null;
+}
+
+function renderizar(lista) {
+  const el = document.getElementById('lista');
+  if (!lista.length) {
+    el.innerHTML = '<div style="color:#94A3B8;padding:20px;text-align:center;">✅ ¡Todo corregido!</div>';
+    return;
+  }
+
+  el.innerHTML = lista.map(l => {
+    const query = encodeURIComponent(`${l.nombre} ${l.provincia || ''} playa nudista España`);
+    const yaGuardado = guardados.has(l.id);
+    return `
+    <div class="lugar-card" id="card-${l.id}">
+      <div class="lugar-nombre">${l.nombre}</div>
+      <div class="lugar-info">📍 ${l.provincia || '—'} · ${l.comunidad || ''} · ${l.categoria || ''}</div>
+      <div class="coords-row">
+        <input 
+          class="coords-paste" 
+          id="coords-${l.id}" 
+          placeholder="Pega aquí: 40.9762, 0.8934"
+          onpaste="setTimeout(()=>validarCoords('${l.id}'),50)"
+          oninput="validarCoords('${l.id}')"
+        >
+        <a class="maps-btn" href="https://www.google.com/maps/search/?api=1&query=${query}" target="_blank">🔍 Maps</a>
+        <button class="green" onclick="guardar('${l.id}', '${l.nombre.replace(/'/g,"\\'")}')">💾 Guardar</button>
+        <button class="red" onclick="eliminar('${l.id}', '${l.nombre.replace(/'/g,"\\'")}')">🗑️ Eliminar</button>
+        ${yaGuardado ? '<span class="saved">✅ Guardado</span>' : `<span class="saved" id="status-${l.id}"></span>`}
+      </div>
+      <div class="coords-preview" id="preview-${l.id}">Coords actuales: ${l.lat?.toFixed(4) || '—'}, ${l.lng?.toFixed(4) || '—'}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('progreso').textContent = `Guardados en esta sesión: ${guardados.size}`;
+}
+
+window.validarCoords = (id) => {
+  const input = document.getElementById(`coords-${id}`);
+  const preview = document.getElementById(`preview-${id}`);
+  const val = input.value;
+  if (!val) { input.className = 'coords-paste'; preview.textContent = ''; return; }
+
+  const coords = parsearCoords(val);
+  if (coords) {
+    input.className = 'coords-paste ok';
+    preview.textContent = `✅ Lat: ${coords.lat.toFixed(6)} · Lng: ${coords.lng.toFixed(6)}`;
+    preview.style.color = '#4ADE80';
+  } else {
+    input.className = 'coords-paste err';
+    preview.textContent = '❌ Formato no reconocido o fuera de España';
+    preview.style.color = '#F87171';
+  }
+};
+
+window.eliminar = async (id, nombre) => {
+  if (!confirm(`⚠️ ¿Eliminar "${nombre}"?\n\nEsta acción no se puede deshacer.`)) return;
+  try {
+    await deleteDoc(doc(db, 'lugares', id));
+    // Quitar de la lista y re-renderizar
+    todos = todos.filter(l => l.id !== id);
+    const card = document.getElementById(`card-${id}`);
+    if (card) {
+      card.style.transition = 'opacity 0.3s';
+      card.style.opacity = '0';
+      setTimeout(() => { card.remove(); }, 300);
+    }
+    document.getElementById('progreso').textContent = `Guardados: ${guardados.size} | Eliminados en esta sesión`;
+  } catch(e) {
+    alert('Error al eliminar: ' + e.message);
+  }
+};
+
+  const input = document.getElementById(`coords-${id}`);
+  const coords = parsearCoords(input.value);
+  if (!coords) { alert('❌ Coordenadas no válidas. Pega el formato de Google Maps: 40.9762, 0.8934'); return; }
+
+  try {
+    await updateDoc(doc(db, 'lugares', id), {
+      lat: coords.lat,
+      lng: coords.lng,
+      coords_fuente: 'manual',
+      coords_query: nombre
+    });
+    guardados.add(id);
+    const status = document.getElementById(`status-${id}`);
+    if (status) status.textContent = '✅ Guardado';
+    input.className = 'coords-paste ok';
+    document.getElementById('progreso').textContent = `Guardados en esta sesión: ${guardados.size}`;
+    // Quitar de la lista de todos
+    todos = todos.filter(l => l.id !== id);
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
+};
+</script>
+</body>
+</html>
