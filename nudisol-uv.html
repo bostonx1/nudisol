@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Índice UV</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#0D3D42">
+
+<style>
+  :root {
+    --ocean: #0D3D42; --teal: #1A6B72; --coral: #D45F3C;
+    --sun: #F5C840; --sand: #F5EFE3; --white: #FDFAF5;
+    --text: #1A1A1A; --muted: #8A8A8A;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--sand); min-height: 100vh; padding-bottom: 40px; }
+
+  /* HEADER */
+  .header {
+    background: var(--ocean);
+    padding: 20px 18px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(245,200,64,0.2) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .header-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .back-btn { background: none; border: none; color: rgba(255,255,255,0.6); font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; }
+  .logo-small { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 18px; color: white; }
+  .logo-small span { color: var(--sun); }
+
+  .uv-hero { text-align: center; }
+  .uv-sol-grande { font-size: 60px; margin-bottom: 8px; animation: pulse 2s ease infinite; }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+  .uv-numero-grande { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 64px; line-height: 1; }
+  .uv-nivel-grande { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 18px; margin-top: 4px; }
+  .uv-ciudad { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 6px; }
+
+  /* BARRA PROGRESO */
+  .uv-barra-container { margin: 16px 0 4px; position: relative; }
+  .uv-barra-track { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.1); overflow: visible; position: relative; }
+  .uv-barra-gradient {
+    height: 8px; border-radius: 4px;
+    background: linear-gradient(to right, #4A7C59, #E8A020, #F5C840, #D45F3C, #C00);
+    width: 100%;
+  }
+  .uv-marker {
+    position: absolute;
+    top: -4px;
+    width: 16px; height: 16px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    transform: translateX(-50%);
+    transition: left 0.6s ease;
+  }
+  .uv-escala { display: flex; justify-content: space-between; margin-top: 6px; font-size: 9px; color: rgba(255,255,255,0.3); font-family: 'Space Grotesk', sans-serif; }
+
+  /* WAVE */
+  .wave { display: block; width: 100%; margin-bottom: -2px; }
+
+  /* MAIN */
+  .main { padding: 0 14px; }
+
+  /* CARD */
+  .card { background: white; border-radius: 20px; padding: 18px; margin-bottom: 12px; box-shadow: 0 2px 16px rgba(0,0,0,0.07); }
+  .card-titulo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 14px; color: var(--ocean); margin-bottom: 14px; }
+
+  /* GRÁFICA UV */
+  .grafica-container { position: relative; width: 100%; height: 160px; margin-bottom: 8px; }
+  canvas#grafica-uv { width: 100%; height: 160px; }
+  .grafica-horas { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); font-family: 'Space Grotesk', sans-serif; padding: 0 2px; }
+
+  /* RECOMENDACIONES */
+  .rec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .rec-item { background: var(--sand); border-radius: 14px; padding: 14px; }
+  .rec-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Space Grotesk', sans-serif; font-weight: 700; margin-bottom: 4px; }
+  .rec-valor { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: var(--ocean); }
+
+  /* CONSEJO */
+  .consejo-card { background: var(--ocean); border-radius: 20px; padding: 18px; margin-bottom: 12px; }
+  .consejo-titulo { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: var(--sun); margin-bottom: 8px; }
+  .consejo-texto { font-size: 13px; color: rgba(255,255,255,0.65); line-height: 1.6; }
+
+  /* FRANJAS HORARIAS */
+  .franja-lista { display: flex; flex-direction: column; gap: 6px; }
+  .franja-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--sand); }
+  .franja-hora { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 12px; color: var(--muted); width: 80px; flex-shrink: 0; }
+  .franja-barra-wrap { flex: 1; height: 8px; background: rgba(0,0,0,0.06); border-radius: 4px; overflow: hidden; }
+  .franja-barra { height: 100%; border-radius: 4px; transition: width 0.6s; }
+  .franja-num { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; width: 28px; text-align: right; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-nav">
+    <button id="uv-back-btn" class="back-btn" id="uv-back-btn" onclick="window.location.href='nudisol-home.html'">← Inicio</button>
+    <div class="logo-small">nudi<span>sol</span></div>
+  </div>
+
+  <div class="uv-hero">
+    <div class="uv-sol-grande" id="uv-sol">⏳</div>
+    <div class="uv-numero-grande" id="uv-numero" style="color:white;">—</div>
+    <div class="uv-nivel-grande" id="uv-nivel" style="color:rgba(255,255,255,0.6);">Calculando...</div>
+    <div class="uv-ciudad" id="uv-ciudad">📍 Buscando ubicación</div>
+
+    <div class="uv-barra-container">
+      <div class="uv-barra-track">
+        <div class="uv-barra-gradient"></div>
+        <div class="uv-marker" id="uv-marker" style="left:0%"></div>
+      </div>
+      <div class="uv-escala">
+        <span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span><span>11+</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<svg class="wave" viewBox="0 0 390 28" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+  <path d="M0 28 L0 16 Q30 4 60 14 Q90 24 120 12 Q150 0 180 12 Q210 24 240 12 Q270 0 300 12 Q330 24 360 12 Q375 6 390 10 L390 28 Z" fill="#F5EFE3"/>
+</svg>
+
+<div class="main">
+
+  <!-- GRÁFICA -->
+  <div class="card" style="margin-top:12px;">
+    <div class="card-titulo" id="uv-titulo-grafica">☀️ Evolución UV hoy</div>
+    <div class="grafica-container">
+      <canvas id="grafica-uv"></canvas>
+    </div>
+    <div class="grafica-horas" id="grafica-horas"></div>
+  </div>
+
+  <!-- RECOMENDACIONES -->
+  <div class="card">
+    <div class="card-titulo" id="uv-titulo-vitd">🌞 Vitamina D ahora</div>
+    <div class="rec-grid">
+      <div class="rec-item">
+        <div class="rec-label" id="uv-lbl-exposicion">Exposición óptima</div>
+        <div class="rec-valor" id="rec-tiempo">— min</div>
+      </div>
+      <div class="rec-item">
+        <div class="rec-label" id="uv-lbl-proteccion">Protección</div>
+        <div class="rec-valor" id="rec-proteccion">—</div>
+      </div>
+      <div class="rec-item">
+        <div class="rec-label" id="uv-lbl-mejor">Mejor hora hoy</div>
+        <div class="rec-valor" id="rec-mejor">—</div>
+      </div>
+      <div class="rec-item">
+        <div class="rec-label" id="uv-lbl-max">UV máximo hoy</div>
+        <div class="rec-valor" id="rec-max">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONSEJO -->
+  <div class="consejo-card">
+    <div class="consejo-titulo" id="consejo-titulo">⏳ Calculando...</div>
+    <div class="consejo-texto" id="consejo-texto">Obteniendo datos de radiación solar para tu ubicación...</div>
+  </div>
+
+  <!-- FRANJAS HORARIAS -->
+  <div class="card">
+    <div class="card-titulo" id="uv-titulo-horas">🕐 UV por horas</div>
+    <div class="franja-lista" id="franja-lista"></div>
+  </div>
+
+</div>
+
+<script>
+const uvTexts = {
+  es: [
+    { nivel:'Sin UVB', tiempo:'Sin efecto', proteccion:'No necesaria', consejo:'El sol no produce radiación UVB suficiente ahora. Espera a las horas centrales del día para sintetizar vitamina D.' },
+    { nivel:'Bajo', tiempo:'+60 min', proteccion:'Opcional', consejo:'Radiación UVB baja. Necesitarás más de una hora de exposición para obtener vitamina D. Ideal para pieles sensibles.' },
+    { nivel:'Moderado', tiempo:'30-40 min', proteccion:'SPF 15+', consejo:'Buena radiación. Entre 30 y 40 minutos de exposición son suficientes. Protege la cara si te quedas más tiempo.' },
+    { nivel:'¡Momento ideal!', tiempo:'15 min', proteccion:'SPF 30+', consejo:'¡Momento perfecto! Con solo 15 minutos de exposición directa sintetizas toda la vitamina D que necesitas para el día. Aprovecha el sol.' },
+    { nivel:'Muy alto', tiempo:'10 min máx', proteccion:'SPF 50+', consejo:'Radiación muy alta. En 10 minutos ya tienes suficiente vitamina D. Protege cara, hombros y pecho si continúas expuesto.' },
+    { nivel:'Extremo', tiempo:'5 min máx', proteccion:'SPF 50+ total', consejo:'Índice UV extremo. Sintetizas vitamina D en 5 minutos pero el riesgo de quemadura es muy alto. Busca la sombra.' },
+  ],
+  en: [
+    { nivel:'No UVB', tiempo:'No effect', proteccion:'Not needed', consejo:'The sun is not producing enough UVB radiation right now. Wait until midday hours to synthesize vitamin D.' },
+    { nivel:'Low', tiempo:'+60 min', proteccion:'Optional', consejo:'Low UVB radiation. You will need more than an hour of exposure to get vitamin D. Ideal for sensitive skin.' },
+    { nivel:'Moderate', tiempo:'30-40 min', proteccion:'SPF 15+', consejo:'Good radiation. 30 to 40 minutes of exposure is enough. Protect your face if you stay out longer.' },
+    { nivel:'Ideal moment!', tiempo:'15 min', proteccion:'SPF 30+', consejo:'Perfect moment! Just 15 minutes of direct exposure gives you all the vitamin D you need for the day. Enjoy the sun.' },
+    { nivel:'Very high', tiempo:'10 min max', proteccion:'SPF 50+', consejo:'Very high radiation. 10 minutes is enough for vitamin D. Protect your face, shoulders and chest if you stay out longer.' },
+    { nivel:'Extreme', tiempo:'5 min max', proteccion:'SPF 50+ total', consejo:'Extreme UV index. You get vitamin D in 5 minutes but the risk of sunburn is very high. Seek shade.' },
+  ]
+};
+
+const uvSols = ['🌙','🌥️','⛅','☀️','🌞','🔥'];
+const uvColors = ['#666','#4A7C59','#E8A020','#F5C840','#D45F3C','#C00'];
+const uvPcts = [2, 18, 42, 65, 85, 100];
+
+const uvData = {
+  getInfo(uv) {
+    const lang = localStorage.getItem('nudisol_lang') || 'es';
+    const texts = uvTexts[lang] || uvTexts.es;
+    let i = uv < 1 ? 0 : uv < 3 ? 1 : uv < 6 ? 2 : uv < 8 ? 3 : uv < 11 ? 4 : 5;
+    return { sol: uvSols[i], nivel: texts[i].nivel, color: uvColors[i], pct: uvPcts[i],
+             tiempo: texts[i].tiempo, proteccion: texts[i].proteccion, consejo: texts[i].consejo };
+  }
+};
+
+async function cargarDatos() {
+  if (!navigator.geolocation) return;
+
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const { latitude: lat, longitude: lng } = pos.coords;
+
+    // Nombre ciudad
+    try {
+      const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+      const geoData = await geo.json();
+      const ciudad = geoData.address?.city || geoData.address?.town || geoData.address?.village || 'Tu ubicación';
+      document.getElementById('uv-ciudad').textContent = `📍 ${ciudad}`;
+    } catch(e) {}
+
+    // UV actual + por horas
+    try {
+      const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=uv_index&hourly=uv_index&timezone=auto&forecast_days=1`);
+      const data = await res.json();
+
+      const uvActual = Math.round((data.current?.uv_index ?? 0) * 10) / 10;
+      const uvHorario = data.hourly?.uv_index || [];
+      const horas = data.hourly?.time || [];
+
+      // Renderizar hero
+      const info = uvData.getInfo(uvActual);
+      document.getElementById('uv-sol').textContent = info.sol;
+      document.getElementById('uv-numero').textContent = uvActual;
+      document.getElementById('uv-numero').style.color = info.color;
+      document.getElementById('uv-nivel').textContent = info.nivel;
+      document.getElementById('uv-nivel').style.color = info.color;
+      document.getElementById('uv-marker').style.left = info.pct + '%';
+
+      // Recomendaciones
+      document.getElementById('rec-tiempo').textContent = info.tiempo;
+      document.getElementById('rec-proteccion').textContent = info.proteccion;
+      const __langUV = localStorage.getItem('nudisol_lang')||'es';
+      document.getElementById('consejo-titulo').textContent = info.nivel + ' · ' + info.tiempo + (__langUV==='en' ? ' recommended' : ' recomendados');
+      document.getElementById('consejo-texto').textContent = info.consejo;
+
+      // UV máximo del día y mejor hora
+      const horaActual = new Date().getHours();
+      const uvHoy = uvHorario.slice(0, 24);
+      const uvMax = Math.max(...uvHoy);
+      const idxMax = uvHoy.indexOf(uvMax);
+      document.getElementById('rec-max').textContent = Math.round(uvMax * 10) / 10;
+
+      // Mejor hora (cuando el UV es entre 6 y 8 — ideal)
+      let mejorHora = null;
+      for (let i = 0; i < uvHoy.length; i++) {
+        if (uvHoy[i] >= 6 && uvHoy[i] < 8) { mejorHora = i; break; }
+      }
+      if (mejorHora === null && idxMax > 0) mejorHora = idxMax - 1;
+      document.getElementById('rec-mejor').textContent = mejorHora !== null ? `${mejorHora}:00 — ${mejorHora + 1}:00` : '—';
+
+      // Gráfica canvas
+      dibujarGrafica(uvHoy, horaActual);
+
+      // Franjas horarias (de 7 a 20)
+      const franjasEl = document.getElementById('franja-lista');
+      franjasEl.innerHTML = '';
+      for (let h = 7; h <= 20; h++) {
+        const uv = uvHoy[h] ?? 0;
+        const uvR = Math.round(uv * 10) / 10;
+        const inf = uvData.getInfo(uv);
+        const pctBarra = Math.min((uv / 12) * 100, 100);
+        const esAhora = h === horaActual;
+        const div = document.createElement('div');
+        div.className = 'franja-item';
+        if (esAhora) div.style.background = 'rgba(13,61,66,0.08)';
+        div.innerHTML = `
+          <div class="franja-hora">${h}:00${esAhora ? ' ← ahora' : ''}</div>
+          <div class="franja-barra-wrap">
+            <div class="franja-barra" style="width:${pctBarra}%;background:${inf.color};"></div>
+          </div>
+          <div class="franja-num" style="color:${inf.color};">${uvR}</div>
+        `;
+        franjasEl.appendChild(div);
+      }
+
+    } catch(e) {
+      console.error('Error UV:', e);
+    }
+
+  }, () => {
+    document.getElementById('uv-ciudad').textContent = '📍 Activa la ubicación';
+    document.getElementById('uv-nivel').textContent = 'Sin ubicación';
+  });
+}
+
+function dibujarGrafica(uvHorario, horaActual) {
+  const canvas = document.getElementById('grafica-uv');
+  const container = canvas.parentElement;
+  canvas.width = container.offsetWidth * window.devicePixelRatio;
+  canvas.height = 160 * window.devicePixelRatio;
+  canvas.style.width = container.offsetWidth + 'px';
+  canvas.style.height = '160px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  const W = container.offsetWidth;
+  const H = 160;
+  const pad = { top: 16, right: 10, bottom: 24, left: 28 };
+  const gW = W - pad.left - pad.right;
+  const gH = H - pad.top - pad.bottom;
+
+  // Solo horas 6-21
+  const hInicio = 6, hFin = 21;
+  const datos = uvHorario.slice(hInicio, hFin + 1);
+  const maxUV = Math.max(...datos, 1);
+
+  const xPos = (i) => pad.left + (i / (datos.length - 1)) * gW;
+  const yPos = (v) => pad.top + gH - (v / (maxUV * 1.1)) * gH;
+
+  // Gradiente bajo la curva
+  const grad = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
+  grad.addColorStop(0, 'rgba(245,200,64,0.4)');
+  grad.addColorStop(1, 'rgba(245,200,64,0.0)');
+
+  ctx.beginPath();
+  ctx.moveTo(xPos(0), yPos(datos[0]));
+  for (let i = 1; i < datos.length; i++) {
+    const x0 = xPos(i - 1), y0 = yPos(datos[i - 1]);
+    const x1 = xPos(i), y1 = yPos(datos[i]);
+    const cx = (x0 + x1) / 2;
+    ctx.bezierCurveTo(cx, y0, cx, y1, x1, y1);
+  }
+  ctx.lineTo(xPos(datos.length - 1), H - pad.bottom);
+  ctx.lineTo(xPos(0), H - pad.bottom);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Línea curva
+  ctx.beginPath();
+  ctx.moveTo(xPos(0), yPos(datos[0]));
+  for (let i = 1; i < datos.length; i++) {
+    const x0 = xPos(i - 1), y0 = yPos(datos[i - 1]);
+    const x1 = xPos(i), y1 = yPos(datos[i]);
+    const cx = (x0 + x1) / 2;
+    ctx.bezierCurveTo(cx, y0, cx, y1, x1, y1);
+  }
+  ctx.strokeStyle = '#F5C840';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Punto "ahora"
+  const ahoraIdx = horaActual - hInicio;
+  if (ahoraIdx >= 0 && ahoraIdx < datos.length) {
+    const ax = xPos(ahoraIdx), ay = yPos(datos[ahoraIdx]);
+    ctx.beginPath();
+    ctx.arc(ax, ay, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#D45F3C';
+    ctx.fill();
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // Línea vertical "ahora"
+  if (ahoraIdx >= 0 && ahoraIdx < datos.length) {
+    const ax = xPos(ahoraIdx);
+    ctx.beginPath();
+    ctx.moveTo(ax, pad.top);
+    ctx.lineTo(ax, H - pad.bottom);
+    ctx.strokeStyle = 'rgba(212,95,60,0.3)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Etiquetas Y
+  ctx.fillStyle = '#8A8A8A';
+  ctx.font = `${10 * window.devicePixelRatio / window.devicePixelRatio}px Space Grotesk`;
+  ctx.textAlign = 'right';
+  [0, Math.round(maxUV / 2), Math.round(maxUV)].forEach(v => {
+    const y = yPos(v);
+    ctx.fillText(v, pad.left - 4, y + 3);
+  });
+
+  // Horas X
+  const horasEtiquetas = document.getElementById('grafica-horas');
+  horasEtiquetas.innerHTML = '';
+  [6, 9, 12, 15, 18, 21].forEach(h => {
+    const span = document.createElement('span');
+    span.textContent = `${h}h`;
+    horasEtiquetas.appendChild(span);
+  });
+}
+
+window.addEventListener('load', cargarDatos);
+</script>
+
+<script>
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
+</script>
+<style>
+  .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid rgba(0,0,0,0.07); display: flex; justify-content: space-around; padding: 8px 0 max(12px, env(safe-area-inset-bottom)); z-index: 100; }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; background: none; border: none; cursor: pointer; padding: 4px 8px; opacity: 0.45; }
+  .nav-item.active { opacity: 1; }
+  .nav-icon { font-size: 20px; }
+  .nav-label { font-size: 9px; font-family: 'Space Grotesk', sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: #0D3D42; }
+  body { padding-bottom: 70px; }
+</style>
+
+<nav class="bottom-nav">
+  <button class="nav-item" onclick="window.location.href='nudisol-home.html'">
+    <span class="nav-icon">🏠</span>
+    <span class="nav-label" id="uv-nav-inicio">Inicio</span>
+  </button>
+  <button class="nav-item" onclick="window.location.href='nudisol-lugares.html'">
+    <span class="nav-icon">📍</span>
+    <span class="nav-label" id="uv-nav-lugares">Lugares</span>
+  </button>
+  <button class="nav-item" onclick="window.location.href='nudisol-comunidad.html'">
+    <span class="nav-icon">💬</span>
+    <span class="nav-label" id="uv-nav-comunidad">Comunidad</span>
+  </button>
+  <button class="nav-item" onclick="window.location.href='nudisol-alojamiento.html'">
+    <span class="nav-icon">🏨</span>
+    <span class="nav-label" id="uv-nav-alojamiento">Alojamiento</span>
+  </button>
+  <button class="nav-item" onclick="window.location.href='nudisol-perfil.html'">
+    <span class="nav-icon">👤</span>
+    <span class="nav-label" id="uv-nav-perfil">Perfil</span>
+  </button>
+</nav>
+<script>
+// i18n UV — lee el idioma guardado y traduce los textos estáticos
+const uvTx = {
+  es: {
+    navInicio: 'Inicio', navLugares: 'Lugares', navComunidad: 'Comunidad',
+    navAlojamiento: 'Alojamiento', navPerfil: 'Perfil',
+    tituloGrafica: '☀️ Evolución UV hoy', tituloVitD: '🌞 Vitamina D ahora',
+    lblExposicion: 'Exposición óptima', lblProteccion: 'Protección',
+    lblMejor: 'Mejor hora hoy', lblMax: 'UV máximo hoy',
+    tituloHoras: '🕐 UV por horas'
+  },
+  en: {
+    navInicio: 'Home', navLugares: 'Places', navComunidad: 'Community',
+    navAlojamiento: 'Accommodation', navPerfil: 'Profile',
+    tituloGrafica: '☀️ UV forecast today', tituloVitD: '🌞 Vitamin D now',
+    lblExposicion: 'Optimal exposure', lblProteccion: 'Protection',
+    lblMejor: 'Best time today', lblMax: 'Max UV today',
+    tituloHoras: '🕐 UV by hour'
+  }
+};
+
+function setLangUV(l) {
+  localStorage.setItem('nudisol_lang', l);
+  const bES = document.getElementById('uv-btn-es');
+  const bEN = document.getElementById('uv-btn-en');
+  if (bES) bES.style.opacity = l === 'es' ? '1' : '0.4';
+  if (bEN) bEN.style.opacity = l === 'en' ? '1' : '0.4';
+  const back = document.getElementById('uv-back-btn');
+  if (back) back.textContent = l === 'en' ? '← Home' : '← Inicio';
+  aplicarIdiomaUV();
+}
+
+function aplicarIdiomaUV() {
+  const lang = localStorage.getItem('nudisol_lang') || 'es';
+  const t = uvTx[lang] || uvTx.es;
+  const s = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  s('uv-nav-inicio', t.navInicio);
+  s('uv-nav-lugares', t.navLugares);
+  s('uv-nav-comunidad', t.navComunidad);
+  s('uv-nav-alojamiento', t.navAlojamiento);
+  s('uv-nav-perfil', t.navPerfil);
+  s('uv-titulo-grafica', t.tituloGrafica);
+  s('uv-titulo-vitd', t.tituloVitD);
+  s('uv-lbl-exposicion', t.lblExposicion);
+  s('uv-lbl-proteccion', t.lblProteccion);
+  s('uv-lbl-mejor', t.lblMejor);
+  s('uv-lbl-max', t.lblMax);
+  s('uv-titulo-horas', t.tituloHoras);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setLangUV(localStorage.getItem('nudisol_lang') || 'es');
+});
+
+window.aplicarIdiomaUV = aplicarIdiomaUV; // expose global
+</script>
+<script>
+function nudisol_applyPageLang(l){if(typeof setLangUV==="function")setLangUV(l);}
+</script>
+
+<script>
+</script>
+<script>
+(function(){
+  var NAV={es:{inicio:'Inicio',lugares:'Lugares',comunidad:'Comunidad',alojamiento:'Alojamiento',perfil:'Perfil'},
+            en:{inicio:'Home',lugares:'Places',comunidad:'Community',alojamiento:'Stay',perfil:'Profile'}};
+  function applyNav(l){
+    var n=NAV[l]||NAV.es;
+    var s=function(id,v){var e=document.getElementById(id);if(e)e.textContent=v;};
+    s('nlang-inicio',n.inicio);s('nlang-lugares',n.lugares);
+    s('nlang-comunidad',n.comunidad);s('nlang-alojamiento',n.alojamiento);s('nlang-perfil',n.perfil);
+    var es=document.getElementById('lang-es'),en=document.getElementById('lang-en');
+    if(es)es.style.opacity=l==='es'?'1':'0.4';
+    if(en)en.style.opacity=l==='en'?'1':'0.4';
+  }
+  window.nudisol_setLang=function(l){
+    localStorage.setItem('nudisol_lang',l);
+    applyNav(l);
+    if(typeof nudisol_applyPageLang==='function')nudisol_applyPageLang(l);
+  };
+  document.addEventListener('DOMContentLoaded',function(){
+    var l=localStorage.getItem('nudisol_lang')||'es';
+    applyNav(l);
+    if(typeof nudisol_applyPageLang==='function')nudisol_applyPageLang(l);
+  });
+})();
+</script>
+</body>
+</html>
