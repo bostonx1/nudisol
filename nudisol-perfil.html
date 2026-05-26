@@ -33,7 +33,7 @@
 
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
-      window.location.href = 'nudisol-login.html';
+      window.location.href = 'index.html';
       return;
     }
     if (user.isAnonymous) {
@@ -74,11 +74,11 @@
     `;
     document.getElementById('btn-crear-cuenta').addEventListener('click', async () => {
       try { await signOut(auth); } catch(e) {}
-      window.location.href = 'nudisol-login.html';
+      window.location.href = 'index.html';
     });
     document.getElementById('btn-ya-tengo').addEventListener('click', async () => {
       try { await signOut(auth); } catch(e) {}
-      window.location.href = 'nudisol-login.html';
+      window.location.href = 'index.html';
     });
   }
 
@@ -271,7 +271,7 @@
   window.cerrarSesion = async () => {
     try {
       await signOut(auth);
-      window.location.href = 'nudisol-login.html';
+      window.location.href = 'index.html';
     } catch (e) {
       console.error('Error cerrando sesión:', e);
     }
