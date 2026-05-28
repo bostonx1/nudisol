@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Nudisol</title>
+<script>
+  // Solución estándar para PWA en GitHub Pages:
+  // Guarda la ruta en sessionStorage y redirige a index.html,
+  // que la recupera y navega a la página correcta.
+  var path = window.location.pathname + window.location.search + window.location.hash;
+  sessionStorage.setItem('nudisol_redirect', path);
+  window.location.replace('/');
+</script>
+</head>
+<body></body>
+</html>
