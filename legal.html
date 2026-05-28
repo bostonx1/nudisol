@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Textos Legales · Nudisol</title>
+<meta name="description" content="Aviso Legal, Política de Privacidad y Política de Cookies de Nudisol.app">
+<link rel="icon" href="/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --teal:    #1F4D52;
+    --teal2:   #2A6168;
+    --yellow:  #F2C849;
+    --coral:   #D26B4E;
+    --cream:   #F8F1E4;
+    --cream2:  #EEE4D1;
+    --dark:    #1A2E30;
+    --muted:   #5C7275;
+    --white:   #ffffff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--cream);
+    color: var(--dark);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    line-height: 1.75;
+  }
+
+  /* ── HEADER ─────────────────────────────────────────────── */
+  header {
+    background: var(--teal);
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+  }
+  .header-inner {
+    max-width: 860px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+  }
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--white);
+    text-decoration: none;
+    letter-spacing: 0.5px;
+  }
+  .logo span { color: var(--yellow); }
+  .back-link {
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.2s;
+  }
+  .back-link:hover { color: var(--yellow); }
+
+  /* ── HERO ────────────────────────────────────────────────── */
+  .hero {
+    background: var(--teal);
+    padding: 48px 24px 40px;
+    text-align: center;
+  }
+  .hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(28px, 5vw, 42px);
+    color: var(--white);
+    margin-bottom: 10px;
+  }
+  .hero p {
+    color: rgba(255,255,255,0.55);
+    font-size: 14px;
+    font-style: italic;
+  }
+
+  /* ── NAV PESTAÑAS ────────────────────────────────────────── */
+  .tab-nav {
+    background: var(--teal2);
+    position: sticky;
+    top: 56px;
+    z-index: 90;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tab-nav-inner {
+    max-width: 860px;
+    margin: 0 auto;
+    display: flex;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 14px 16px;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.55);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+    text-align: center;
+  }
+  .tab-btn.active {
+    color: var(--yellow);
+    border-bottom-color: var(--yellow);
+  }
+  .tab-btn:hover:not(.active) { color: var(--white); }
+
+  /* ── CONTENIDO ───────────────────────────────────────────── */
+  .content {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── TIPOGRAFÍA LEGAL ────────────────────────────────────── */
+  .section-badge {
+    display: inline-block;
+    background: var(--teal);
+    color: var(--yellow);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 2px;
+    margin-bottom: 12px;
+  }
+  h2.panel-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(24px, 4vw, 34px);
+    color: var(--teal);
+    margin-bottom: 6px;
+    line-height: 1.2;
+  }
+  .version-note {
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 2px solid var(--cream2);
+  }
+
+  h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    color: var(--teal);
+    margin: 32px 0 10px;
+  }
+  h3::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: var(--yellow);
+    border-radius: 50%;
+    margin-right: 10px;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+  }
+
+  p { margin-bottom: 14px; color: var(--dark); }
+
+  ul {
+    list-style: none;
+    margin: 8px 0 16px 0;
+    padding: 0;
+  }
+  ul li {
+    padding: 6px 0 6px 22px;
+    position: relative;
+    color: var(--dark);
+    border-bottom: 1px solid var(--cream2);
+  }
+  ul li:last-child { border-bottom: none; }
+  ul li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--coral);
+    font-size: 13px;
+    top: 8px;
+  }
+
+  .info-box {
+    background: var(--teal);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 24px 0;
+  }
+  .info-box p {
+    color: rgba(255,255,255,0.85);
+    margin: 0;
+    font-size: 14px;
+  }
+  .info-box strong { color: var(--yellow); }
+
+  .rights-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin: 16px 0 24px;
+  }
+  .right-card {
+    background: var(--white);
+    border: 1px solid var(--cream2);
+    border-top: 3px solid var(--teal);
+    padding: 14px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--teal);
+  }
+
+  /* ── FOOTER ──────────────────────────────────────────────── */
+  footer {
+    background: var(--teal);
+    text-align: center;
+    padding: 28px 24px;
+  }
+  footer p {
+    color: rgba(255,255,255,0.45);
+    font-size: 13px;
+    margin: 0;
+  }
+  footer a { color: var(--yellow); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* ── RESPONSIVE ──────────────────────────────────────────── */
+  @media (max-width: 480px) {
+    .tab-btn { font-size: 12px; padding: 12px 10px; }
+    .rights-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-inner">
+    <a href="/" class="logo">nudi<span>sol</span></a>
+    <a href="/" class="back-link">← Volver a la app</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <h1>Textos Legales</h1>
+  <p>nudisol.app · Última actualización: 28 de mayo de 2026</p>
+</div>
+
+<!-- PESTAÑAS -->
+<nav class="tab-nav" role="tablist">
+  <div class="tab-nav-inner">
+    <button class="tab-btn active" role="tab" onclick="showTab('aviso', this)">Aviso Legal</button>
+    <button class="tab-btn" role="tab" onclick="showTab('privacidad', this)">Privacidad</button>
+    <button class="tab-btn" role="tab" onclick="showTab('cookies', this)">Cookies</button>
+  </div>
+</nav>
+
+<!-- CONTENIDO -->
+<main class="content">
+
+  <!-- ══ AVISO LEGAL ══════════════════════════════════════════ -->
+  <div id="aviso" class="tab-panel active">
+    <span class="section-badge">01</span>
+    <h2 class="panel-title">Aviso Legal</h2>
+    <p class="version-note">En cumplimiento de la Ley 34/2002, de 11 de julio, de Servicios de la Sociedad de la Información y del Comercio Electrónico (LSSI-CE).</p>
+
+    <h3>Datos identificativos del titular</h3>
+    <ul>
+      <li><strong>Nombre:</strong> Pedro Antonio López Castelló</li>
+      <li><strong>NIF:</strong> 21.663.645-Z</li>
+      <li><strong>Domicilio:</strong> Calle Ayala, 138, 3.º I · 28006 Madrid (España)</li>
+      <li><strong>Correo electrónico:</strong> <a href="mailto:info@nudisol.app">info@nudisol.app</a></li>
+      <li><strong>Sitio web:</strong> <a href="https://nudisol.app">nudisol.app</a></li>
+    </ul>
+
+    <h3>Objeto y actividad</h3>
+    <p>Nudisol es una aplicación web progresiva (PWA) de carácter informativo y comunitario, dedicada al naturismo en España. Ofrece un directorio de espacios naturistas verificados, información meteorológica en tiempo real, un sistema de aforo mediante check-in y foros de comunidad.</p>
+    <p>El acceso es gratuito para los usuarios. La plataforma no tiene, en su fase actual, finalidad lucrativa directa para los usuarios finales.</p>
+
+    <h3>Propiedad intelectual e industrial</h3>
+    <p>Todos los contenidos de nudisol.app —incluyendo textos, imágenes, logotipos, íconos, diseño gráfico, código fuente y estructura— son propiedad de Pedro Antonio López Castelló o de terceros que han autorizado su uso, y están protegidos por la legislación española e internacional en materia de propiedad intelectual.</p>
+    <p>Queda expresamente prohibida la reproducción, distribución o transformación de dichos contenidos sin autorización expresa y por escrito del titular. Los usuarios que aporten contenido mediante la plataforma ceden al titular una licencia no exclusiva para su publicación en la aplicación.</p>
+
+    <h3>Responsabilidad</h3>
+    <p>El titular no garantiza la disponibilidad continua de nudisol.app ni que la información esté libre de errores. Los datos meteorológicos y de aforo son orientativos. El titular no se hace responsable de los contenidos publicados por usuarios en los foros.</p>
+
+    <h3>Legislación aplicable y jurisdicción</h3>
+    <p>Las presentes condiciones se rigen por la legislación española. Para la resolución de controversias, las partes se someten a los juzgados y tribunales de Madrid, con renuncia expresa a cualquier otro fuero.</p>
+  </div>
+
+  <!-- ══ PRIVACIDAD ═══════════════════════════════════════════ -->
+  <div id="privacidad" class="tab-panel">
+    <span class="section-badge">02</span>
+    <h2 class="panel-title">Política de Privacidad</h2>
+    <p class="version-note">De conformidad con el Reglamento (UE) 2016/679 (RGPD) y la Ley Orgánica 3/2018 de Protección de Datos (LOPDGDD).</p>
+
+    <div class="info-box">
+      <p><strong>Responsable del tratamiento:</strong> Pedro Antonio López Castelló · NIF 21.663.645-Z<br>
+      Calle Ayala, 138, 3.º I · 28006 Madrid · <strong><a href="mailto:info@nudisol.app" style="color:var(--yellow)">info@nudisol.app</a></strong></p>
+    </div>
+
+    <h3>Datos que recabamos y finalidad</h3>
+    <ul>
+      <li><strong>Registro con email:</strong> nombre de usuario, correo y contraseña cifrada. Finalidad: gestión de cuenta y acceso.</li>
+      <li><strong>Registro con Google (SSO):</strong> nombre público y correo de Google. Finalidad: autenticación.</li>
+      <li><strong>Check-in en playas:</strong> registro de visitas asociadas a la cuenta. Finalidad: aforo en tiempo real y estadísticas personales.</li>
+      <li><strong>Contenido en foros:</strong> textos y opiniones publicados por el usuario. Finalidad: funcionamiento de la comunidad.</li>
+      <li><strong>Ubicación:</strong> solo con permiso explícito, para mostrar playas cercanas. No se almacena de forma permanente.</li>
+      <li><strong>Analítica agregada:</strong> datos anonimizados de uso. Finalidad: mejora del servicio.</li>
+    </ul>
+
+    <h3>Base legal del tratamiento</h3>
+    <p>El tratamiento se basa en el consentimiento del usuario al registrarse (art. 6.1.a RGPD) y en la ejecución de la relación contractual derivada del uso de la plataforma (art. 6.1.b RGPD).</p>
+
+    <h3>Conservación de los datos</h3>
+    <p>Los datos se conservarán mientras la cuenta esté activa. Tras solicitar la baja, se eliminarán en un plazo máximo de 30 días, salvo obligación legal de conservación.</p>
+
+    <h3>Terceros y transferencias internacionales</h3>
+    <ul>
+      <li><strong>Google Firebase</strong> (autenticación, base de datos, almacenamiento): Google LLC, EE.UU., acogido al Data Privacy Framework EU-EE.UU.</li>
+      <li><strong>Open-Meteo API</strong>: servicio meteorológico open source. Sin transferencia de datos de usuario.</li>
+    </ul>
+    <p>No se ceden datos a terceros con fines comerciales ni publicitarios.</p>
+
+    <h3>Tus derechos</h3>
+    <p>Puedes ejercer los siguientes derechos escribiendo a <a href="mailto:info@nudisol.app">info@nudisol.app</a>:</p>
+    <div class="rights-grid">
+      <div class="right-card">Acceso</div>
+      <div class="right-card">Rectificación</div>
+      <div class="right-card">Supresión</div>
+      <div class="right-card">Oposición</div>
+      <div class="right-card">Limitación</div>
+      <div class="right-card">Portabilidad</div>
+    </div>
+    <p>También puedes presentar una reclamación ante la <a href="https://www.aepd.es" target="_blank" rel="noopener">Agencia Española de Protección de Datos (aepd.es)</a>.</p>
+
+    <h3>Seguridad</h3>
+    <p>Nudisol aplica medidas técnicas adecuadas: cifrado de contraseñas, conexiones HTTPS y reglas de seguridad de Firebase Firestore.</p>
+  </div>
+
+  <!-- ══ COOKIES ═══════════════════════════════════════════════ -->
+  <div id="cookies" class="tab-panel">
+    <span class="section-badge">03</span>
+    <h2 class="panel-title">Política de Cookies</h2>
+    <p class="version-note">En cumplimiento del artículo 22.2 de la Ley 34/2002 y la Directiva 2009/136/CE.</p>
+
+    <h3>¿Qué son las cookies?</h3>
+    <p>Las cookies son pequeños archivos que se almacenan en tu dispositivo cuando visitas un sitio web. Permiten recordar preferencias, analizar el uso de la aplicación y garantizar el funcionamiento correcto de ciertas funcionalidades.</p>
+
+    <h3>Cookies que utiliza Nudisol</h3>
+    <p>Nudisol utiliza <strong>exclusivamente cookies técnicas y estrictamente necesarias</strong>. No utilizamos cookies publicitarias ni de seguimiento entre sitios.</p>
+    <ul>
+      <li><strong>Token de sesión Firebase:</strong> necesario para mantener la sesión iniciada. Sin él no es posible acceder a funcionalidades de usuario registrado. No requiere consentimiento.</li>
+      <li><strong>Preferencia de idioma:</strong> almacena si has seleccionado español o inglés. Se guarda en localStorage del navegador.</li>
+    </ul>
+
+    <div class="info-box">
+      <p>Nudisol <strong>no utiliza cookies de terceros</strong> con fines publicitarios ni de rastreo. No compartimos datos de navegación con anunciantes.</p>
+    </div>
+
+    <h3>Cómo gestionar las cookies</h3>
+    <p>Puedes configurar tu navegador para bloquear o eliminar las cookies. Ten en cuenta que deshabilitar las cookies técnicas puede impedir el correcto funcionamiento de la app (como mantener la sesión activa).</p>
+    <ul>
+      <li><strong>Chrome:</strong> Configuración → Privacidad y seguridad → Cookies y otros datos de sitios</li>
+      <li><strong>Safari (iOS):</strong> Ajustes → Safari → Privacidad y seguridad</li>
+      <li><strong>Firefox:</strong> Opciones → Privacidad y seguridad → Cookies y datos del sitio</li>
+      <li><strong>Edge:</strong> Configuración → Privacidad, búsqueda y servicios → Cookies</li>
+    </ul>
+
+    <h3>Actualizaciones</h3>
+    <p>Esta política puede actualizarse cuando se incorporen nuevos servicios. La fecha de actualización figura en el encabezado de esta página.</p>
+  </div>
+
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <p>
+    <a href="#aviso" onclick="showTab('aviso', document.querySelectorAll('.tab-btn')[0])">Aviso Legal</a> ·
+    <a href="#privacidad" onclick="showTab('privacidad', document.querySelectorAll('.tab-btn')[1])">Privacidad</a> ·
+    <a href="#cookies" onclick="showTab('cookies', document.querySelectorAll('.tab-btn')[2])">Cookies</a>
+  </p>
+  <p style="margin-top:8px;">© 2026 Nudisol · <a href="/">nudisol.app</a> · <a href="mailto:info@nudisol.app">info@nudisol.app</a></p>
+</footer>
+
+<script>
+function showTab(id, btn) {
+  // Ocultar todos los paneles
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  // Mostrar el seleccionado
+  document.getElementById(id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  // Scroll al contenido
+  document.querySelector('.content').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Soporte para anclas directas: nudisol.app/legal.html#privacidad
+window.addEventListener('DOMContentLoaded', () => {
+  const hash = window.location.hash.replace('#', '');
+  if (['aviso', 'privacidad', 'cookies'].includes(hash)) {
+    const idx = ['aviso', 'privacidad', 'cookies'].indexOf(hash);
+    showTab(hash, document.querySelectorAll('.tab-btn')[idx]);
+  }
+});
+</script>
+</body>
+</html>
