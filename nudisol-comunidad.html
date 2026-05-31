@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Comunidad</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0D3D42">
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, collection, addDoc, getDocs, doc, getDoc, updateDoc, increment, orderBy, query, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js";
+
+  const app = initializeApp({
+    apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+    authDomain: "nudisol.firebaseapp.com",
+    projectId: "nudisol",
+    storageBucket: "nudisol.firebasestorage.app",
+    messagingSenderId: "222881387953",
+    appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+  });
+
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const analytics = getAnalytics(app);
+  logEvent(analytics, 'page_view', { page_title: 'Nudisol — Comunidad', page_path: '/nudisol-comunidad.html' });
+  let currentUser = null;
+  let currentUserData = null;
+  let vistaActual = 'lista'; // 'lista' | 'tema'
+  let temaActual = null;
+
+  onAuthStateChanged(auth, async (user) => {
+    currentUser = user;
+    if (user) {
+      const userDoc = await getDoc(doc(db, 'usuarios', user.uid));
+      currentUserData = userDoc.exists() ? userDoc.data() : {};
+      // Todos los usuarios registrados pueden crear temas (invitados no)
+      if (!user.isAnonymous) {
+        document.getElementById('btn-nuevo-tema').style.display = 'flex';
+      }
+    }
+    cargarTemas();
+    applyLang();
+  });
+
+  let foroActivo = 'vida-naturista';
+
+  window.seleccionarForo = function(categoria) {
+    foroActivo = categoria;
+    document.querySelectorAll('.foro-card').forEach(c => c.classList.remove('activo'));
+    const ids = { 'vida-naturista': 'foro-vida', 'playas-alojamientos': 'foro-playas', 'presentaciones': 'foro-presenta', 'actualizaciones-mapa': 'foro-actualizaciones' };
+    const el = document.getElementById(ids[categoria]);
+    if (el) el.classList.add('activo');
+
+    // Buzón de sugerencias: si es invitado mostrar banner de registro
+    if (categoria === 'actualizaciones-mapa' && currentUser && currentUser.isAnonymous) {
+      const lang = localStorage.getItem('nudisol_lang') || 'es';
+      const es = lang === 'es';
+      const lista = document.getElementById('temas-lista');
+      if (lista) lista.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:16px;text-align:center;">
+          <div style="font-size:56px;">📬</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:white;">
+            ${es ? 'Únete para enviar sugerencias' : 'Join to send suggestions'}
+          </div>
+          <div style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.6;max-width:280px;">
+            ${es
+              ? 'Regístrate gratis y ayuda a mantener el mapa de Nudisol actualizado. Tu conocimiento es valioso para toda la comunidad.'
+              : 'Sign up for free and help keep the Nudisol map updated. Your knowledge is valuable to the whole community.'}
+          </div>
+          <button onclick="(async()=>{try{await signOut(auth);}catch(e){}window.location.href='index.html';})()" style="
+            width:100%;max-width:280px;padding:14px;border-radius:14px;border:none;
+            background:#D45F3C;color:white;font-family:'Syne',sans-serif;
+            font-weight:700;font-size:16px;cursor:pointer;margin-top:8px;">
+            🌞 ${es ? 'Crear cuenta gratis' : 'Create free account'}
+          </button>
+          <button onclick="(async()=>{try{await signOut(auth);}catch(e){}window.location.href='index.html';})()" style="
+            width:100%;max-width:280px;padding:14px;border-radius:14px;
+            border:1.5px solid rgba(255,255,255,0.3);background:transparent;
+            color:white;font-family:'Syne',sans-serif;font-weight:600;font-size:15px;cursor:pointer;">
+            ${es ? 'Ya tengo cuenta — Iniciar sesión' : 'I have an account — Sign in'}
+          </button>
+        </div>`;
+      return;
+    }
+
+    cargarTemas();
+  };
+
+  // ── CARGAR TEMAS ──────────────────────────────────────────────
+  async function cargarTemas() {
+    // Buzón de sugerencias: si es invitado mostrar banner en lugar de temas
+    if (foroActivo === 'actualizaciones-mapa' && currentUser && currentUser.isAnonymous) {
+      const lang = localStorage.getItem('nudisol_lang') || 'es';
+      const es = lang === 'es';
+      const lista2 = document.getElementById('temas-lista');
+      if (lista2) lista2.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:16px;text-align:center;">
+          <div style="font-size:56px;">📬</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:white;">
+            ${es ? 'Únete para enviar sugerencias' : 'Join to send suggestions'}
+          </div>
+          <div style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.6;max-width:280px;">
+            ${es
+              ? 'Regístrate gratis y ayuda a mantener el mapa de Nudisol actualizado. Tu conocimiento es valioso para toda la comunidad.'
+              : 'Sign up for free and help keep the Nudisol map updated. Your knowledge is valuable to the whole community.'}
+          </div>
+          <button onclick="(async()=>{try{await signOut(auth);}catch(e){}window.location.href='index.html';})()" style="
+            width:100%;max-width:280px;padding:14px;border-radius:14px;border:none;
+            background:#D45F3C;color:white;font-family:'Syne',sans-serif;
+            font-weight:700;font-size:16px;cursor:pointer;margin-top:8px;">
+            🌞 ${es ? 'Crear cuenta gratis' : 'Create free account'}
+          </button>
+          <button onclick="(async()=>{try{await signOut(auth);}catch(e){}window.location.href='index.html';})()" style="
+            width:100%;max-width:280px;padding:14px;border-radius:14px;
+            border:1.5px solid rgba(255,255,255,0.3);background:transparent;
+            color:white;font-family:'Syne',sans-serif;font-weight:600;font-size:15px;cursor:pointer;">
+            ${es ? 'Ya tengo cuenta — Iniciar sesión' : 'I have an account — Sign in'}
+          </button>
+        </div>`;
+      return;
+    }
+
+    const container = document.getElementById('temas-lista');
+    container.innerHTML = '<div class="loading-msg">Cargando temas...</div>';
+    try {
+      const q = query(collection(db, 'comunidad_temas'), where('categoria', '==', foroActivo));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        const lang = localStorage.getItem('nudisol_lang') || 'es';
+        container.innerHTML = `<div class="empty-state">
+          <div class="empty-icon">💬</div>
+          <div class="empty-title">${lang === 'en' ? 'No topics yet' : 'Aún no hay temas'}</div>
+          <div class="empty-sub">${lang === 'en' ? 'Be the first to start a conversation!' : '¡Sé el primero en abrir una conversación!'}</div>
+        </div>`;
+        return;
+      }
+      container.innerHTML = '';
+      snap.forEach(d => {
+        const tema = { id: d.id, ...d.data() };
+        container.appendChild(crearTarjetaTema(tema));
+      });
+    } catch (e) {
+      container.innerHTML = '<div class="loading-msg" style="color:#D45F3C;">Error cargando temas.</div>';
+    }
+  }
+
+  function avatarHTML(nombre, fotoURL, cssClass) {
+    if (fotoURL) {
+      return `<div class="${cssClass}" style="background-image:url(${fotoURL});background-size:cover;background-position:center;"></div>`;
+    }
+    return `<div class="${cssClass}">${(nombre || 'U')[0].toUpperCase()}</div>`;
+  }
+
+  function crearTarjetaTema(tema) {
+    const div = document.createElement('div');
+    div.className = 'tema-card';
+    const fecha = tema.fechaCreacion?.toDate ? tema.fechaCreacion.toDate().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
+    const esAdmin = tema.esAdmin ? '<span class="badge-admin">Admin</span>' : '';
+    div.innerHTML = `
+      <div class="tema-header">
+        ${avatarHTML(tema.autorNombre, tema.autorFoto, 'tema-avatar')}
+        <div class="tema-meta">
+          <div class="tema-autor">${tema.autorNombre || 'Usuario'} ${esAdmin}</div>
+          <div class="tema-fecha">${fecha}</div>
+        </div>
+        <div class="tema-stats">💬 ${tema.numRespuestas || 0}</div>
+      </div>
+      <div class="tema-titulo">${tema.titulo}</div>
+      <div class="tema-preview">${tema.contenido?.substring(0, 120)}${tema.contenido?.length > 120 ? '...' : ''}</div>
+      ${tema.etiqueta ? `<span class="tema-etiqueta">${tema.etiqueta}</span>` : ''}
+    `;
+    div.addEventListener('click', () => abrirTema(tema));
+    return div;
+  }
+
+  // ── ABRIR TEMA ───────────────────────────────────────────────
+  window.abrirTema = async (tema) => {
+    temaActual = tema;
+    vistaActual = 'tema';
+    document.getElementById('vista-lista').style.display = 'none';
+    document.getElementById('vista-tema').style.display = 'block';
+    document.getElementById('tema-titulo-detalle').textContent = tema.titulo;
+    document.getElementById('tema-contenido-detalle').textContent = tema.contenido;
+    const fecha = tema.fechaCreacion?.toDate ? tema.fechaCreacion.toDate().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+    const esAdmin = tema.esAdmin ? '<span class="badge-admin">Admin</span>' : '';
+    document.getElementById('tema-autor-detalle').innerHTML = `${tema.autorNombre || 'Usuario'} ${esAdmin} · ${fecha}`;
+    const avatarDetalle = document.getElementById('tema-avatar-detalle');
+    if (tema.autorFoto) {
+      avatarDetalle.textContent = '';
+      avatarDetalle.style.backgroundImage = `url(${tema.autorFoto})`;
+      avatarDetalle.style.backgroundSize = 'cover';
+      avatarDetalle.style.backgroundPosition = 'center';
+    } else {
+      avatarDetalle.textContent = (tema.autorNombre || 'U')[0].toUpperCase();
+    }
+    if (!currentUser) {
+      document.getElementById('form-respuesta').style.display = 'none';
+      document.getElementById('login-aviso').style.display = 'block';
+    } else {
+      document.getElementById('form-respuesta').style.display = 'block';
+      document.getElementById('login-aviso').style.display = 'none';
+    }
+    cargarRespuestas(tema.id);
+  };
+
+  window.volverLista = () => {
+    vistaActual = 'lista';
+    document.getElementById('vista-lista').style.display = 'block';
+    document.getElementById('vista-tema').style.display = 'none';
+    temaActual = null;
+  };
+
+  // ── CARGAR RESPUESTAS ────────────────────────────────────────
+  async function cargarRespuestas(temaId) {
+    const container = document.getElementById('respuestas-lista');
+    container.innerHTML = '<div class="loading-msg">Cargando respuestas...</div>';
+    try {
+      const q = query(collection(db, 'comunidad_temas', temaId, 'respuestas'), orderBy('fecha', 'asc'));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        container.innerHTML = '<div class="loading-msg" style="color:var(--text-light);">Sé el primero en responder.</div>';
+        return;
+      }
+      container.innerHTML = '';
+      snap.forEach(d => {
+        const r = { id: d.id, ...d.data() };
+        const fecha = r.fecha?.toDate ? r.fecha.toDate().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
+        const esAdmin = r.esAdmin ? '<span class="badge-admin">Admin</span>' : '';
+        const div = document.createElement('div');
+        div.className = 'respuesta-card';
+        div.innerHTML = `
+          <div class="respuesta-header">
+            ${avatarHTML(r.autorNombre, r.autorFoto, 'respuesta-avatar')}
+            <div class="respuesta-meta">
+              <div class="respuesta-autor">${r.autorNombre || 'Usuario'} ${esAdmin}</div>
+              <div class="respuesta-fecha">${fecha}</div>
+            </div>
+          </div>
+          <div class="respuesta-texto">${r.contenido}</div>
+        `;
+        container.appendChild(div);
+      });
+    } catch (e) {
+      container.innerHTML = '<div class="loading-msg" style="color:#D45F3C;">Error cargando respuestas.</div>';
+    }
+  }
+
+  // ── ENVIAR RESPUESTA ─────────────────────────────────────────
+  window.enviarRespuesta = async () => {
+    if (!currentUser || !temaActual) return;
+    if (currentUser.isAnonymous) { mostrarToastRegistro(); return; }
+    const texto = document.getElementById('input-respuesta').value.trim();
+    if (!texto) return;
+    const btn = document.getElementById('btn-enviar-respuesta');
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+    try {
+      const esAdmin = ['pedro@nudisol.com','plopezcastello@gmail.com'].includes(currentUser.email);
+      await addDoc(collection(db, 'comunidad_temas', temaActual.id, 'respuestas'), {
+        contenido: texto,
+        autorId: currentUser.uid,
+        autorNombre: currentUserData?.nombre || currentUser.email.split('@')[0],
+        autorFoto: currentUserData?.fotoURL || null,
+        esAdmin,
+        fecha: serverTimestamp()
+      });
+      await updateDoc(doc(db, 'comunidad_temas', temaActual.id), { numRespuestas: increment(1) });
+      document.getElementById('input-respuesta').value = '';
+      cargarRespuestas(temaActual.id);
+    } catch (e) {
+      alert('Error al enviar. Inténtalo de nuevo.');
+    }
+    btn.disabled = false;
+    btn.textContent = 'Responder';
+  };
+
+  // ── NUEVO TEMA ───────────────────────────────────────────────
+  window.abrirModalTema = () => {
+    if (!currentUser) { window.location.href = 'index.html'; return; }
+    if (currentUser.isAnonymous) { mostrarToastRegistro(); return; }
+    document.getElementById('modal-tema').style.display = 'flex';
+
+    // Poblar el selector de etiquetas según el foro activo
+    const select = document.getElementById('select-etiqueta');
+    if (foroActivo === 'actualizaciones-mapa') {
+      select.innerHTML = `
+        <option value="">Elige una categoría...</option>
+        <option value="🗺️ Actualización del mapa">🗺️ Actualización del mapa</option>
+        <option value="🐛 Error en la app">🐛 Error en la app</option>
+        <option value="💡 Mejora de la app">💡 Mejora de la app</option>
+        <option value="🏖️ Nuevo lugar a añadir">🏖️ Nuevo lugar a añadir</option>
+        <option value="❌ Lugar incorrecto o cerrado">❌ Lugar incorrecto o cerrado</option>
+        <option value="💬 Otra sugerencia">💬 Otra sugerencia</option>
+      `;
+    } else if (foroActivo === 'vida-naturista') {
+      select.innerHTML = `
+        <option value="">Sin etiqueta</option>
+        <option value="🌞 Vitamina D">🌞 Vitamina D</option>
+        <option value="📍 Naturismo">📍 Naturismo</option>
+        <option value="👶 Familias">👶 Familias</option>
+        <option value="💡 Consejos">💡 Consejos</option>
+      `;
+    } else if (foroActivo === 'playas-alojamientos') {
+      select.innerHTML = `
+        <option value="">Sin etiqueta</option>
+        <option value="🏖️ Playas">🏖️ Playas</option>
+        <option value="🏡 Alojamiento">🏡 Alojamiento</option>
+        <option value="🗺️ Destinos">🗺️ Destinos</option>
+      `;
+    } else {
+      select.innerHTML = `<option value="">Sin etiqueta</option>`;
+    }
+
+    if (typeof applyLang === 'function') applyLang();
+  };
+
+  window.cerrarModalTema = () => {
+    document.getElementById('modal-tema').style.display = 'none';
+    document.getElementById('input-titulo-tema').value = '';
+    document.getElementById('input-contenido-tema').value = '';
+    document.getElementById('select-etiqueta').value = '';
+  };
+
+  window.publicarTema = async () => {
+    const titulo = document.getElementById('input-titulo-tema').value.trim();
+    const contenido = document.getElementById('input-contenido-tema').value.trim();
+    const etiqueta = document.getElementById('select-etiqueta').value;
+    if (!titulo || !contenido) { alert('Rellena el título y el contenido.'); return; }
+    if (foroActivo === 'actualizaciones-mapa' && !etiqueta) { alert('Elige una categoría para tu sugerencia.'); return; }
+    const btn = document.getElementById('btn-publicar-tema');
+    btn.disabled = true;
+    btn.textContent = 'Publicando...';
+    try {
+      const esAdmin = ['pedro@nudisol.com','plopezcastello@gmail.com'].includes(currentUser.email);
+      await addDoc(collection(db, 'comunidad_temas'), {
+        titulo,
+        contenido,
+        etiqueta,
+        categoria: foroActivo,
+        autorId: currentUser.uid,
+        autorNombre: currentUserData?.nombre || currentUser.email.split('@')[0],
+        autorFoto: currentUserData?.fotoURL || null,
+        esAdmin,
+        numRespuestas: 0,
+        fechaCreacion: serverTimestamp()
+      });
+      cerrarModalTema();
+      cargarTemas();
+    } catch (e) {
+      alert('Error al publicar. Inténtalo de nuevo.');
+    }
+    btn.disabled = false;
+    btn.textContent = 'Publicar';
+  };
+
+  // ── NEWSLETTER ───────────────────────────────────────────────
+  window.suscribirNewsletter = async () => {
+    const email = document.getElementById('input-newsletter').value.trim();
+    if (!email || !email.includes('@')) { mostrarMsgNewsletter('Introduce un email válido.', false); return; }
+    const btn = document.getElementById('btn-newsletter');
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+      const q = query(collection(db, 'newsletter'), where('email', '==', email));
+      const snap = await getDocs(q);
+      if (!snap.empty) { mostrarMsgNewsletter('¡Ya estás suscrito!', true); btn.disabled = false; btn.textContent = '→'; return; }
+      await addDoc(collection(db, 'newsletter'), { email, fecha: serverTimestamp(), origen: 'comunidad' });
+      mostrarMsgNewsletter('¡Suscrito! Gracias 🌞', true);
+      document.getElementById('input-newsletter').value = '';
+    } catch (e) {
+      mostrarMsgNewsletter('Error. Inténtalo de nuevo.', false);
+    }
+    btn.disabled = false;
+    btn.textContent = '→';
+  };
+
+  function mostrarMsgNewsletter(msg, ok) {
+    const el = document.getElementById('newsletter-msg');
+    el.textContent = msg;
+    el.style.color = ok ? '#1A6B72' : '#D45F3C';
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 3000);
+  }
+
+  // ── TRADUCCIÓN ───────────────────────────────────────────────
+  const tCom = {
+    es: { titulo: 'Comunidad', navMapa: 'Lugares', navAloj: 'Alojamiento', navComunidad: 'Comunidad', navPerfil: 'Perfil',
+      nuevoTema: '+ Nuevo tema', newsletterTit: '📍 Newsletter Nudisol', newsletterSub: 'Recibe novedades, temas destacados y consejos naturistas.',
+      newsletterPlaceholder: 'tu@email.com', btnNL: '→', volver: '← Temas', responder: 'Responder', placeholder: 'Escribe tu respuesta...',
+      loginAviso: 'Inicia sesión para participar en la conversación.',
+      modalTitulo: 'Nuevo tema', modalTituloPlaceholder: 'Título del tema', modalContenidoPlaceholder: '¿De qué quieres hablar?',
+      modalCancelar: 'Cancelar', modalPublicar: 'Publicar', conversaciones: 'CONVERSACIONES',
+      discTitulo: '📋 Normas de la comunidad',
+      discFooter: 'El equipo de Nudisol se reserva el derecho de eliminar contenido que no cumpla estas normas.',
+      discItems: [
+        ['Respeto ante todo', 'No se permiten insultos, descalificaciones ni ataques personales.'],
+        ['Lenguaje apropiado', 'Evita el lenguaje ofensivo o discriminatorio por razón de género, orientación, edad o creencias.'],
+        ['Tema relevante', 'Mantén las conversaciones relacionadas con el naturismo, las playas y la vida al aire libre.'],
+        ['Sin spam ni publicidad', 'No se permiten enlaces comerciales sin autorización.'],
+        ['Privacidad', 'No compartas datos personales propios ni de terceros.'],
+        ['Contenido apropiado', 'No se permite contenido sexual explícito.'],
+        ['Reporta', 'Si ves algo inapropiado, escríbenos a info@nudisol.com.']
+      ],
+      foros: {
+        'vida-naturista': { nombre: 'Vida naturista', desc: 'Filosofía, estilo de vida y cómo empezar' },
+        'playas-alojamientos': { nombre: 'Playas y alojamientos', desc: 'Destinos, recomendaciones y viajes' },
+        'presentaciones': { nombre: 'Presentaciones', desc: 'Bienvenidas y presentaciones de nuevos miembros' }
+      }
+    },
+    en: { titulo: 'Community', navMapa: 'Places', navAloj: 'Accommodation', navComunidad: 'Community', navPerfil: 'Profile',
+      nuevoTema: '+ New topic', newsletterTit: '📍 Nudisol Newsletter', newsletterSub: 'Get news, featured topics and naturist tips.',
+      newsletterPlaceholder: 'your@email.com', btnNL: '→', volver: '← Topics', responder: 'Reply', placeholder: 'Write your reply...',
+      loginAviso: 'Sign in to join the conversation.',
+      modalTitulo: 'New topic', modalTituloPlaceholder: 'Topic title', modalContenidoPlaceholder: 'What do you want to talk about?',
+      modalCancelar: 'Cancel', modalPublicar: 'Publish', conversaciones: 'CONVERSATIONS',
+      discTitulo: '📋 Community guidelines',
+      discFooter: 'The Nudisol team reserves the right to remove content that does not comply with these guidelines.',
+      discItems: [
+        ['Respect above all', 'Insults, put-downs or personal attacks are not allowed.'],
+        ['Appropriate language', 'Avoid offensive or discriminatory language based on gender, orientation, age or beliefs.'],
+        ['Stay on topic', 'Keep conversations related to naturism, beaches and outdoor life.'],
+        ['No spam or advertising', 'Commercial links are not allowed without authorisation.'],
+        ['Privacy', 'Do not share personal data of yourself or others.'],
+        ['Appropriate content', 'Explicit sexual content is not allowed.'],
+        ['Report it', 'If you see something inappropriate, write to us at info@nudisol.com.']
+      ],
+      foros: {
+        'vida-naturista': { nombre: 'Naturist life', desc: 'Philosophy, lifestyle and how to start' },
+        'playas-alojamientos': { nombre: 'Beaches & stays', desc: 'Destinations, recommendations and travel' },
+        'presentaciones': { nombre: 'Introductions', desc: 'Welcome and new member introductions' },
+        'actualizaciones-mapa': { nombre: 'Suggestions box', desc: 'Suggest changes, new spots or map updates' }
+      }
+    }
+  };
+
+  function applyLang() {
+    const lang = localStorage.getItem('nudisol_lang') || 'es';
+    const tr = tCom[lang];
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('page-titulo', tr.titulo);
+    set('nav-lbl-mapa', tr.navMapa);
+    set('nav-lbl-aloj', tr.navAloj);
+    set('nav-lbl-comunidad', tr.navComunidad);
+    set('nav-lbl-perfil', tr.navPerfil);
+    set('newsletter-titulo', tr.newsletterTit);
+    set('newsletter-sub', tr.newsletterSub);
+    set('btn-newsletter', tr.btnNL);
+    set('btn-volver', tr.volver);
+    set('btn-enviar-respuesta', tr.responder);
+    set('login-aviso-txt', tr.loginAviso);
+    set('modal-titulo-txt', tr.modalTitulo);
+    set('btn-cancelar-modal', tr.modalCancelar);
+    set('btn-publicar-modal', tr.modalPublicar);
+    set('section-conversaciones', tr.conversaciones);
+    const nl = document.getElementById('input-newsletter');
+    if (nl) nl.placeholder = tr.newsletterPlaceholder;
+    const ir = document.getElementById('input-respuesta');
+    if (ir) ir.placeholder = tr.placeholder;
+    const nt = document.getElementById('btn-nuevo-tema');
+    if (nt) nt.querySelector('span').textContent = tr.nuevoTema;
+    const it = document.getElementById('input-titulo-tema');
+    if (it) it.placeholder = tr.modalTituloPlaceholder;
+    const ic = document.getElementById('input-contenido-tema');
+    if (ic) ic.placeholder = tr.modalContenidoPlaceholder;
+    // Traducir foros
+    if (tr.foros) {
+      const map = {
+        'vida-naturista': ['foro-vida-nombre', 'foro-vida-desc'],
+        'playas-alojamientos': ['foro-playas-nombre', 'foro-playas-desc'],
+        'presentaciones': ['foro-presenta-nombre', 'foro-presenta-desc'],
+        'actualizaciones-mapa': ['foro-actualizaciones-nombre', 'foro-actualizaciones-desc']
+      };
+      Object.entries(tr.foros).forEach(([key, val]) => {
+        set(map[key][0], val.nombre);
+        set(map[key][1], val.desc);
+      });
+    }
+    set('disc-titulo', tr.discTitulo);
+    set('disc-footer', tr.discFooter);
+    const discContent = document.getElementById('disc-content');
+    if (discContent && tr.discItems) {
+      discContent.innerHTML = '<ol>' + tr.discItems.map(([t, d]) =>
+        `<li><strong>${t}</strong> — ${d}</li>`).join('') + '</ol>' +
+        `<div class="disclaimer-footer" id="disc-footer">${tr.discFooter}</div>`;
+    }
+  }
+
+  window.mostrarToastRegistro = function() {
+    const lang = localStorage.getItem('nudisol_lang') || 'es';
+    const msg = lang === 'en'
+      ? '👋 Register for free to participate in the community!'
+      : '👋 ¡Regístrate gratis para participar en la comunidad!';
+    const btnTxt = lang === 'en' ? 'Create account' : 'Crear cuenta';
+    let toast = document.getElementById('toast-registro');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'toast-registro';
+      toast.style.cssText = `
+        position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+        background: #0D3D42; color: white; padding: 14px 20px; border-radius: 14px;
+        font-size: 13px; font-family: 'Syne', sans-serif; font-weight: 600;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 9999;
+        display: none; flex-direction: column; align-items: center; gap: 10px;
+        max-width: 300px; text-align: center;
+      `;
+      document.body.appendChild(toast);
+    }
+    const btnEl = document.createElement('button');
+    btnEl.textContent = btnTxt;
+    btnEl.style.cssText = `background:#D45F3C;color:white;border:none;border-radius:10px;
+      padding:8px 20px;font-family:'Syne',sans-serif;font-weight:700;
+      font-size:13px;cursor:pointer;width:100%;`;
+    btnEl.addEventListener('click', async () => {
+      try { await signOut(auth); } catch(e) {}
+      window.location.href = 'index.html';
+    });
+    const msgEl = document.createElement('div');
+    msgEl.textContent = msg;
+    toast.innerHTML = '';
+    toast.appendChild(msgEl);
+    toast.appendChild(btnEl);
+    toast.style.display = 'flex';
+    setTimeout(() => { if (toast) toast.style.display = 'none'; }, 5000);
+  };
+
+  window.toggleDisclaimer = function() {
+    const body = document.getElementById('disc-body');
+    const arrow = document.getElementById('disc-arrow');
+    body.classList.toggle('open');
+    arrow.classList.toggle('open');
+  };
+
+  window.addEventListener('DOMContentLoaded', applyLang);
+
+window.applyLang = applyLang; // expose global
+</script>
+
+<style>
+  :root {
+    --ocean-deep: #0D3D42; --ocean: #1A6B72; --coral: #D45F3C;
+    --sand: #F5EFE3; --white: #FDFAF5; --text-dark: #1A1A1A;
+    --text-light: #8A8A8A; --yellow: #F5C840;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--sand); min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* HEADER */
+  .header { background: var(--ocean-deep); padding: 16px 16px 20px; }
+  .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .logo-small { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 18px; color: white; }
+  .logo-small span { color: var(--yellow); }
+  .page-titulo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: white; }
+
+  #btn-nuevo-tema {
+    display: none; align-items: center; gap: 6px;
+    background: var(--coral); color: white; border: none;
+    border-radius: 20px; padding: 8px 16px; font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 12px; cursor: pointer;
+  }
+
+  /* DISCLAIMER */
+  .disclaimer-box {
+    background: rgba(13,61,66,0.06);
+    border: 1px solid rgba(13,61,66,0.12);
+    border-radius: 14px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .disclaimer-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 16px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .disclaimer-toggle-label {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--ocean);
+  }
+  .disclaimer-arrow {
+    font-size: 14px;
+    color: var(--ocean);
+    transition: transform 0.3s ease;
+  }
+  .disclaimer-arrow.open { transform: rotate(180deg); }
+  .disclaimer-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+  }
+  .disclaimer-body.open { max-height: 600px; }
+  .disclaimer-content {
+    padding: 0 16px 16px;
+    font-size: 12px;
+    color: var(--text-dark);
+    line-height: 1.7;
+  }
+  .disclaimer-content ol {
+    margin: 8px 0 10px;
+    padding-left: 18px;
+  }
+  .disclaimer-content li { margin-bottom: 6px; }
+  .disclaimer-content li strong { color: var(--ocean); }
+  .disclaimer-footer {
+    font-size: 11px;
+    color: var(--text-light);
+    font-style: italic;
+    margin-top: 8px;
+  }
+
+  /* MAIN */
+  .main { flex: 1; padding: 12px 14px 100px; overflow-y: auto; }
+
+  /* NEWSLETTER */
+  .newsletter-box {
+    background: var(--ocean-deep); border-radius: 16px;
+    padding: 16px; margin-bottom: 16px;
+  }
+  .newsletter-titulo { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: white; margin-bottom: 4px; }
+  .newsletter-sub { font-size: 12px; color: rgba(255,255,255,0.55); margin-bottom: 12px; }
+  .newsletter-form { display: flex; gap: 8px; }
+  .newsletter-input {
+    flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 10px; padding: 10px 12px; font-size: 13px; color: white;
+    outline: none; font-family: 'DM Sans', sans-serif;
+  }
+  .newsletter-input::placeholder { color: rgba(255,255,255,0.4); }
+  .newsletter-btn {
+    background: var(--coral); color: white; border: none;
+    border-radius: 10px; padding: 10px 16px; font-size: 16px; cursor: pointer; font-weight: 700;
+  }
+  #newsletter-msg { font-size: 12px; margin-top: 6px; display: none; }
+
+  /* TEMAS */
+  .section-titulo {
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 13px;
+    color: var(--ocean-deep); text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+
+  /* FOROS */
+  .foros-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .foro-card {
+    background: white;
+    border-radius: 16px;
+    padding: 16px 14px;
+    cursor: pointer;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    transition: transform 0.15s;
+    border: 2px solid transparent;
+  }
+  .foro-card:active { transform: scale(0.97); }
+  .foro-card.activo { border-color: var(--ocean); }
+  .foro-card:last-child {
+  }
+  .foro-icono { font-size: 26px; margin-bottom: 8px; }
+  .foro-nombre {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--ocean-deep);
+    margin-bottom: 4px;
+  }
+  .foro-desc {
+    font-size: 11px;
+    color: var(--text-light);
+    line-height: 1.4;
+  }
+  .foro-count {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--ocean);
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+  }
+
+  .tema-card {
+    background: white; border-radius: 16px; padding: 14px;
+    margin-bottom: 10px; cursor: pointer;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    transition: transform 0.15s;
+  }
+  .tema-card:active { transform: scale(0.98); }
+  .tema-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .tema-avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--ocean-deep); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 14px; flex-shrink: 0;
+  }
+  .tema-meta { flex: 1; }
+  .tema-autor { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; color: var(--text-dark); }
+  .tema-fecha { font-size: 11px; color: var(--text-light); }
+  .tema-stats { font-size: 12px; color: var(--text-light); }
+  .tema-titulo { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: var(--ocean-deep); margin-bottom: 6px; }
+  .tema-preview { font-size: 13px; color: #4A4A4A; line-height: 1.4; margin-bottom: 8px; }
+  .tema-etiqueta {
+    display: inline-block; background: rgba(13,61,66,0.08); color: var(--ocean);
+    border-radius: 10px; padding: 2px 10px; font-size: 11px;
+    font-family: 'Syne', sans-serif; font-weight: 700;
+  }
+  .badge-admin {
+    display: inline-block; background: var(--coral); color: white;
+    border-radius: 8px; padding: 1px 7px; font-size: 10px;
+    font-family: 'Syne', sans-serif; font-weight: 700; margin-left: 4px;
+  }
+
+  .empty-state { text-align: center; padding: 40px 20px; }
+  .empty-icon { font-size: 40px; margin-bottom: 10px; }
+  .empty-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: var(--text-dark); margin-bottom: 6px; }
+  .empty-sub { font-size: 13px; color: var(--text-light); }
+  .loading-msg { text-align: center; padding: 30px; font-size: 13px; color: var(--text-light); }
+
+  /* VISTA TEMA */
+  #vista-tema { display: none; }
+  .btn-volver {
+    background: none; border: none; font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 13px; color: rgba(255,255,255,0.7);
+    cursor: pointer; padding: 0;
+  }
+  .btn-volver:hover { color: white; }
+
+  .tema-detalle-card {
+    background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .tema-detalle-titulo {
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px;
+    color: var(--ocean-deep); margin-bottom: 10px; line-height: 1.3;
+  }
+  .tema-detalle-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .tema-detalle-avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--coral); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 16px; flex-shrink: 0;
+  }
+  .tema-detalle-autor { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; color: var(--text-dark); }
+  .tema-detalle-contenido { font-size: 14px; color: #2A2A2A; line-height: 1.6; }
+
+  .respuestas-titulo {
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 13px;
+    color: var(--ocean-deep); text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+
+  .respuesta-card {
+    background: white; border-radius: 14px; padding: 12px;
+    margin-bottom: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .respuesta-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .respuesta-avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--ocean); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 12px; flex-shrink: 0;
+  }
+  .respuesta-autor { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; color: var(--text-dark); }
+  .respuesta-fecha { font-size: 11px; color: var(--text-light); }
+  .respuesta-texto { font-size: 13px; color: #2A2A2A; line-height: 1.5; }
+
+  #login-aviso { display: none; text-align: center; padding: 16px; }
+  #login-aviso-txt { font-size: 13px; color: var(--text-light); }
+  #login-aviso a { color: var(--coral); font-weight: 700; text-decoration: none; }
+
+  .form-respuesta-box { background: white; border-radius: 16px; padding: 14px; margin-top: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+  .textarea-respuesta {
+    width: 100%; background: var(--sand); border: 1.5px solid transparent;
+    border-radius: 12px; padding: 12px; font-size: 14px; color: var(--text-dark);
+    font-family: 'DM Sans', sans-serif; outline: none; resize: none; min-height: 90px;
+    transition: border-color 0.2s;
+  }
+  .textarea-respuesta:focus { border-color: var(--ocean); background: white; }
+  .btn-responder {
+    width: 100%; background: var(--coral); color: white; border: none;
+    border-radius: 12px; padding: 13px; font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 14px; cursor: pointer; margin-top: 10px;
+  }
+  .btn-responder:disabled { opacity: 0.6; }
+
+  /* MODAL NUEVO TEMA */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5); z-index: 1000;
+    align-items: flex-end; justify-content: center;
+  }
+  .modal-content {
+    background: white; border-radius: 20px 20px 0 0;
+    padding: 20px; width: 100%; max-height: 85vh; overflow-y: auto;
+  }
+  .modal-titulo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; color: var(--ocean-deep); margin-bottom: 16px; }
+  .modal-input {
+    width: 100%; background: var(--sand); border: 1.5px solid transparent;
+    border-radius: 12px; padding: 12px; font-size: 14px; color: var(--text-dark);
+    font-family: 'DM Sans', sans-serif; outline: none; margin-bottom: 10px;
+  }
+  .modal-input:focus { border-color: var(--ocean); background: white; }
+  .modal-textarea {
+    width: 100%; background: var(--sand); border: 1.5px solid transparent;
+    border-radius: 12px; padding: 12px; font-size: 14px; color: var(--text-dark);
+    font-family: 'DM Sans', sans-serif; outline: none; resize: none; min-height: 120px;
+    margin-bottom: 10px; transition: border-color 0.2s;
+  }
+  .modal-textarea:focus { border-color: var(--ocean); background: white; }
+  .modal-select {
+    width: 100%; background: var(--sand); border: 1.5px solid transparent;
+    border-radius: 12px; padding: 12px; font-size: 14px; color: var(--text-dark);
+    font-family: 'DM Sans', sans-serif; outline: none; appearance: none; margin-bottom: 16px;
+  }
+  .modal-btns { display: flex; gap: 10px; }
+  .btn-cancelar {
+    flex: 1; background: var(--sand); color: var(--text-dark); border: none;
+    border-radius: 12px; padding: 13px; font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 14px; cursor: pointer;
+  }
+  .btn-publicar {
+    flex: 2; background: var(--coral); color: white; border: none;
+    border-radius: 12px; padding: 13px; font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 14px; cursor: pointer;
+  }
+  .btn-publicar:disabled { opacity: 0.6; }
+
+  /* BOTTOM NAV */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: white; border-top: 1px solid rgba(0,0,0,0.08);
+    display: flex; justify-content: space-around; padding: 8px 0 12px; z-index: 100;
+  }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; opacity: 0.4; text-decoration: none; cursor: pointer; background: none; border: none; }
+  .nav-item.active { opacity: 1; }
+  .nav-icon { font-size: 20px; }
+  .nav-label { font-size: 10px; font-weight: 600; color: var(--ocean); font-family: 'Syne', sans-serif; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button onclick="window.location.href='nudisol-home.html'" style="background:none;border:none;color:white;font-size:22px;cursor:pointer;padding:0;line-height:1;">←</button>
+      <div>
+        <div class="logo-small">nudi<span>sol</span></div>
+        <div class="page-titulo" id="page-titulo">Comunidad</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- VISTA LISTA -->
+<div id="vista-lista">
+  <div class="main">
+
+    <!-- DISCLAIMER -->
+    <div class="disclaimer-box">
+      <div class="disclaimer-toggle" onclick="toggleDisclaimer()">
+        <div class="disclaimer-toggle-label" id="disc-titulo">📋 Normas de la comunidad</div>
+        <div class="disclaimer-arrow" id="disc-arrow">▼</div>
+      </div>
+      <div class="disclaimer-body" id="disc-body">
+        <div class="disclaimer-content" id="disc-content">
+          <ol>
+            <li><strong>Respeto ante todo</strong> — No se permiten insultos, descalificaciones ni ataques personales.</li>
+            <li><strong>Lenguaje apropiado</strong> — Evita el lenguaje ofensivo o discriminatorio por razón de género, orientación, edad o creencias.</li>
+            <li><strong>Tema relevante</strong> — Mantén las conversaciones relacionadas con el naturismo, las playas y la vida al aire libre.</li>
+            <li><strong>Sin spam ni publicidad</strong> — No se permiten enlaces comerciales sin autorización.</li>
+            <li><strong>Privacidad</strong> — No compartas datos personales propios ni de terceros.</li>
+            <li><strong>Contenido apropiado</strong> — No se permite contenido sexual explícito.</li>
+            <li><strong>Reporta</strong> — Si ves algo inapropiado, escríbenos a <strong>info@nudisol.com</strong>.</li>
+          </ol>
+          <div class="disclaimer-footer" id="disc-footer">El equipo de Nudisol se reserva el derecho de eliminar contenido que no cumpla estas normas.</div>
+        </div>
+      </div>
+    </div>
+    <!-- NEWSLETTER -->
+    <div class="newsletter-box">
+      <div class="newsletter-titulo" id="newsletter-titulo">📍 Newsletter Nudisol</div>
+      <div class="newsletter-sub" id="newsletter-sub">Recibe novedades, temas destacados y consejos naturistas.</div>
+      <div class="newsletter-form">
+        <input class="newsletter-input" id="input-newsletter" type="email" placeholder="tu@email.com">
+        <button class="newsletter-btn" id="btn-newsletter" onclick="suscribirNewsletter()">→</button>
+      </div>
+      <div id="newsletter-msg"></div>
+    </div>
+
+    <!-- FOROS -->
+    <div class="foros-grid" id="foros-grid">
+      <div class="foro-card activo" id="foro-vida" onclick="seleccionarForo('vida-naturista')">
+        <div class="foro-icono">🌞</div>
+        <div class="foro-nombre" id="foro-vida-nombre">Vida naturista</div>
+        <div class="foro-desc" id="foro-vida-desc">Filosofía, estilo de vida y cómo empezar</div>
+        <div class="foro-count" id="foro-vida-count"></div>
+      </div>
+      <div class="foro-card" id="foro-playas" onclick="seleccionarForo('playas-alojamientos')">
+        <div class="foro-icono">🏖️</div>
+        <div class="foro-nombre" id="foro-playas-nombre">Playas y alojamientos</div>
+        <div class="foro-desc" id="foro-playas-desc">Destinos, recomendaciones y viajes</div>
+        <div class="foro-count" id="foro-playas-count"></div>
+      </div>
+      <div class="foro-card" id="foro-presenta" onclick="seleccionarForo('presentaciones')">
+        <div class="foro-icono">🤝</div>
+        <div class="foro-nombre" id="foro-presenta-nombre">Presentaciones</div>
+        <div class="foro-desc" id="foro-presenta-desc">Bienvenidas y presentaciones de nuevos miembros</div>
+        <div class="foro-count" id="foro-presenta-count"></div>
+      </div>
+      <div class="foro-card" id="foro-actualizaciones" onclick="seleccionarForo('actualizaciones-mapa')">
+        <div class="foro-icono">📬</div>
+        <div class="foro-nombre" id="foro-actualizaciones-nombre">Buzón de sugerencias</div>
+        <div class="foro-desc" id="foro-actualizaciones-desc">Sugiere cambios, nuevos lugares o actualizaciones del mapa</div>
+        <div class="foro-count" id="foro-actualizaciones-count"></div>
+      </div>
+    </div>
+
+    <!-- TEMAS -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div class="section-titulo" id="section-conversaciones" style="margin-bottom:0;">Conversaciones</div>
+      <button id="btn-nuevo-tema" onclick="abrirModalTema()" style="display:none;">
+        <span>+ Nuevo tema</span>
+      </button>
+    </div>
+    <div id="temas-lista"></div>
+  </div>
+</div>
+
+<!-- VISTA TEMA -->
+<div id="vista-tema">
+  <div class="main">
+    <button class="btn-volver" id="btn-volver" onclick="volverLista()" style="margin-bottom:12px;">← Temas</button>
+
+    <div class="tema-detalle-card">
+      <div class="tema-detalle-titulo" id="tema-titulo-detalle"></div>
+      <div class="tema-detalle-meta">
+        <div class="tema-detalle-avatar" id="tema-avatar-detalle">?</div>
+        <div class="tema-detalle-autor" id="tema-autor-detalle"></div>
+      </div>
+      <div class="tema-detalle-contenido" id="tema-contenido-detalle"></div>
+    </div>
+
+    <div class="respuestas-titulo">Respuestas</div>
+    <div id="respuestas-lista"></div>
+
+    <div id="login-aviso">
+      <div id="login-aviso-txt">Inicia sesión para participar. <a href="index.html">Entrar</a></div>
+    </div>
+
+    <div class="form-respuesta-box" id="form-respuesta">
+      <textarea class="textarea-respuesta" id="input-respuesta" placeholder="Escribe tu respuesta..."></textarea>
+      <button class="btn-responder" id="btn-enviar-respuesta" onclick="enviarRespuesta()">Responder</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVO TEMA -->
+<div class="modal-overlay" id="modal-tema" onclick="if(event.target===this)cerrarModalTema()">
+  <div class="modal-content">
+    <div class="modal-titulo" id="modal-titulo-txt">Nuevo tema</div>
+    <input class="modal-input" id="input-titulo-tema" type="text" placeholder="Título del tema">
+    <textarea class="modal-textarea" id="input-contenido-tema" placeholder="¿De qué quieres hablar?"></textarea>
+    <select class="modal-select" id="select-etiqueta">
+      <option value="">Sin etiqueta</option>
+    </select>
+    <div class="modal-btns">
+      <button class="btn-cancelar" id="btn-cancelar-modal" onclick="cerrarModalTema()">Cancelar</button>
+      <button class="btn-publicar" id="btn-publicar-tema" onclick="publicarTema()"><span id="btn-publicar-modal">Publicar</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-item" onclick="window.location.href='nudisol-home.html'">
+    <span class="nav-icon">🏠</span>
+    <span class="nav-label" id="nlang-inicio">Inicio</span>
+  </button>
+  <button class="nav-item" onclick="window.location.href='nudisol-lugares.html'">
+    <span class="nav-icon">📍</span>
+    <span class="nav-label" id="nlang-lugares">Lugares</span>
+  </button>
+  <button class="nav-item active">
+    <span class="nav-icon">💬</span>
+    <span class="nav-label" id="nlang-comunidad">Comunidad</span>
+  </button>
+  <button class="nav-item" onclick="window.location.href='nudisol-alojamiento.html'">
+    <span class="nav-icon">🏨</span>
+    <span class="nav-label" id="nlang-alojamiento">Alojamiento</span>
+  </button>
+  <button class="nav-item" onclick="window.location.href='nudisol-perfil.html'">
+    <span class="nav-icon">👤</span>
+    <span class="nav-label" id="nlang-perfil">Perfil</span>
+  </button>
+</nav>
+
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js");
+}
+</script>
+<script>
+(function(){
+  var NAV={es:{inicio:'Inicio',lugares:'Lugares',comunidad:'Comunidad',alojamiento:'Alojamiento',perfil:'Perfil'},
+            en:{inicio:'Home',lugares:'Places',comunidad:'Community',alojamiento:'Stay',perfil:'Profile'}};
+  function applyNav(l){
+    var n=NAV[l]||NAV.es;
+    var s=function(id,v){var e=document.getElementById(id);if(e)e.textContent=v;};
+    s('nlang-inicio',n.inicio);s('nlang-lugares',n.lugares);
+    s('nlang-comunidad',n.comunidad);s('nlang-alojamiento',n.alojamiento);s('nlang-perfil',n.perfil);
+    var es=document.getElementById('lang-es'),en=document.getElementById('lang-en');
+    if(es)es.style.opacity=l==='es'?'1':'0.45';
+    if(en)en.style.opacity=l==='en'?'1':'0.45';
+  }
+  window.nudisol_setLang=function(l){
+    localStorage.setItem('nudisol_lang',l);
+    applyNav(l);
+    if(typeof nudisol_applyPageLang==='function')nudisol_applyPageLang(l);
+  };
+  document.addEventListener('DOMContentLoaded',function(){
+    var l=localStorage.getItem('nudisol_lang')||'es';
+    applyNav(l);
+    if(typeof nudisol_applyPageLang==='function')nudisol_applyPageLang(l);
+  });
+})();
+</script>
+</body>
+</html>
