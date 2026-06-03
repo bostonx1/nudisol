@@ -1,0 +1,344 @@
+// ============================================================
+// SOLITO — Asistente de Nudisol
+// ============================================================
+
+(function() {
+
+  // ── SYSTEM PROMPT ────────────────────────────────────────
+  const SYSTEM_PROMPT = `Eres Solito, el asistente oficial de Nudisol (nudisol.app), la primera app naturista española. Tienes personalidad cercana, cálida y con sentido del humor. Siempre terminas con un emoji de sol 🌞.
+
+SOBRE NUDISOL:
+- App naturista española con +1.000 lugares verificados en España (playas, calas, campings, urbanizaciones)
+- Gratuita, sin publicidad, sin necesidad de App Store ni Google Play (es una PWA)
+- Instalación: en Android abre nudisol.app en Chrome y aparece banner automático. En iPhone abre en Safari → compartir → "Añadir a pantalla de inicio"
+- Email de contacto: info@nudisol.com
+
+ACCESO A LA APP:
+- Modo invitado: puede ver lugares y secciones pero no puede escribir ni hacer check-in
+- Usuario registrado: acceso completo con email y contraseña. Tipos: nudista, naturista, host (alojamientos)
+
+SECCIONES:
+1. LUGARES: +1.000 playas y espacios naturistas organizados por provincia en desplegable. También por ubicación cercana activando GPS. Cada ficha muestra temperatura del agua, olas, radiación UV, temperatura exterior y puntuación 0-10.
+2. CHECK-IN: El usuario indica que está en una playa, marca ambiente (NUDISTA/MIXTA/TEXTIL) y aforo (poco/medio/mucho). Dura 8 horas o se cierra manualmente. Visible para toda la comunidad en tiempo real.
+3. COMUNIDAD: 4 foros — Presentaciones, Viajes, Vida Naturista, Buzón de Sugerencias. Solo usuarios registrados pueden crear temas y responder.
+4. ALOJAMIENTOS: Próximamente. Interesados en anunciar escribir a info@nudisol.com
+5. ÍNDICE UV: Radiación solar en tiempo real. Indica tiempo de exposición para producir vitamina D y alertas de protección.
+6. PERFIL: Foto, nombre, tipo de usuario, historial de check-ins, playas visitadas, cerrar sesión.
+7. NEWSLETTER: Suscripción con email. Contenido de valor sobre naturismo, playas y comunidad.
+
+PERSONALIDAD DE SOLITO:
+- Cercano, cálido, con humor inocente
+- Puede contar chistes naturistas cortos e inocentes si se los piden
+- Nunca robótico ni corporativo
+- Siempre útil, nunca inventa datos
+
+REGLAS ABSOLUTAS — NUNCA responde sobre:
+- Contactos sexuales, ligue, intercambios de parejas, clubes liberales
+- Lugares de encuentro gay o sexual
+- Sustancias ilegales o drogas
+- Datos personales del equipo de Nudisol
+- Recomendaciones médicas o legales concretas
+- Herramientas tecnológicas que usa Nudisol internamente
+- Playas o lugares que NO estén en Nudisol
+- Política, partidos o dirigentes políticos
+- Ordenanzas municipales específicas (deriva a ayuntamiento o FEN)
+
+ANTE PREGUNTAS FUERA DE ÁMBITO:
+Responde con gracia, sin ser borde, y redirige a lo que sí puedes hacer.
+
+ANTE PREGUNTAS LEGALES O MÉDICAS:
+Da información general y deriva a profesionales o a la Federación Española de Naturismo (naturismo.org).
+
+FILOSOFÍA:
+El naturismo es respeto al cuerpo, conexión con la naturaleza e igualdad. No tiene relación con el sexo ni el liberalismo. Nudisol es la llave que abre ese mundo.`;
+
+  // ── ESTADO ───────────────────────────────────────────────
+  let historial = [];
+  let abierto = false;
+
+  // ── CREAR UI ─────────────────────────────────────────────
+  function crearUI() {
+    const style = document.createElement('style');
+    style.textContent = `
+      #solito-btn {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 62px;
+        height: 62px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #F2C849, #E8A020);
+        border: none;
+        cursor: pointer;
+        z-index: 9999;
+        box-shadow: 0 4px 20px rgba(242,200,73,0.5);
+        font-size: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      #solito-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 28px rgba(242,200,73,0.7);
+      }
+      #solito-ventana {
+        position: fixed;
+        bottom: 100px;
+        right: 24px;
+        width: 340px;
+        max-width: calc(100vw - 32px);
+        height: 480px;
+        max-height: calc(100vh - 120px);
+        background: #0e2426;
+        border-radius: 20px;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+        z-index: 9998;
+        display: none;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid rgba(242,200,73,0.2);
+        font-family: 'DM Sans', sans-serif;
+      }
+      #solito-ventana.abierto { display: flex; }
+      #solito-header {
+        background: linear-gradient(135deg, #1F4D52, #0e2426);
+        padding: 14px 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid rgba(242,200,73,0.15);
+      }
+      #solito-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #F2C849, #E8A020);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        flex-shrink: 0;
+      }
+      #solito-header-info { flex: 1; }
+      #solito-nombre {
+        font-size: 14px;
+        font-weight: 700;
+        color: #F8F1E4;
+        font-family: 'Syne', sans-serif;
+      }
+      #solito-estado {
+        font-size: 11px;
+        color: rgba(242,200,73,0.7);
+      }
+      #solito-cerrar {
+        background: none;
+        border: none;
+        color: rgba(248,241,228,0.5);
+        font-size: 20px;
+        cursor: pointer;
+        padding: 4px;
+      }
+      #solito-mensajes {
+        flex: 1;
+        overflow-y: auto;
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      #solito-mensajes::-webkit-scrollbar { width: 4px; }
+      #solito-mensajes::-webkit-scrollbar-track { background: transparent; }
+      #solito-mensajes::-webkit-scrollbar-thumb { background: rgba(242,200,73,0.3); border-radius: 2px; }
+      .solito-msg {
+        max-width: 85%;
+        padding: 10px 13px;
+        border-radius: 14px;
+        font-size: 13px;
+        line-height: 1.5;
+        word-break: break-word;
+      }
+      .solito-msg.bot {
+        background: #1F4D52;
+        color: #F8F1E4;
+        align-self: flex-start;
+        border-bottom-left-radius: 4px;
+      }
+      .solito-msg.user {
+        background: #F2C849;
+        color: #0e2426;
+        align-self: flex-end;
+        border-bottom-right-radius: 4px;
+        font-weight: 500;
+      }
+      .solito-msg.typing {
+        background: #1F4D52;
+        color: rgba(248,241,228,0.5);
+        align-self: flex-start;
+        font-style: italic;
+        font-size: 12px;
+      }
+      #solito-input-area {
+        padding: 12px;
+        border-top: 1px solid rgba(242,200,73,0.15);
+        display: flex;
+        gap: 8px;
+        background: #0a1e20;
+      }
+      #solito-input {
+        flex: 1;
+        background: #1F4D52;
+        border: 1px solid rgba(242,200,73,0.2);
+        border-radius: 12px;
+        padding: 10px 13px;
+        color: #F8F1E4;
+        font-size: 13px;
+        font-family: 'DM Sans', sans-serif;
+        outline: none;
+        resize: none;
+        height: 40px;
+        max-height: 80px;
+      }
+      #solito-input::placeholder { color: rgba(248,241,228,0.35); }
+      #solito-input:focus { border-color: rgba(242,200,73,0.5); }
+      #solito-enviar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #F2C849, #E8A020);
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: transform 0.15s;
+      }
+      #solito-enviar:hover { transform: scale(1.1); }
+      #solito-enviar:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    `;
+    document.head.appendChild(style);
+
+    // Botón flotante
+    const btn = document.createElement('button');
+    btn.id = 'solito-btn';
+    btn.innerHTML = '🌞';
+    btn.title = 'Habla con Solito';
+    btn.onclick = toggleSolito;
+    document.body.appendChild(btn);
+
+    // Ventana del chat
+    const ventana = document.createElement('div');
+    ventana.id = 'solito-ventana';
+    ventana.innerHTML = `
+      <div id="solito-header">
+        <div id="solito-avatar">🌞</div>
+        <div id="solito-header-info">
+          <div id="solito-nombre">Solito</div>
+          <div id="solito-estado">Asistente de Nudisol</div>
+        </div>
+        <button id="solito-cerrar" onclick="document.getElementById('solito-ventana').classList.remove('abierto')">✕</button>
+      </div>
+      <div id="solito-mensajes"></div>
+      <div id="solito-input-area">
+        <textarea id="solito-input" placeholder="Pregúntame lo que quieras..." rows="1"></textarea>
+        <button id="solito-enviar" onclick="window.solitoEnviar()">➤</button>
+      </div>
+    `;
+    document.body.appendChild(ventana);
+
+    // Enter para enviar
+    document.getElementById('solito-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        window.solitoEnviar();
+      }
+    });
+
+    // Mensaje de bienvenida
+    agregarMensaje('bot', '¡Hola! Soy Solito, tu asistente en Nudisol. 🌞 ¿En qué puedo ayudarte hoy? Puedo orientarte sobre la app, recomendarte playas, contarte sobre el naturismo... ¡lo que necesites!');
+  }
+
+  // ── TOGGLE ───────────────────────────────────────────────
+  function toggleSolito() {
+    const ventana = document.getElementById('solito-ventana');
+    ventana.classList.toggle('abierto');
+    if (ventana.classList.contains('abierto')) {
+      setTimeout(() => document.getElementById('solito-input').focus(), 100);
+    }
+  }
+
+  // ── AGREGAR MENSAJE ──────────────────────────────────────
+  function agregarMensaje(tipo, texto) {
+    const cont = document.getElementById('solito-mensajes');
+    const div = document.createElement('div');
+    div.className = `solito-msg ${tipo}`;
+    div.textContent = texto;
+    cont.appendChild(div);
+    cont.scrollTop = cont.scrollHeight;
+    return div;
+  }
+
+  // ── ENVIAR ───────────────────────────────────────────────
+  window.solitoEnviar = async function() {
+    const input = document.getElementById('solito-input');
+    const btn = document.getElementById('solito-enviar');
+    const texto = input.value.trim();
+    if (!texto) return;
+
+    input.value = '';
+    btn.disabled = true;
+
+    agregarMensaje('user', texto);
+    historial.push({ role: 'user', content: texto });
+
+    const typing = agregarMensaje('typing', 'Solito está pensando...');
+
+    try {
+      const respuesta = await llamarAPI(historial);
+      typing.remove();
+      agregarMensaje('bot', respuesta);
+      historial.push({ role: 'assistant', content: respuesta });
+      // Limitar historial a últimos 10 turnos
+      if (historial.length > 20) historial = historial.slice(-20);
+    } catch (e) {
+      typing.remove();
+      agregarMensaje('bot', 'Lo siento, ha habido un error. Inténtalo de nuevo en un momento. 🌞');
+    }
+
+    btn.disabled = false;
+    input.focus();
+  };
+
+  // ── LLAMAR API ───────────────────────────────────────────
+  async function llamarAPI(mensajes) {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+       'x-api-key': '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',
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-allow-browser': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 400,
+        system: SYSTEM_PROMPT,
+        messages: mensajes
+      })
+    });
+
+    if (!response.ok) throw new Error('API error');
+    const data = await response.json();
+    return data.content[0].text;
+  }
+
+  // ── INIT ─────────────────────────────────────────────────
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', crearUI);
+  } else {
+    crearUI();
+  }
+
+})();
