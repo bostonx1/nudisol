@@ -342,9 +342,11 @@ El naturismo es respeto al cuerpo, conexión con la naturaleza e igualdad. No ti
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': 'TU_KEY_AQUI',
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-allow-browser': 'true'
+      async function llamarAPI(mensajes) {
+    const response = await fetch('https://solito-proxy.plopezcastello.workers.dev', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
