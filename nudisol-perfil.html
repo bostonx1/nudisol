@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Mi Perfil</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nudisol">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="theme-color" content="#0D3D42">
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js";
+  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+  const app = initializeApp({
+    apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+    authDomain: "nudisol.firebaseapp.com",
+    projectId: "nudisol",
+    storageBucket: "nudisol.firebasestorage.app",
+    messagingSenderId: "222881387953",
+    appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+  });
+
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const analytics = getAnalytics(app);
+  logEvent(analytics, 'page_view', { page_title: 'Nudisol — Perfil', page_path: '/nudisol-perfil.html' });
+  const storage = getStorage(app);
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      window.location.href = 'index.html';
+      return;
+    }
+    if (user.isAnonymous) {
+      mostrarPantallaRegistro();
+      return;
+    }
+    await cargarPerfil(user);
+  });
+
+  function mostrarPantallaRegistro() {
+    const lang = localStorage.getItem('nudisol_lang') || 'es';
+    const skeleton = document.getElementById('skeleton');
+    const es = lang === 'es';
+    skeleton.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:16px;text-align:center;">
+        <div style="font-size:60px;">👤</div>
+        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:white;">
+          ${es ? 'Crea tu perfil en Nudisol' : 'Create your Nudisol profile'}
+        </div>
+        <div style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.6;max-width:280px;">
+          ${es
+            ? 'Lleva un registro de tus playas visitadas, participa en la comunidad y mucho más.'
+            : 'Keep track of your visited beaches, join the community and much more.'}
+        </div>
+        <button id="btn-crear-cuenta" style="
+          width:100%;max-width:280px;padding:14px;border-radius:14px;border:none;
+          background:#D45F3C;color:white;font-family:'Syne',sans-serif;
+          font-weight:700;font-size:16px;cursor:pointer;margin-top:8px;">
+          🌞 ${es ? 'Crear cuenta gratis' : 'Create free account'}
+        </button>
+        <button id="btn-ya-tengo" style="
+          width:100%;max-width:280px;padding:14px;border-radius:14px;
+          border:1.5px solid rgba(255,255,255,0.3);background:transparent;
+          color:white;font-family:'Syne',sans-serif;font-weight:600;font-size:15px;cursor:pointer;">
+          ${es ? 'Ya tengo cuenta — Iniciar sesión' : 'I have an account — Sign in'}
+        </button>
+      </div>
+    `;
+    document.getElementById('btn-crear-cuenta').addEventListener('click', async () => {
+      try { await signOut(auth); } catch(e) {}
+      window.location.href = 'index.html';
+    });
+    document.getElementById('btn-ya-tengo').addEventListener('click', async () => {
+      try { await signOut(auth); } catch(e) {}
+      window.location.href = 'index.html';
+    });
+  }
+
+  async function cargarPerfil(user) {
+    try {
+      // Cargar datos del usuario
+      const userDoc = await getDoc(doc(db, 'usuarios', user.uid));
+      const userData = userDoc.exists() ? userDoc.data() : {};
+      const nombre = userData.nombre || user.email.split('@')[0];
+      const tipo = userData.tipo || 'nudista';
+      const fechaRegistro = userData.fechaRegistro?.toDate ? userData.fechaRegistro.toDate() : new Date();
+
+      // Mostrar avatar con iniciales o foto
+      const iniciales = nombre.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+      if (userData.fotoURL) {
+        const avatarEl = document.getElementById('avatar-iniciales').parentElement;
+        avatarEl.style.backgroundImage = `url(${userData.fotoURL})`;
+        avatarEl.style.backgroundSize = 'cover';
+        avatarEl.style.backgroundPosition = 'center';
+        document.getElementById('avatar-iniciales').style.display = 'none';
+      } else {
+        document.getElementById('avatar-iniciales').textContent = iniciales;
+      }
+      document.getElementById('perfil-nombre').textContent = nombre;
+      document.getElementById('perfil-email').textContent = user.email;
+      // El elemento perfil-contacto se muestra más abajo
+      document.getElementById('perfil-tipo').textContent = tipoLabel(tipo);
+
+      // Mostrar contacto si existe
+      const contactoTipo = userData.contacto_tipo || '';
+      const contactoValor = userData.contacto_valor || '';
+      const contactoEl = document.getElementById('perfil-contacto');
+      if (contactoEl && contactoTipo && contactoValor) {
+        const iconos = { instagram: '📸', whatsapp: '📱', email: '📧' };
+        contactoEl.textContent = `${iconos[contactoTipo] || ''} ${contactoValor}`;
+        contactoEl.dataset.tipo = contactoTipo;
+        contactoEl.dataset.valor = contactoValor;
+        contactoEl.style.display = 'block';
+      } else if (contactoEl) {
+        contactoEl.style.display = 'none';
+      }
+
+      // Cargar check-ins
+      const checkinsQ = query(
+        collection(db, 'checkins'),
+        where('usuarioId', '==', user.uid)
+      );
+      const checkinsSnap = await getDocs(checkinsQ);
+      const checkins = [];
+      checkinsSnap.forEach(d => checkins.push({ id: d.id, ...d.data() }));
+      // Ordenar por timestamp descendente en cliente
+      checkins.sort((a, b) => (b.timestamp || '') > (a.timestamp || '') ? 1 : -1);
+
+      // Calcular stats
+      const totalCheckins = checkins.length;
+      const playasUnicas = new Set(checkins.map(c => c.lugarId)).size;
+      const diasActivo = Math.floor((new Date() - fechaRegistro) / (1000 * 60 * 60 * 24));
+
+      // Mostrar stats
+      animarNumero('stat-checkins', totalCheckins);
+      animarNumero('stat-playas', playasUnicas);
+      animarNumero('stat-dias', diasActivo);
+
+      // Renderizar historial
+      renderHistorial(checkins);
+
+      // Ocultar skeleton
+      document.getElementById('skeleton').style.display = 'none';
+      document.getElementById('contenido').style.display = 'block';
+      document.getElementById('contenido').style.opacity = '0';
+      setTimeout(() => {
+        document.getElementById('contenido').style.transition = 'opacity 0.4s ease';
+        document.getElementById('contenido').style.opacity = '1';
+      }, 10);
+
+      // Aplicar idioma
+      if (typeof applyLangPerfil === 'function') applyLangPerfil();
+
+    } catch (e) {
+      console.error('Error cargando perfil:', e);
+      document.getElementById('skeleton').innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.5)">Error cargando perfil</div>';
+    }
+  }
+
+  function tipoLabel(tipo) {
+    const lang = localStorage.getItem('nudisol_lang') || 'es';
+    const map = tPerfil[lang]?.tipoMap || tPerfil.es.tipoMap;
+    return map[tipo] || tipo;
+  }
+
+  function animarNumero(id, target) {
+    const el = document.getElementById(id);
+    if (target === 0) { el.textContent = '0'; return; }
+    let start = 0;
+    const duration = 800;
+    const step = Math.ceil(target / (duration / 16));
+    const interval = setInterval(() => {
+      start = Math.min(start + step, target);
+      el.textContent = start;
+      if (start >= target) clearInterval(interval);
+    }, 16);
+  }
+
+  function renderHistorial(checkins) {
+    const container = document.getElementById('historial-lista');
+    const contador = document.getElementById('historial-contador');
+    const l = localStorage.getItem('nudisol_lang') || 'es';
+    const tr = l === 'en'
+      ? { sinCheckins: 'No check-ins yet', sinCheckinsSub: 'Find a beach and start your adventure!', visitas: n => `${n} visit${n !== 1 ? 's' : ''}`, sinVisitas: 'No check-ins yet' }
+      : { sinCheckins: 'Aún no has hecho ningún check-in', sinCheckinsSub: '¡Encuentra una playa y empieza tu aventura!', visitas: n => `${n} visita${n !== 1 ? 's' : ''}`, sinVisitas: 'Aún sin check-ins' };
+
+    if (contador) {
+      contador.textContent = checkins.length === 0 ? tr.sinVisitas : tr.visitas(checkins.length);
+    }
+    if (checkins.length === 0) {
+      container.innerHTML = `<div class="historial-vacio">
+        <div class="historial-vacio-icon">🏖️</div>
+        <div class="historial-vacio-texto">${tr.sinCheckins}</div>
+        <div class="historial-vacio-sub">${tr.sinCheckinsSub}</div>
+      </div>`;
+      return;
+    }
+
+    container.innerHTML = checkins.map((c, i) => {
+      const fecha = c.timestamp ? new Date(c.timestamp) : (c.fecha?.toDate ? c.fecha.toDate() : new Date());
+      const fechaStr = fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+      const horaStr = fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      const ambienteMap = {
+        solo_nudistas:      { label: 'NUDISTA', bg: '#0F6E56', color: '#9FE1CB' },
+        mayoria_nudistas:   { label: 'MIXTA',   bg: '#185FA5', color: '#B5D4F4' },
+        bastantes_textiles: { label: 'TEXTIL',  bg: '#A32D2D', color: '#F7C1C1' },
+      };
+      const amb = ambienteMap[c.ambiente];
+      const ambienteBadge = amb
+        ? `<span style="background:${amb.bg};color:${amb.color};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">${amb.label}</span>`
+        : '';
+      return `<div class="checkin-item" style="animation-delay:${i * 0.05}s">
+        <div class="checkin-icono">🏖️</div>
+        <div class="checkin-info">
+          <div class="checkin-lugar">${c.lugarNombre || 'Lugar desconocido'}</div>
+          <div class="checkin-meta">${fechaStr} · ${horaStr}</div>
+        </div>
+        ${ambienteBadge}
+      </div>`;
+    }).join('');
+  }
+
+  window.toggleHistorial = function() {
+    const body = document.getElementById('historial-body');
+    const arrow = document.getElementById('historial-arrow');
+    body.classList.toggle('open');
+    arrow.classList.toggle('open');
+  };
+
+  window.abrirEditarPerfil = function() {
+    const modal = document.getElementById('modal-editar');
+    const lang = localStorage.getItem('nudisol_lang') || 'es';
+    const es = lang === 'es';
+    // Traducir textos del modal
+    document.getElementById('lbl-editar-titulo').textContent = es ? 'Editar perfil' : 'Edit profile';
+    document.getElementById('lbl-edit-nombre').textContent = es ? 'Nombre' : 'Name';
+    document.getElementById('lbl-edit-tipo').textContent = es ? 'Soy' : 'I am';
+    document.getElementById('btn-guardar-perfil').textContent = es ? 'Guardar cambios' : 'Save changes';
+    // Traducir opciones del select
+    const sel = document.getElementById('edit-tipo');
+    sel.options[0].text = es ? '😊 Nudista' : '😊 Nudist';
+    sel.options[1].text = es ? '🌿 Naturista' : '🌿 Naturist';
+    sel.options[2].text = es ? '🏡 Anfitrión' : '🏡 Host';
+    // Prellenar con datos actuales
+    const nombre = document.getElementById('perfil-nombre').textContent;
+    document.getElementById('edit-nombre').value = nombre !== '—' ? nombre : '';
+    // Precargar contacto
+    const contactoEl = document.getElementById('perfil-contacto');
+    if (contactoEl && contactoEl.dataset.tipo) {
+      document.getElementById('edit-contacto-tipo').value = contactoEl.dataset.tipo;
+      document.getElementById('edit-contacto-valor').value = contactoEl.dataset.valor || '';
+    }
+    // Traducir campo contacto
+    document.getElementById('lbl-edit-contacto').textContent = es ? 'Contacto (opcional)' : 'Contact (optional)';
+    document.getElementById('lbl-contacto-hint').textContent = es ? 'Solo visible para usuarios registrados' : 'Only visible to registered users';
+    modal.style.display = 'flex';
+  };
+
+  window.cerrarEditarPerfil = function() {
+    document.getElementById('modal-editar').style.display = 'none';
+    document.getElementById('edit-msg').style.display = 'none';
+  };
+
+  window.guardarPerfil = async function() {
+    const user = auth.currentUser;
+    if (!user) return;
+    const nombre = document.getElementById('edit-nombre').value.trim();
+    const tipo = document.getElementById('edit-tipo').value;
+    const btn = document.getElementById('btn-guardar-perfil');
+    const msg = document.getElementById('edit-msg');
+    const lang = localStorage.getItem('nudisol_lang') || 'es';
+
+    if (!nombre) {
+      msg.textContent = lang === 'en' ? 'Please enter your name.' : 'Por favor escribe tu nombre.';
+      msg.style.color = '#C0392B';
+      msg.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = lang === 'en' ? 'Saving...' : 'Guardando...';
+    try {
+      const contactoTipo = document.getElementById('edit-contacto-tipo').value;
+      const contactoValor = document.getElementById('edit-contacto-valor').value.trim();
+      await setDoc(doc(db, 'usuarios', user.uid), { nombre, tipo, contacto_tipo: contactoTipo, contacto_valor: contactoValor }, { merge: true });
+      document.getElementById('perfil-nombre').textContent = nombre;
+      // Actualizar contacto visible en perfil
+      const contactoEl = document.getElementById('perfil-contacto');
+      if (contactoEl) {
+        const iconos = { instagram: '📸', whatsapp: '📱', email: '📧' };
+        if (contactoTipo && contactoValor) {
+          contactoEl.textContent = `${iconos[contactoTipo] || ''} ${contactoValor}`;
+          contactoEl.style.display = 'block';
+        } else {
+          contactoEl.style.display = 'none';
+        }
+      }
+      msg.textContent = lang === 'en' ? '✅ Profile updated!' : '✅ ¡Perfil actualizado!';
+      msg.style.color = '#2D6A4F';
+      msg.style.display = 'block';
+      setTimeout(() => cerrarEditarPerfil(), 1500);
+    } catch(e) {
+      msg.textContent = lang === 'en' ? 'Error saving. Try again.' : 'Error al guardar. Inténtalo de nuevo.';
+      msg.style.color = '#C0392B';
+      msg.style.display = 'block';
+    }
+    btn.disabled = false;
+    btn.textContent = lang === 'en' ? 'Save changes' : 'Guardar cambios';
+  };
+
+  window.cerrarSesion = async () => {
+    try {
+      await signOut(auth);
+      window.location.href = 'index.html';
+    } catch (e) {
+      console.error('Error cerrando sesión:', e);
+    }
+  };
+
+  window.abrirSelectorFoto = () => {
+    document.getElementById('input-foto').click();
+  };
+
+  window.subirFoto = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const user = auth.currentUser;
+    if (!user) return;
+
+    // Mostrar spinner en avatar
+    const avatarEl = document.getElementById('avatar-iniciales').parentElement;
+    const inicialesEl = document.getElementById('avatar-iniciales');
+    inicialesEl.textContent = '⏳';
+    inicialesEl.style.display = 'flex';
+
+    try {
+      // Comprimir si es muy grande (máx 1MB)
+      const storageRef = ref(storage, `avatares/${user.uid}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+
+      // Guardar URL en Firestore
+      await updateDoc(doc(db, 'usuarios', user.uid), { fotoURL: url });
+
+      // Mostrar foto
+      avatarEl.style.backgroundImage = `url(${url})`;
+      avatarEl.style.backgroundSize = 'cover';
+      avatarEl.style.backgroundPosition = 'center';
+      inicialesEl.style.display = 'none';
+    } catch (err) {
+      console.error('Error subiendo foto:', err);
+      inicialesEl.textContent = '?';
+    }
+  };
+</script>
+
+<style>
+  :root {
+    --ocean-deep: #0D3D42;
+    --ocean: #1A6B72;
+    --ocean-light: #2A9BA5;
+    --sun: #E8A020;
+    --coral: #D45F3C;
+    --sand-light: #F5EFE3;
+    --white: #FDFAF5;
+    --text-dark: #1A1A1A;
+    --text-mid: #4A4A4A;
+    --text-light: #8A8A8A;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--ocean-deep);
+    min-height: 100vh;
+    padding-bottom: 40px;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(180deg, #0a2e32 0%, var(--ocean-deep) 100%);
+    padding: 20px 20px 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(232,160,32,0.12) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+
+  .header-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+  }
+
+  .back-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: rgba(255,255,255,0.6);
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+  }
+
+  .back-btn:hover { color: white; }
+
+  .logo-small {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    color: white;
+    letter-spacing: -0.5px;
+  }
+  .logo-small span { color: #F5C840; }
+
+  /* AVATAR SECTION */
+  .avatar-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 32px;
+  }
+
+  .avatar-wrap {
+    position: relative;
+    cursor: pointer;
+  }
+
+  .avatar-camara {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 26px;
+    height: 26px;
+    background: var(--coral);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    border: 2px solid white;
+  }
+
+  .avatar {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--coral), #e8672a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 32px;
+    color: white;
+    box-shadow: 0 0 0 4px rgba(212,95,60,0.3), 0 8px 24px rgba(0,0,0,0.3);
+    position: relative;
+  }
+
+  .avatar::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 2px solid rgba(212,95,60,0.5);
+  }
+
+  .perfil-nombre {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    color: white;
+    letter-spacing: -0.5px;
+  }
+
+  .perfil-email {
+    font-size: 13px;
+    color: rgba(255,255,255,0.45);
+    margin-top: -6px;
+  }
+
+  .perfil-tipo {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 12px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    color: rgba(255,255,255,0.8);
+  }
+
+  /* WAVE SEPARATOR */
+  .wave {
+    display: block;
+    width: 100%;
+    margin-bottom: -2px;
+  }
+
+  /* MAIN CONTENT */
+  .main {
+    padding: 0 16px;
+  }
+
+  /* STATS */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+    margin-top: -20px;
+  }
+
+  .stat-card {
+    background: var(--white);
+    border-radius: 24px;
+    padding: 18px 10px 14px;
+    text-align: center;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    border-radius: 24px 24px 0 0;
+  }
+
+  .stat-card.coral::before { background: var(--coral); }
+  .stat-card.verde::before { background: #4A9B72; }
+  .stat-card.sol::before { background: #E8A020; }
+
+  .stat-numero {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 30px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-card.coral .stat-numero { color: var(--coral); }
+  .stat-card.verde .stat-numero { color: #4A9B72; }
+  .stat-card.sol .stat-numero { color: #E8A020; }
+
+  .stat-label {
+    font-size: 10px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .stat-icon {
+    font-size: 18px;
+    margin-bottom: 6px;
+  }
+
+  /* SECTION */
+  .section {
+    background: var(--white);
+    border-radius: 20px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .section-count {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--text-light);
+  }
+
+  /* HISTORIAL */
+  .checkin-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    animation: fadeInUp 0.3s ease both;
+  }
+
+  .checkin-item:last-child { border-bottom: none; }
+
+  /* ACORDEÓN CHECK-INS */
+  .historial-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .historial-toggle-label {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text-dark);
+  }
+
+  .historial-toggle-meta {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 2px;
+  }
+
+  .historial-arrow {
+    font-size: 18px;
+    color: var(--text-light);
+    transition: transform 0.3s ease;
+  }
+
+  .historial-arrow.open { transform: rotate(180deg); }
+
+  .historial-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+  }
+
+  .historial-body.open { max-height: 2000px; }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .checkin-icono {
+    font-size: 22px;
+    width: 40px;
+    height: 40px;
+    background: rgba(13,61,66,0.06);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .checkin-info { flex: 1; min-width: 0; }
+
+  .checkin-lugar {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .checkin-meta {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 2px;
+  }
+
+  .checkin-badge {
+    font-size: 10px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .badge-nudista {
+    background: rgba(232,160,32,0.12);
+    color: #a06b00;
+  }
+
+  .badge-textil {
+    background: rgba(26,107,114,0.1);
+    color: var(--ocean);
+  }
+
+  .historial-vacio {
+    padding: 40px 20px;
+    text-align: center;
+  }
+
+  .historial-vacio-icon { font-size: 40px; margin-bottom: 12px; }
+
+  .historial-vacio-texto {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text-dark);
+    margin-bottom: 6px;
+  }
+
+  .historial-vacio-sub {
+    font-size: 13px;
+    color: var(--text-light);
+  }
+
+  /* MENU CUENTA */
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 15px 18px;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .menu-item:last-child { border-bottom: none; }
+  .menu-item:hover { background: rgba(0,0,0,0.02); }
+
+  .menu-icono {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .menu-texto {
+    flex: 1;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-dark);
+  }
+
+  .menu-arrow {
+    color: var(--text-light);
+    font-size: 16px;
+  }
+
+  .menu-item.danger .menu-texto { color: var(--coral); }
+  .menu-item.danger .menu-icono { background: rgba(212,95,60,0.1); }
+
+  /* SKELETON */
+  .skeleton-block {
+    background: rgba(255,255,255,0.08);
+    border-radius: 12px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  /* NAV BOTTOM */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(10,40,44,0.97);
+    backdrop-filter: blur(12px);
+    display: flex;
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(255,255,255,0.08);
+    z-index: 100;
+  }
+
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 0;
+    text-decoration: none;
+    color: rgba(255,255,255,0.4);
+    cursor: pointer;
+    background: none;
+    border: none;
+    transition: color 0.2s;
+  }
+
+  .nav-item.active { color: var(--coral); }
+
+  .nav-icon { font-size: 20px; }
+
+  .nav-label {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  #contenido { display: none; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-nav">
+    <a href="nudisol-home.html" class="back-btn" id="perfil-back">← Inicio</a>
+    <div class="logo-small">nudi<span>sol</span></div>
+    <div style="width:60px;"></div>
+  </div>
+
+  <!-- SKELETON -->
+  <div id="skeleton" class="avatar-section">
+    <div class="skeleton-block" style="width:88px;height:88px;border-radius:50%;"></div>
+    <div class="skeleton-block" style="width:140px;height:20px;margin-top:8px;"></div>
+    <div class="skeleton-block" style="width:180px;height:14px;"></div>
+    <div class="skeleton-block" style="width:80px;height:24px;border-radius:20px;"></div>
+  </div>
+
+  <!-- CONTENIDO REAL -->
+  <div id="contenido">
+    <div class="avatar-section">
+      <div class="avatar-wrap" onclick="abrirSelectorFoto()">
+        <div class="avatar"><span id="avatar-iniciales">?</span></div>
+        <div class="avatar-camara">📷</div>
+      </div>
+      <input type="file" id="input-foto" accept="image/*" style="display:none" onchange="subirFoto(event)">
+      <div class="perfil-nombre" id="perfil-nombre">—</div>
+      <div class="perfil-email" id="perfil-email">—</div>
+      <div class="perfil-tipo" id="perfil-tipo">—</div>
+      <div id="perfil-contacto" style="display:none;margin-top:8px;font-size:14px;color:rgba(255,255,255,0.75);background:rgba(255,255,255,0.1);border-radius:20px;padding:6px 16px;"></div>
+    </div>
+  </div>
+
+  <!-- WAVE -->
+  <svg class="wave" viewBox="0 0 390 32" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+    <path d="M0 32 L0 18 Q30 6 60 16 Q90 26 120 14 Q150 2 180 14 Q210 26 240 14 Q270 2 300 14 Q330 26 360 14 Q375 8 390 12 L390 32 Z" fill="#0D3D42"/>
+  </svg>
+</div>
+
+<!-- STATS -->
+<div class="main">
+  <div class="stats-grid">
+    <div class="stat-card coral">
+      <div class="stat-icon">📍</div>
+      <div class="stat-numero" id="stat-checkins">—</div>
+      <div class="stat-label" id="lbl-checkins">Check-ins</div>
+    </div>
+    <div class="stat-card verde">
+      <div class="stat-icon">🏖️</div>
+      <div class="stat-numero" id="stat-playas">—</div>
+      <div class="stat-label" id="lbl-playas">Playas</div>
+    </div>
+    <div class="stat-card sol">
+      <div class="stat-icon">☀️</div>
+      <div class="stat-numero" id="stat-dias">—</div>
+      <div class="stat-label" id="lbl-dias">Días activo</div>
+    </div>
+  </div>
+
+  <!-- HISTORIAL -->
+  <div class="section">
+    <div class="historial-toggle" onclick="toggleHistorial()">
+      <div>
+        <div class="historial-toggle-label" id="lbl-mis-checkins">Mis check-ins</div>
+        <div class="historial-toggle-meta" id="historial-contador"></div>
+      </div>
+      <div class="historial-arrow" id="historial-arrow">▼</div>
+    </div>
+    <div class="historial-body" id="historial-body">
+      <div id="historial-lista">
+        <div style="padding:24px;text-align:center;color:var(--text-light);font-size:13px;" id="lbl-cargando">Cargando...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MENU CUENTA -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title" id="lbl-mi-cuenta">Mi cuenta</div>
+    </div>
+
+    <div class="menu-item" onclick="abrirEditarPerfil()" style="cursor:pointer;">
+      <div class="menu-icono" style="background:rgba(26,107,114,0.1);">⚙️</div>
+      <div class="menu-texto" id="lbl-editar-perfil">Editar perfil</div>
+      <div class="menu-arrow">›</div>
+    </div>
+
+    <div class="menu-item danger" onclick="cerrarSesion()">
+      <div class="menu-icono">🚪</div>
+      <div class="menu-texto" id="lbl-cerrar-sesion">Cerrar sesión</div>
+      <div class="menu-arrow" style="color:#D45F3C;">›</div>
+    </div>
+  </div>
+
+  <div style="height:80px;"></div>
+</div>
+
+<!-- MODAL EDITAR PERFIL -->
+<div id="modal-editar" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:flex-end;justify-content:center;">
+  <div style="background:white;border-radius:24px 24px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:#0D3D42;" id="lbl-editar-titulo">Editar perfil</div>
+      <button onclick="cerrarEditarPerfil()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#94A3B8;">✕</button>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.5px;" id="lbl-edit-nombre">Nombre</label>
+      <input id="edit-nombre" type="text" style="width:100%;margin-top:6px;padding:12px 14px;border:1.5px solid #E2E8F0;border-radius:12px;font-size:15px;font-family:'Syne',sans-serif;box-sizing:border-box;">
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label style="font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.5px;" id="lbl-edit-tipo">Soy</label>
+      <select id="edit-tipo" style="width:100%;margin-top:6px;padding:12px 14px;border:1.5px solid #E2E8F0;border-radius:12px;font-size:15px;font-family:'Syne',sans-serif;box-sizing:border-box;background:white;">
+        <option value="nudista">😊 Nudista</option>
+        <option value="naturista">🌿 Naturista</option>
+        <option value="anfitrion">🏡 Anfitrión</option>
+      </select>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.5px;" id="lbl-edit-contacto">Contacto (opcional)</label>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <select id="edit-contacto-tipo" style="width:130px;padding:12px 10px;border:1.5px solid #E2E8F0;border-radius:12px;font-size:14px;font-family:'Syne',sans-serif;background:white;">
+          <option value="">— Ninguno —</option>
+          <option value="instagram">📸 Instagram</option>
+          <option value="whatsapp">📱 WhatsApp</option>
+          <option value="email">📧 Email</option>
+        </select>
+        <input id="edit-contacto-valor" type="text" placeholder="@usuario / +34..." style="flex:1;padding:12px 14px;border:1.5px solid #E2E8F0;border-radius:12px;font-size:14px;font-family:'Syne',sans-serif;box-sizing:border-box;">
+      </div>
+      <div style="font-size:11px;color:#94A3B8;margin-top:6px;" id="lbl-contacto-hint">Solo visible para usuarios registrados</div>
+    </div>
+
+    <button id="btn-guardar-perfil" onclick="guardarPerfil()" style="width:100%;padding:14px;border-radius:14px;border:none;background:#D45F3C;color:white;font-family:'Syne',sans-serif;font-weight:700;font-size:16px;cursor:pointer;">Guardar cambios</button>
+    <div id="edit-msg" style="text-align:center;font-size:13px;margin-top:10px;color:#2D6A4F;display:none;"></div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-item" onclick="window.location.href='nudisol-home.html'">
+    <span class="nav-icon">🏠</span>
+    <span class="nav-label" id="nav-lbl-inicio">Inicio</span>
+  </button>
+  <button class="nav-item" onclick="window.location.href='nudisol-lugares.html'">
+    <span class="nav-icon">📍</span>
+    <span class="nav-label" id="nav-lbl-mapa">Lugares</span>
+  </button>
+  <button class="nav-item" onclick="window.location.href='nudisol-comunidad.html'">
+    <span class="nav-icon">💬</span>
+    <span class="nav-label" id="nav-lbl-comunidad">Comunidad</span>
+  </button>
+  <button class="nav-item" onclick="window.location.href='nudisol-alojamiento.html'">
+    <span class="nav-icon">🏨</span>
+    <span class="nav-label" id="nav-lbl-aloj">Alojamiento</span>
+  </button>
+  <button class="nav-item active">
+    <span class="nav-icon">👤</span>
+    <span class="nav-label" id="nav-lbl-perfil">Perfil</span>
+  </button>
+</nav>
+
+<script>
+const tPerfil = {
+  es: {
+    checkins: 'Check-ins', playas: 'Playas', diasActivo: 'Días activo',
+    misCheckins: 'Mis check-ins', cargando: 'Cargando...',
+    miCuenta: 'Mi cuenta', editarPerfil: 'Editar perfil',
+    notificaciones: 'Notificaciones', privacidad: 'Privacidad',
+    cerrarSesion: 'Cerrar sesión',
+    navInicio: 'Inicio', navMapa: 'Lugares', navComunidad: 'Comunidad', navAloj: 'Alojamiento', navPerfil: 'Perfil', back: '← Inicio',
+    tipoMap: { nudista: '🌞 Nudista', naturista: '📍 Naturista', anfitrion: '🏡 Anfitrión' },
+    nudista: '🌞 Nudista', textil: '👙 Textil',
+    sinCheckins: 'You haven\'t checked in yet', sinCheckinsSub: 'Find a beach and start your adventure!',
+    errorPerfil: 'Error loading profile'
+  },
+  en: {
+    checkins: 'Check-ins', playas: 'Beaches', diasActivo: 'Days active',
+    misCheckins: 'My check-ins', cargando: 'Loading...',
+    miCuenta: 'My account', editarPerfil: 'Edit profile',
+    notificaciones: 'Notifications', privacidad: 'Privacy',
+    cerrarSesion: 'Sign out',
+    navInicio: 'Home', navMapa: 'Places', navComunidad: 'Community', navAloj: 'Stay', navPerfil: 'Profile', back: '← Home',
+    tipoMap: { nudista: '🌞 Nudist', naturista: '📍 Naturist', anfitrion: '🏡 Host' },
+    nudista: '🌞 Nudist', textil: '👙 Textile',
+    sinCheckins: 'No check-ins yet', sinCheckinsSub: 'Find a beach and start your adventure!',
+    errorPerfil: 'Error loading profile'
+  }
+};
+
+function applyLangPerfil() {
+  const lang = localStorage.getItem('nudisol_lang') || 'es';
+  const tr = tPerfil[lang];
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('lbl-checkins', tr.checkins);
+  set('lbl-playas', tr.playas);
+  set('lbl-dias', tr.diasActivo);
+  set('lbl-mis-checkins', tr.misCheckins);
+  set('lbl-cargando', tr.cargando);
+  set('lbl-mi-cuenta', tr.miCuenta);
+  set('lbl-editar-perfil', tr.editarPerfil);
+  set('lbl-notificaciones', tr.notificaciones);
+  set('lbl-privacidad', tr.privacidad);
+  set('lbl-cerrar-sesion', tr.cerrarSesion);
+  set('nav-lbl-inicio', tr.navInicio);
+  set('nav-lbl-mapa', tr.navMapa);
+  set('nav-lbl-comunidad', tr.navComunidad);
+  set('nav-lbl-aloj', tr.navAloj);
+  set('nav-lbl-perfil', tr.navPerfil);
+  const back = document.getElementById('perfil-back');
+  if (back) back.textContent = tr.back;
+}
+
+window.addEventListener('DOMContentLoaded', applyLangPerfil);
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(e => console.log("SW error", e));
+  });
+}
+</script>
+</body>
+</html>
