@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Notificaciones</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0D3D42">
+<style>
+  :root { --ocean-deep: #0D3D42; --ocean: #1A6B72; --coral: #D45F3C; --sand-light: #F5EFE3; --white: #FDFAF5; --text-dark: #1A1A1A; --text-light: #8A8A8A; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--ocean-deep); min-height: 100vh; }
+  .header { background: linear-gradient(180deg, #0a2e32 0%, var(--ocean-deep) 100%); padding: 20px 20px 40px; }
+  .header-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+  .back-btn { color: rgba(255,255,255,0.6); font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; text-decoration: none; background: none; border: none; cursor: pointer; }
+  .logo-small { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 20px; color: white; letter-spacing: -0.5px; }
+  .logo-small span { color: #F5C840; }
+  .page-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; color: white; text-align: center; }
+  .main { padding: 24px 16px; }
+  .card { background: var(--white); border-radius: 20px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.15); margin-bottom: 20px; }
+
+  .notif-item { display: flex; align-items: flex-start; gap: 12px; padding: 16px 18px; border-bottom: 1px solid rgba(0,0,0,0.05); cursor: pointer; transition: background 0.15s; }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-item:active { background: rgba(0,0,0,0.03); }
+  .notif-item.no-leida { background: rgba(232,160,32,0.06); }
+  .notif-icono { width: 36px; height: 36px; border-radius: 10px; background: rgba(232,160,32,0.12); display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
+  .notif-info { flex: 1; min-width: 0; }
+  .notif-texto { font-size: 13.5px; color: var(--text-dark); line-height: 1.4; }
+  .notif-texto b { font-weight: 700; }
+  .notif-fecha { font-size: 11.5px; color: var(--text-light); margin-top: 4px; }
+  .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--coral); flex-shrink: 0; margin-top: 6px; }
+  .estado-vacio { text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.5); font-size: 13.5px; }
+  .estado-vacio-icon { font-size: 36px; margin-bottom: 10px; }
+
+  .menu-item { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+  .menu-item:last-child { border-bottom: none; }
+  .menu-icono { width: 36px; height: 36px; border-radius: 10px; background: rgba(232,160,32,0.1); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .menu-info { flex: 1; }
+  .menu-texto { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 14px; color: var(--text-dark); }
+  .menu-sub { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+  .toggle { position: relative; width: 44px; height: 26px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: #ccc; border-radius: 26px; cursor: not-allowed; }
+  .toggle-slider::before { content: ''; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: white; border-radius: 50%; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+  .proximamente-badge { display: inline-block; background: rgba(232,160,32,0.15); color: #a06b00; border: 1px solid rgba(232,160,32,0.3); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-family: 'Syne', sans-serif; font-weight: 700; }
+  .seccion-titulo { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 0.5px; margin: 24px 4px 10px; }
+  .seccion-titulo:first-child { margin-top: 0; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-nav">
+    <button class="back-btn" id="back-btn" onclick="window.location.href='nudisol-perfil.html'">← Perfil</button>
+    <div class="logo-small">nudi<span>sol</span></div>
+    <div style="width:60px;"></div>
+  </div>
+  <div class="page-title" id="page-title">Notificaciones</div>
+</div>
+
+<div class="main">
+  <div class="seccion-titulo" id="titulo-actividad">Actividad</div>
+  <div class="card" id="card-notificaciones">
+    <div class="estado-vacio" id="estado-cargando">
+      <div class="estado-vacio-icon">⏳</div>
+      <div id="txt-cargando">Cargando...</div>
+    </div>
+  </div>
+
+  <div class="seccion-titulo" id="titulo-ajustes">Ajustes</div>
+  <div class="card">
+    <div class="menu-item">
+      <div class="menu-icono">📍</div>
+      <div class="menu-info">
+        <div class="menu-texto" id="txt-cercanos">Check-ins cercanos</div>
+        <div class="menu-sub"><span class="proximamente-badge" id="badge-2">Próximamente</span></div>
+      </div>
+      <label class="toggle"><input type="checkbox" disabled><span class="toggle-slider"></span></label>
+    </div>
+    <div class="menu-item">
+      <div class="menu-icono">🏡</div>
+      <div class="menu-info">
+        <div class="menu-texto" id="txt-alojamientos">Nuevos alojamientos</div>
+        <div class="menu-sub"><span class="proximamente-badge" id="badge-3">Próximamente</span></div>
+      </div>
+      <label class="toggle"><input type="checkbox" disabled><span class="toggle-slider"></span></label>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, collection, query, where, orderBy, getDocs, doc, updateDoc, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const app = initializeApp({
+    apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+    authDomain: "nudisol.firebaseapp.com",
+    projectId: "nudisol",
+    storageBucket: "nudisol.firebasestorage.app",
+    messagingSenderId: "222881387953",
+    appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+  });
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  const tNotif = {
+    es: {
+      pageTitle: 'Notificaciones', backBtn: '← Perfil',
+      actividad: 'Actividad', ajustes: 'Ajustes',
+      cercanos: 'Check-ins cercanos', alojamientos: 'Nuevos alojamientos',
+      proximamente: 'Próximamente',
+      cargando: 'Cargando...',
+      vacioTitulo: 'Sin notificaciones',
+      vacioTexto: 'Cuando alguien responda a uno de tus posts, lo verás aquí.',
+      respuesta: (nombre, titulo) => '<b>' + nombre + '</b> ha respondido a tu publicación' + (titulo ? ' "' + titulo + '"' : ''),
+      necesitasIniciar: 'Inicia sesión para ver tus notificaciones.'
+    },
+    en: {
+      pageTitle: 'Notifications', backBtn: '← Profile',
+      actividad: 'Activity', ajustes: 'Settings',
+      cercanos: 'Nearby check-ins', alojamientos: 'New accommodations',
+      proximamente: 'Coming soon',
+      cargando: 'Loading...',
+      vacioTitulo: 'No notifications',
+      vacioTexto: 'When someone replies to one of your posts, you will see it here.',
+      respuesta: (nombre, titulo) => '<b>' + nombre + '</b> replied to your post' + (titulo ? ' "' + titulo + '"' : ''),
+      necesitasIniciar: 'Sign in to see your notifications.'
+    }
+  };
+
+  function lang() { return localStorage.getItem('nudisol_lang') || 'es'; }
+
+  function applyLangStatic() {
+    const tr = tNotif[lang()];
+    document.getElementById('page-title').textContent = tr.pageTitle;
+    document.getElementById('back-btn').textContent = tr.backBtn;
+    document.getElementById('titulo-actividad').textContent = tr.actividad;
+    document.getElementById('titulo-ajustes').textContent = tr.ajustes;
+    document.getElementById('txt-cercanos').textContent = tr.cercanos;
+    document.getElementById('txt-alojamientos').textContent = tr.alojamientos;
+    document.getElementById('badge-2').textContent = tr.proximamente;
+    document.getElementById('badge-3').textContent = tr.proximamente;
+    document.getElementById('txt-cargando').textContent = tr.cargando;
+  }
+
+  function tiempoRelativo(fechaDoc) {
+    if (!fechaDoc) return '';
+    const fecha = fechaDoc.toDate ? fechaDoc.toDate() : new Date(fechaDoc);
+    const diffMs = Date.now() - fecha.getTime();
+    const min = Math.floor(diffMs / 60000);
+    if (min < 1) return lang() === 'en' ? 'just now' : 'ahora mismo';
+    if (min < 60) return lang() === 'en' ? (min + 'm ago') : ('hace ' + min + ' min');
+    const h = Math.floor(min / 60);
+    if (h < 24) return lang() === 'en' ? (h + 'h ago') : ('hace ' + h + ' h');
+    const d = Math.floor(h / 24);
+    return lang() === 'en' ? (d + 'd ago') : ('hace ' + d + ' d');
+  }
+
+  async function cargarNotificaciones(uid) {
+    const cont = document.getElementById('card-notificaciones');
+    const tr = tNotif[lang()];
+    try {
+      const q = query(
+        collection(db, 'notificaciones'),
+        where('destinatarioId', '==', uid),
+        orderBy('fecha', 'desc'),
+        limit(50)
+      );
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        cont.innerHTML =
+          '<div class="estado-vacio" style="color:var(--text-light);">' +
+          '<div class="estado-vacio-icon">🔔</div>' +
+          '<div style="font-family:\'Syne\',sans-serif;font-weight:700;color:var(--text-dark);margin-bottom:4px;">' + tr.vacioTitulo + '</div>' +
+          '<div>' + tr.vacioTexto + '</div>' +
+          '</div>';
+        return;
+      }
+      cont.innerHTML = '';
+      snap.forEach((docSnap) => {
+        const n = docSnap.data();
+        const item = document.createElement('div');
+        item.className = 'notif-item' + (n.leida ? '' : ' no-leida');
+        const icono = n.tipo === 'respuesta' ? '💬' : '🔔';
+        const texto = n.tipo === 'respuesta'
+          ? tr.respuesta(n.autorRespuestaNombre || '', n.postTitulo)
+          : '';
+        item.innerHTML =
+          '<div class="notif-icono">' + icono + '</div>' +
+          '<div class="notif-info">' +
+          '<div class="notif-texto">' + texto + '</div>' +
+          '<div class="notif-fecha">' + tiempoRelativo(n.fecha) + '</div>' +
+          '</div>' +
+          (n.leida ? '' : '<div class="notif-dot"></div>');
+        item.addEventListener('click', async () => {
+          if (!n.leida) {
+            try { await updateDoc(doc(db, 'notificaciones', docSnap.id), { leida: true }); } catch (e) { console.error(e); }
+          }
+          if (n.postId) {
+            window.location.href = 'nudisol-comunidad.html?tema=' + n.postId;
+          }
+        });
+        cont.appendChild(item);
+      });
+    } catch (e) {
+      console.error('Error cargando notificaciones:', e);
+      cont.innerHTML = '<div class="estado-vacio">⚠️ ' + (lang() === 'en' ? 'Could not load notifications.' : 'No se pudieron cargar las notificaciones.') + '</div>';
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', applyLangStatic);
+
+  onAuthStateChanged(auth, (user) => {
+    applyLangStatic();
+    if (user && !user.isAnonymous) {
+      cargarNotificaciones(user.uid);
+    } else {
+      const tr = tNotif[lang()];
+      document.getElementById('card-notificaciones').innerHTML = '<div class="estado-vacio">' + tr.necesitasIniciar + '</div>';
+    }
+  });
+</script>
+</body>
+</html>
