@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Lugares Naturistas</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<meta name="theme-color" content="#0D3D42">
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc, updateDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js";
+
+  const app = initializeApp({
+    apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+    authDomain: "nudisol.firebaseapp.com",
+    projectId: "nudisol",
+    storageBucket: "nudisol.firebasestorage.app",
+    messagingSenderId: "222881387953",
+    appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+  });
+
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+  const analytics = getAnalytics(app);
+  logEvent(analytics, 'page_view', {
+    page_title: 'Nudisol — Lugares',
+    page_path: '/nudisol-lugares.html'
+  });
+  let usuarioActual = null;
+  let unsubscribeCheckin = null; // para desuscribirse del listener activo
+  let todosLosLugares = [];
+  let mapaInstancia = null;
+  let marcadores = [];
+
+
+  // ── TRADUCCIONES ──────────────────────────────────────────────
+  const t = {
+    es: {
+      back: '← Inicio',
+      pageTitulo: '📍 Lugares naturistas',
+      selectPlaceholder: 'Selecciona una ubicación...',
+      catPlaya: 'Playa / Cala',
+      catParaje: 'Paraje',
+      catCamping: 'Camping',
+      catAloj: 'Alojamiento',
+      catPiscina: 'Piscina / Spa',
+      catClub: 'Club',
+      catUrb: 'Urbanización',
+      placeholderTitulo: 'Elige una ubicación',
+      placeholderSub: 'Selecciona una ubicación para ver todos los lugares naturistas disponibles con su ubicación en el mapa.',
+      lugarSingular: 'lugar',
+      lugarPlural: 'lugares',
+      btnNavegar: '🚗 Cómo llegar — Google Maps',
+      btnMapa: '🗺️ Ver en el mapa',
+      btnWeb: '🌐 Ver web oficial',
+      btnLlamar: '📞 Llamar',
+      btnCerrar: 'Cerrar',
+      sinDesc: 'Sin descripción disponible.',
+      navInicio: 'Inicio',
+      navMapa: 'Mapa',
+      navLugares: 'Lugares',
+      navComunidad: 'Comunidad',
+      navPerfil: 'Perfil',
+      btnCercanos: '📍 Visitar lugares cercanos',      cercanosTitulo: 'Lugares cerca de ti',
+      cercanosSub: 'Elige un radio de búsqueda. Te pediremos permiso para usar tu ubicación.',
+      cercanosBuscando: '⏳ Obteniendo tu ubicación...',
+      cercanosError: 'No se pudo obtener tu ubicación. Revisa los permisos del navegador.',
+      cercanosErrorTimeout: 'La ubicación tardó demasiado. Inténtalo de nuevo.',
+      cercanosErrorDenied: 'Has denegado el permiso de ubicación. Actívalo en los ajustes del navegador.',
+      cercanosResultado: 'lugares en un radio de',
+      cercanosNinguno: 'No hay lugares naturistas en este radio. Prueba con un radio mayor.',
+      tuUbicacion: 'Tu ubicación',
+      reintentar: 'Reintentar',
+      privacidad: '🔒 Tu ubicación se procesa solo en tu dispositivo. Nudisol no la guarda ni la comparte.',
+      checkinBtn: '✅ Estoy aquí ahora',
+      checkinSalir: '👋 Salir del lugar',
+      checkinPersonas: 'personas aquí ahora',
+      checkinPersona: 'persona aquí ahora',
+      checkinNadie: 'Sé el primero en hacer check-in',
+      checkinHecho: '¡Check-in registrado!',
+      checkinSalido: 'Has salido del lugar',
+      checkinLogin: '✅ Estoy aquí ahora',
+      buscadorPlaceholder: '🔍 Buscar playa, paraje, camping...',
+      buscadorSinResultados: 'No se encontraron lugares para',
+    },
+    en: {
+      back: '← Home',
+      pageTitulo: '📍 Naturist places',
+      selectPlaceholder: 'Select a location...',
+      catPlaya: 'Beach / Cove',
+      catParaje: 'Nature spot',
+      catCamping: 'Camping',
+      catAloj: 'Accommodation',
+      catPiscina: 'Pool / Spa',
+      catClub: 'Club',
+      catUrb: 'Resort',
+      placeholderTitulo: 'Choose a location',
+      placeholderSub: 'Select a location to see all naturist spots with their location on the map.',
+      lugarSingular: 'place',
+      lugarPlural: 'places',
+      btnNavegar: '🚗 Get directions — Google Maps',
+      btnMapa: '🗺️ Show on map',
+      btnWeb: '🌐 Official website',
+      btnLlamar: '📞 Call',
+      btnCerrar: 'Close',
+      sinDesc: 'No description available.',
+      navInicio: 'Home',
+      navMapa: 'Map',
+      navLugares: 'Places',
+      navComunidad: 'Community',
+      navPerfil: 'Profile',
+      btnCercanos: '📍 Visit nearby places',
+      cercanosTitulo: 'Places near you',
+      cercanosSub: 'Pick a search radius. We will ask for permission to use your location.',
+      cercanosBuscando: '⏳ Getting your location...',
+      cercanosError: 'Could not get your location. Check your browser permissions.',
+      cercanosErrorTimeout: 'Location took too long. Try again.',
+      cercanosErrorDenied: 'You denied location permission. Enable it in your browser settings.',
+      cercanosResultado: 'places within',
+      cercanosNinguno: 'No naturist places within this radius. Try a larger one.',
+      tuUbicacion: 'Your location',
+      reintentar: 'Retry',
+      privacidad: '🔒 Your location is processed only on your device. Nudisol never stores or shares it.',
+      checkinBtn: '✅ I am here now',
+      checkinSalir: '👋 Leave this place',
+      checkinPersonas: 'people here now',
+      checkinPersona: 'person here now',
+      checkinNadie: 'Be the first to check in',
+      checkinHecho: 'Check-in registered!',
+      checkinSalido: 'You have left the place',
+      checkinLogin: '✅ I am here now',
+      buscadorPlaceholder: '🔍 Search beach, nature spot, camping...',
+      buscadorSinResultados: 'No places found for',
+    }
+  };
+
+  function getLang() { return localStorage.getItem('nudisol_lang') || 'es'; }
+  function tx() { return t[getLang()] || t.es; }
+
+  function aplicarIdioma() {
+    const s = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    const tr = tx();
+    s('i18n-back', tr.back);
+    s('i18n-page-titulo', tr.pageTitulo);
+    s('i18n-placeholder-titulo', tr.placeholderTitulo);
+    s('i18n-placeholder-sub', tr.placeholderSub);
+    s('i18n-cat-playa', tr.catPlaya);
+    s('i18n-cat-paraje', tr.catParaje);
+    s('i18n-cat-camping', tr.catCamping);
+    s('i18n-cat-aloj', tr.catAloj);
+    s('i18n-cat-piscina', tr.catPiscina);
+    s('i18n-cat-club', tr.catClub);
+    s('i18n-cat-urb', tr.catUrb);
+    s('i18n-btn-navegar', tr.btnNavegar);
+    s('i18n-btn-mapa', tr.btnMapa);
+    s('i18n-btn-web', tr.btnWeb);
+    s('i18n-btn-cerrar', tr.btnCerrar);
+    s('i18n-nav-inicio', tr.navInicio);
+    s('i18n-nav-mapa', tr.navMapa);
+    s('i18n-nav-lugares', tr.navLugares);
+    s('i18n-nav-comunidad', tr.navComunidad);
+    s('i18n-nav-perfil', tr.navPerfil);
+    s('i18n-btn-cercanos', tr.btnCercanos);
+    s('i18n-cercanos-titulo', tr.cercanosTitulo);
+    s('i18n-cercanos-sub', tr.cercanosSub);
+    s('i18n-btn-cerrar-cercanos', tr.btnCerrar);
+    const buscador = document.getElementById('buscador-global');
+    if (buscador) buscador.placeholder = tr.buscadorPlaceholder;
+    s('i18n-privacidad', tr.privacidad);
+    // Select placeholder
+    const sel = document.getElementById('select-provincia');
+    if (sel && sel.options[0]) sel.options[0].textContent = tr.selectPlaceholder;
+  }
+
+  document.addEventListener('DOMContentLoaded', aplicarIdioma);
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.buscador-wrap')) cerrarBuscador();
+  });
+
+    async function cargarTodos() {
+    try {
+      const snap = await getDocs(collection(db, 'lugares'));
+      snap.forEach(d => todosLosLugares.push({ id: d.id, ...d.data() }));
+      todosLosLugares.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+      poblarProvincias();
+    } catch(e) {
+      console.error('Error:', e);
+    }
+  }
+
+  function poblarProvincias() {
+    // ✅ CORRECCIÓN: localeCompare con locale 'es' para orden alfabético español correcto
+    // Álava → entre A y B, Ávila → entre A y B, Málaga → entre M y N
+    const provincias = [...new Set(todosLosLugares.map(l => l.provincia))]
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+
+    const select = document.getElementById('select-provincia');
+    const __ph = (localStorage.getItem('nudisol_lang')||'es') === 'en' ? 'Select a location...' : 'Selecciona una ubicación...';
+    select.innerHTML = '<option value="">' + __ph + '</option>';
+    provincias.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p;
+      opt.textContent = p;
+      select.appendChild(opt);
+    });
+  }
+
+  window.seleccionarProvincia = (provincia) => {
+    if (!provincia) {
+      document.getElementById('vista-lugares').style.display = 'none';
+      document.getElementById('placeholder').style.display = 'flex';
+      return;
+    }
+    const lugares = todosLosLugares.filter(l => l.provincia === provincia);
+    document.getElementById('provincia-titulo').textContent = provincia;
+    const _tr = tx();
+    document.getElementById('provincia-count').textContent = `${lugares.length} ${lugares.length !== 1 ? _tr.lugarPlural : _tr.lugarSingular}`;
+    renderLugares(lugares);
+
+    // ── ANALYTICS: province_select ────────────────────────────
+    logEvent(analytics, 'province_select', {
+      provincia: provincia,
+      total_lugares: lugares.length
+    });
+
+    document.getElementById('placeholder').style.display = 'none';
+    document.getElementById('vista-lugares').style.display = 'block';
+    iniciarMapa(lugares);
+  };
+
+  function renderLugares(lugares) {
+    const container = document.getElementById('lista-lugares');
+    container.innerHTML = lugares.map(l => `
+      <div class="lugar-item" onclick="abrirLugar('${l.id}')">
+        <div class="lugar-cat-dot" style="background:${catColor(l.categoria)};"></div>
+        <div class="lugar-info">
+          <div class="lugar-nombre">${l.nombre}</div>
+          <div class="lugar-cat">${catIcono(l.categoria)} ${catTraducida(l.categoria)}</div>
+        </div>
+        <div class="lugar-arrow">›</div>
+      </div>
+    `).join('');
+  }
+
+  function iniciarMapa(lugares) {
+    const mapEl = document.getElementById('mapa-provincia');
+    if (!mapEl) return;
+
+    if (mapaInstancia) {
+      mapaInstancia.remove();
+      mapaInstancia = null;
+    }
+
+    const validos = lugares.filter(l => l.lat && l.lng);
+    if (validos.length === 0) return;
+
+    const centerLat = validos.reduce((s, l) => s + l.lat, 0) / validos.length;
+    const centerLng = validos.reduce((s, l) => s + l.lng, 0) / validos.length;
+
+    mapaInstancia = L.map('mapa-provincia', { zoomControl: true }).setView([centerLat, centerLng], 9);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(mapaInstancia);
+
+    marcadores = [];
+    validos.forEach(l => {
+      const color = catColor(l.categoria);
+      const icono = L.divIcon({
+        html: `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+          <div style="width:14px;height:14px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>
+          <div style="background:white;color:#0D3D42;border-radius:6px;padding:2px 6px;font-size:9px;font-family:Syne,sans-serif;font-weight:700;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.15);max-width:100px;overflow:hidden;text-overflow:ellipsis;">${l.nombre}</div>
+        </div>`,
+        className: '', iconAnchor: [7, 7], iconSize: [14, 34]
+      });
+      const m = L.marker([l.lat, l.lng], { icon: icono }).addTo(mapaInstancia);
+      m.on('click', () => abrirFicha(l));
+      marcadores.push({ id: l.id, marker: m });
+    });
+
+    if (validos.length > 1) {
+      const bounds = L.latLngBounds(validos.map(l => [l.lat, l.lng]));
+      mapaInstancia.fitBounds(bounds, { padding: [30, 30] });
+    }
+  }
+
+  window.abrirLugar = (id) => {
+    const lugar = todosLosLugares.find(l => l.id === id);
+    if (!lugar) return;
+    abrirFicha(lugar);
+    if (mapaInstancia && lugar.lat && lugar.lng) {
+      mapaInstancia.setView([lugar.lat, lugar.lng], 13);
+      document.getElementById('mapa-provincia').scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  window.abrirFicha = (lugar) => {
+    document.getElementById('ficha-nombre').textContent = lugar.nombre;
+    document.getElementById('ficha-cat').textContent = `${catIcono(lugar.categoria)} ${catTraducida(lugar.categoria)}`;
+    document.getElementById('ficha-cat').style.background = catColor(lugar.categoria) + '20';
+    document.getElementById('ficha-cat').style.color = catColor(lugar.categoria);
+    document.getElementById('ficha-provincia').textContent = `📍 ${lugar.provincia}, ${lugar.comunidad || ''}`;
+    document.getElementById('ficha-desc').textContent = lugar.descripcion || tx().sinDesc;
+
+    const btnNav = document.getElementById('btn-navegar');
+    if (lugar.lat && lugar.lng) {
+      btnNav.onclick = () => {
+        const url = `https://www.google.com/maps/dir/?api=1&destination=${lugar.lat},${lugar.lng}&travelmode=driving`;
+        window.open(url, '_blank');
+      };
+      btnNav.style.display = 'flex';
+    } else {
+      btnNav.style.display = 'none';
+    }
+
+    const btnMapa = document.getElementById('btn-ver-mapa');
+    btnMapa.onclick = () => {
+      cerrarFicha();
+      if (mapaInstancia && lugar.lat && lugar.lng) {
+        mapaInstancia.setView([lugar.lat, lugar.lng], 14);
+      }
+    };
+
+    const btnWeb = document.getElementById('btn-web');
+    if (lugar.web) {
+      btnWeb.href = lugar.web;
+      btnWeb.style.display = 'flex';
+    } else {
+      btnWeb.style.display = 'none';
+    }
+
+    const btnTel = document.getElementById('btn-tel');
+    if (lugar.telefono) {
+      btnTel.href = `tel:${lugar.telefono}`;
+      btnTel.textContent = `📞 ${lugar.telefono}`;
+      btnTel.style.display = 'flex';
+    } else {
+      btnTel.style.display = 'none';
+    }
+
+    document.getElementById('ficha-overlay').style.display = 'flex';
+
+    // ── ANALYTICS: beach_view ─────────────────────────────────
+    logEvent(analytics, 'beach_view', {
+      lugar_id: lugar.id,
+      lugar_nombre: lugar.nombre,
+      provincia: lugar.provincia,
+      categoria: lugar.categoria
+    });
+
+    // Suscribir contador en tiempo real
+    suscribirContadorCheckin(lugar.id);
+
+    // Cargar aforo y condiciones
+    setTimeout(() => {
+      cargarAforo(lugar.id);
+      if (lugar.lat && lugar.lng) {
+        cargarCondiciones(lugar.lat, lugar.lng);
+      }
+    }, 300);
+
+    // Comprobar si el usuario ya está aquí
+    comprobarCheckinActivo(lugar.id).then(yaEsta => {
+      const tr = tx();
+      const btn = document.getElementById('btn-checkin');
+      if (!btn) return;
+      const esAnonimo = !usuarioActual || usuarioActual.isAnonymous;
+      if (esAnonimo) {
+        btn.textContent = tr.checkinLogin;
+        btn.style.opacity = '0.7';
+        btn.style.cursor = 'pointer';
+        btn.onclick = () => mostrarMensajeRegistro();
+      } else if (yaEsta) {
+        btn.textContent = tr.checkinSalir;
+        btn.onclick = () => salirCheckin(lugar.id);
+        btn.style.background = '#2D6A4F';
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+      } else {
+        btn.textContent = tr.checkinBtn;
+        btn.onclick = () => hacerCheckin(lugar.id, lugar.nombre);
+        btn.style.background = '#1A6B72';
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+      }
+    });
+  };
+
+  // ── AFORO EN TIEMPO REAL ──────────────────────────────────────
+  async function cargarAforo(lugarId) {
+    const el = document.getElementById('aforo-semaforo');
+    el.textContent = '⏳';
+    try {
+      const hace3h = new Date(Date.now() - 3 * 60 * 60 * 1000);
+      // Traer todos los checkins del lugar y filtrar en cliente por fecha
+      const q = query(
+        collection(db, 'checkins'),
+        where('lugarId', '==', lugarId)
+      );
+      const snap = await getDocs(q);
+      // Contar los activos O con fecha en las últimas 3 horas
+      let total = 0;
+      snap.forEach(d => {
+        const data = d.data();
+        const fecha = data.fecha?.toDate ? data.fecha.toDate() : null;
+        const reciente = fecha && fecha >= hace3h;
+        if (data.activo || reciente) total++;
+      });
+      const lang = localStorage.getItem('nudisol_lang') || 'es';
+      if (total === 0) {
+        el.textContent = lang === 'en' ? '🟢 Quiet' : '🟢 Tranquila';
+      } else if (total <= 2) {
+        el.textContent = `🟢 ${total} ${lang === 'en' ? 'people' : 'personas'}`;
+      } else if (total <= 6) {
+        el.textContent = `🟡 ${total} ${lang === 'en' ? 'people' : 'personas'}`;
+      } else {
+        el.textContent = `🔴 ${total} ${lang === 'en' ? 'people' : 'personas'}`;
+      }
+    } catch(e) {
+      el.textContent = '—';
+    }
+  }
+
+  // ── CONDICIONES PERFECTAS ─────────────────────────────────────
+  async function cargarCondiciones(lat, lng) {
+    document.getElementById('cond-aire').textContent = '...';
+    document.getElementById('cond-agua').textContent = '...';
+    document.getElementById('cond-viento').textContent = '...';
+    document.getElementById('cond-olas').textContent = '...';
+    document.getElementById('cond-uv').textContent = '...';
+    document.getElementById('cond-indice').textContent = '...';
+
+    try {
+      // API clima (aire, viento, UV)
+      const climaUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,windspeed_10m,uv_index&timezone=auto`;
+      // API marina (agua, olas)
+      const marinaUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lng}&current=sea_surface_temperature,wave_height&timezone=auto`;
+
+      const [climaRes, marinaRes] = await Promise.allSettled([
+        fetch(climaUrl),
+        fetch(marinaUrl)
+      ]);
+
+      let aire = null, viento = null, uv = null, agua = null, olas = null;
+
+      if (climaRes.status === 'fulfilled' && climaRes.value.ok) {
+        const clima = await climaRes.value.json();
+        aire = clima.current?.temperature_2m ?? null;
+        viento = clima.current?.windspeed_10m ?? null;
+        uv = clima.current?.uv_index ?? null;
+      }
+
+      if (marinaRes.status === 'fulfilled' && marinaRes.value.ok) {
+        const marina = await marinaRes.value.json();
+        agua = marina.current?.sea_surface_temperature ?? null;
+        olas = marina.current?.wave_height ?? null;
+      }
+
+      document.getElementById('cond-aire').textContent = aire !== null ? `${Math.round(aire)}°C` : '—';
+      document.getElementById('cond-agua').textContent = agua !== null ? `${Math.round(agua)}°C` : '—';
+      document.getElementById('cond-viento').textContent = viento !== null ? `${Math.round(viento)} km/h` : '—';
+      document.getElementById('cond-olas').textContent = olas !== null ? `${olas.toFixed(1)}m` : '—';
+      document.getElementById('cond-uv').textContent = uv !== null ? Math.round(uv) : '—';
+      console.log('Condiciones:', {aire, agua, viento, olas, uv});
+
+      // Calcular índice 1-10
+      let puntos = 0;
+      if (aire !== null) {
+        if (aire >= 25 && aire <= 35) puntos += 2;
+        else if (aire >= 20) puntos += 1;
+      }
+      if (agua !== null) {
+        if (agua >= 22) puntos += 2;
+        else if (agua >= 18) puntos += 1;
+      }
+      if (viento !== null) {
+        if (viento <= 15) puntos += 2;
+        else if (viento <= 25) puntos += 1;
+      }
+      if (olas !== null) {
+        if (olas <= 0.5) puntos += 2;
+        else if (olas <= 1.0) puntos += 1;
+      }
+      if (uv !== null) {
+        if (uv >= 3 && uv <= 7) puntos += 2;
+        else if (uv > 0) puntos += 1;
+      }
+      // puntos máx = 10
+      document.getElementById('cond-indice').textContent = puntos;
+
+      // Color del índice
+      const indiceEl = document.getElementById('cond-indice');
+      if (puntos >= 8) indiceEl.style.color = '#2D6A4F';
+      else if (puntos >= 5) indiceEl.style.color = '#D4A017';
+      else indiceEl.style.color = '#C0392B';
+
+      // Traducir etiquetas
+      const l = localStorage.getItem('nudisol_lang') || 'es';
+      const es = l === 'es';
+      document.getElementById('aforo-label').innerHTML = `👥 ${es ? 'Aforo ahora' : 'Current crowd'} <span class="cond-info-btn" onclick="toggleAforoInfo()">ℹ️</span>`;
+      document.getElementById('cond-titulo').innerHTML = `🌤️ ${es ? 'Condiciones ahora' : 'Current conditions'} <span class="cond-info-btn" onclick="toggleCondInfo()">ℹ️</span>`;
+      document.getElementById('cond-aire-lbl').textContent = es ? 'Aire' : 'Air';
+      document.getElementById('cond-agua-lbl').textContent = es ? 'Agua' : 'Water';
+      document.getElementById('cond-viento-lbl').textContent = es ? 'Viento' : 'Wind';
+      document.getElementById('cond-olas-lbl').textContent = es ? 'Olas' : 'Waves';
+
+    } catch(e) {
+      document.getElementById('cond-aire').textContent = '—';
+      document.getElementById('cond-agua').textContent = '—';
+      document.getElementById('cond-viento').textContent = '—';
+      document.getElementById('cond-olas').textContent = '—';
+      document.getElementById('cond-uv').textContent = '—';
+    }
+  }
+
+  window.mostrarMensajeRegistro = function() {
+    const lang = localStorage.getItem('nudisol_lang') || 'es';
+    const msg = lang === 'en'
+      ? '👋 Register for free to check in and participate in the community!'
+      : '👋 ¡Regístrate gratis para hacer check-in y participar en la comunidad!';
+    const btnTxt = lang === 'en' ? 'Create account' : 'Crear cuenta';
+    let toast = document.getElementById('toast-registro');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'toast-registro';
+      toast.style.cssText = `
+        position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+        background: #0D3D42; color: white; padding: 14px 20px; border-radius: 14px;
+        font-size: 13px; font-family: 'Syne', sans-serif; font-weight: 600;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 9999;
+        display: none; flex-direction: column; align-items: center; gap: 10px;
+        max-width: 300px; text-align: center;
+      `;
+      document.body.appendChild(toast);
+    }
+    const btnEl = document.createElement('button');
+    btnEl.textContent = btnTxt;
+    btnEl.style.cssText = `background:#D45F3C;color:white;border:none;border-radius:10px;
+      padding:8px 20px;font-family:'Syne',sans-serif;font-weight:700;
+      font-size:13px;cursor:pointer;width:100%;`;
+    btnEl.addEventListener('click', async () => {
+      try { await signOut(auth); } catch(e) {}
+      window.location.href = 'index.html';
+    });
+    const msgEl = document.createElement('div');
+    msgEl.textContent = msg;
+    toast.innerHTML = '';
+    toast.appendChild(msgEl);
+    toast.appendChild(btnEl);
+    toast.style.display = 'flex';
+    setTimeout(() => { if (toast) toast.style.display = 'none'; }, 5000);
+  };
+
+  window.toggleAforoInfo = function() {
+    const box = document.getElementById('aforo-info-box');
+    const lang = localStorage.getItem('nudisol_lang') || 'es';
+    const txt = lang === 'en'
+      ? 'Shows how many people have checked in at this spot in the last 3 hours. 🟢 Quiet = nobody or very few people. 🟡 Moderate = between 3 and 6 people. 🔴 Busy = 7 or more people.'
+      : 'Indica cuántas personas han hecho check-in en este lugar en las últimas 3 horas. 🟢 Tranquila = nadie o muy poca gente. 🟡 Moderada = entre 3 y 6 personas. 🔴 Concurrida = 7 o más personas.';
+    document.getElementById('aforo-info-txt').textContent = txt;
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  };
+
+  window.toggleCondInfo = function() {
+    const box = document.getElementById('cond-info-box');
+    const lang = localStorage.getItem('nudisol_lang') || 'es';
+    const txt = lang === 'en'
+      ? 'The score (1-10) is calculated from: air temperature (ideal 25-35°C), water temperature (ideal +22°C), wind (ideal under 15 km/h), wave height (ideal under 0.5m) and UV index (ideal 3-7). The higher the score, the better the conditions.'
+      : 'El índice del 1 al 10 se calcula combinando: temperatura del aire (ideal 25-35°C), temperatura del agua (ideal +22°C), viento (ideal menos de 15 km/h), altura de olas (ideal menos de 0.5m) y nivel UV (ideal 3-7). Cuanto más alto, mejores condiciones para disfrutar la playa.';
+    document.getElementById('cond-info-txt').textContent = txt;
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  };
+
+  window.cerrarFicha = () => {
+    document.getElementById('ficha-overlay').style.display = 'none';
+    if (unsubscribeCheckin) { unsubscribeCheckin(); unsubscribeCheckin = null; }
+  };
+
+  function catTraducida(cat) {
+    const lang = localStorage.getItem('nudisol_lang') || 'es';
+    if (lang === 'es') return cat;
+    const map = {
+      'Playa / Cala': 'Beach / Cove',
+      'Paraje natural': 'Nature spot',
+      'Camping': 'Camping',
+      'Alojamiento / Resort': 'Accommodation / Resort',
+      'Piscina / Spa': 'Pool / Spa',
+      'Club / Asociación': 'Club / Association',
+      'Urbanización': 'Resort community',
+    };
+    return map[cat] || cat;
+  }
+
+  function catColor(cat) {
+    const map = {
+      'Playa / Cala': '#1A6B72',
+      'Paraje natural': '#2D6A4F',
+      'Camping': '#E8A020',
+      'Alojamiento / Resort': '#D45F3C',
+      'Piscina / Spa': '#6B4F9E',
+      'Club / Asociación': '#C00',
+      'Urbanización': '#4A4A4A',
+    };
+    return map[cat] || '#1A6B72';
+  }
+
+  function catIcono(cat) {
+    const map = {
+      'Playa / Cala': '🏖️',
+      'Paraje natural': '🌲',
+      'Camping': '🏕️',
+      'Alojamiento / Resort': '🏨',
+      'Piscina / Spa': '🏊',
+      'Club / Asociación': '🎭',
+      'Urbanización': '🏘️',
+    };
+    return map[cat] || '📍';
+  }
+
+  // ── LUGARES CERCANOS ────────────────────────────────────────────
+  // Fórmula Haversine: distancia entre dos puntos en km
+  function distanciaKm(lat1, lng1, lat2, lng2) {
+    const R = 6371; // radio terrestre en km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) ** 2 +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  let ubicacionUsuario = null; // {lat, lng}
+
+  window.abrirModalCercanos = () => {
+    document.getElementById('cercanos-overlay').style.display = 'flex';
+    document.getElementById('cercanos-status').textContent = '';
+    document.getElementById('cercanos-radios').style.display = 'none';
+    document.getElementById('cercanos-pedir').style.display = 'flex';
+  };
+
+  window.cerrarModalCercanos = () => {
+    document.getElementById('cercanos-overlay').style.display = 'none';
+  };
+
+  window.pedirUbicacion = () => {
+    const tr = tx();
+    const status = document.getElementById('cercanos-status');
+    const radios = document.getElementById('cercanos-radios');
+    const pedir = document.getElementById('cercanos-pedir');
+
+    if (!navigator.geolocation) {
+      status.textContent = tr.cercanosError;
+      return;
+    }
+
+    status.textContent = tr.cercanosBuscando;
+    pedir.style.display = 'none';
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        ubicacionUsuario = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        };
+        status.textContent = '';
+        radios.style.display = 'grid';
+      },
+      (err) => {
+        let msg = tr.cercanosError;
+        if (err.code === 1) msg = tr.cercanosErrorDenied;
+        else if (err.code === 3) msg = tr.cercanosErrorTimeout;
+        status.textContent = msg;
+        pedir.style.display = 'flex';
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+    );
+  };
+
+  window.buscarEnRadio = (radioKm) => {
+    if (!ubicacionUsuario) return;
+    const tr = tx();
+
+    // Calcular distancia para todos los lugares con coords válidas
+    const cercanos = todosLosLugares
+      .filter(l => typeof l.lat === 'number' && typeof l.lng === 'number')
+      .map(l => ({
+        ...l,
+        _distancia: distanciaKm(ubicacionUsuario.lat, ubicacionUsuario.lng, l.lat, l.lng)
+      }))
+      .filter(l => l._distancia <= radioKm)
+      .sort((a, b) => a._distancia - b._distancia);
+
+    // Resetear UI: ocultar placeholder, mostrar vista de lugares
+    document.getElementById('placeholder').style.display = 'none';
+    document.getElementById('vista-lugares').style.display = 'block';
+    document.getElementById('select-provincia').value = '';
+
+    // Actualizar cabecera
+    document.getElementById('provincia-titulo').textContent = `📍 ${tr.cercanosTitulo}`;
+    document.getElementById('provincia-count').textContent =
+      `${cercanos.length} ${cercanos.length !== 1 ? tr.lugarPlural : tr.lugarSingular} ${tr.cercanosResultado} ${radioKm} km`;
+
+    // Renderizar lista (con km al lado de cada lugar)
+    renderLugaresConDistancia(cercanos);
+
+    // Pintar mapa con marker del usuario + lugares cercanos
+    iniciarMapaCercanos(cercanos, radioKm);
+
+    cerrarModalCercanos();
+
+    // Scroll al mapa
+    setTimeout(() => {
+      document.getElementById('mapa-provincia').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
+
+  function renderLugaresConDistancia(lugares) {
+    const tr = tx();
+    const container = document.getElementById('lista-lugares');
+    if (lugares.length === 0) {
+      container.innerHTML = `<div style="padding:30px;text-align:center;color:var(--muted);font-size:14px;">${tr.cercanosNinguno}</div>`;
+      return;
+    }
+    container.innerHTML = lugares.map(l => `
+      <div class="lugar-item" onclick="abrirLugar('${l.id}')">
+        <div class="lugar-cat-dot" style="background:${catColor(l.categoria)};"></div>
+        <div class="lugar-info">
+          <div class="lugar-nombre">${l.nombre}</div>
+          <div class="lugar-cat">${catIcono(l.categoria)} ${catTraducida(l.categoria)} · <strong style="color:var(--coral);">${l._distancia.toFixed(1)} km</strong></div>
+        </div>
+        <div class="lugar-arrow">›</div>
+      </div>
+    `).join('');
+  }
+
+  function iniciarMapaCercanos(lugares, radioKm) {
+    const mapEl = document.getElementById('mapa-provincia');
+    if (!mapEl) return;
+
+    if (mapaInstancia) {
+      mapaInstancia.remove();
+      mapaInstancia = null;
+    }
+
+    // Centrar en el usuario
+    mapaInstancia = L.map('mapa-provincia', { zoomControl: true })
+      .setView([ubicacionUsuario.lat, ubicacionUsuario.lng], 9);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(mapaInstancia);
+
+    // Marker del usuario (distinguible)
+    const iconoUsuario = L.divIcon({
+      html: `<div style="background:#D45F3C;color:white;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 0 4px rgba(212,95,60,0.3),0 4px 12px rgba(0,0,0,0.3);border:3px solid white;">📍</div>`,
+      className: '', iconAnchor: [18, 18], iconSize: [36, 36]
+    });
+    L.marker([ubicacionUsuario.lat, ubicacionUsuario.lng], { icon: iconoUsuario, zIndexOffset: 1000 })
+      .addTo(mapaInstancia)
+      .bindPopup(`<strong>${tx().tuUbicacion}</strong>`);
+
+    // Círculo del radio de búsqueda
+    L.circle([ubicacionUsuario.lat, ubicacionUsuario.lng], {
+      radius: radioKm * 1000,
+      color: '#D45F3C',
+      fillColor: '#D45F3C',
+      fillOpacity: 0.06,
+      weight: 1.5,
+      dashArray: '6, 6'
+    }).addTo(mapaInstancia);
+
+    // Markers de los lugares
+    marcadores = [];
+    lugares.forEach(l => {
+      const color = catColor(l.categoria);
+      const icono = L.divIcon({
+        html: `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+          <div style="width:14px;height:14px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>
+          <div style="background:white;color:#0D3D42;border-radius:6px;padding:2px 6px;font-size:9px;font-family:Syne,sans-serif;font-weight:700;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.15);max-width:100px;overflow:hidden;text-overflow:ellipsis;">${l.nombre} · ${l._distancia.toFixed(1)}km</div>
+        </div>`,
+        className: '', iconAnchor: [7, 7], iconSize: [14, 34]
+      });
+      const m = L.marker([l.lat, l.lng], { icon: icono }).addTo(mapaInstancia);
+      m.on('click', () => abrirFicha(l));
+      marcadores.push({ id: l.id, marker: m });
+    });
+
+    // Ajustar vista: usuario + lugares + radio
+    if (lugares.length > 0) {
+      const puntos = [[ubicacionUsuario.lat, ubicacionUsuario.lng], ...lugares.map(l => [l.lat, l.lng])];
+      const bounds = L.latLngBounds(puntos);
+      mapaInstancia.fitBounds(bounds, { padding: [40, 40] });
+    } else {
+      mapaInstancia.setView([ubicacionUsuario.lat, ubicacionUsuario.lng], 10);
+    }
+  }
+
+  // ── BUSCADOR GLOBAL ─────────────────────────────────────────────
+  window.buscarGlobal = (texto) => {
+    const q = texto.trim().toLowerCase();
+    const buscadorResultados = document.getElementById('buscador-resultados');
+
+    if (q.length < 2) {
+      buscadorResultados.style.display = 'none';
+      return;
+    }
+
+    const resultados = todosLosLugares.filter(l =>
+      l.nombre.toLowerCase().includes(q) ||
+      (l.provincia && l.provincia.toLowerCase().includes(q)) ||
+      (l.comunidad && l.comunidad.toLowerCase().includes(q))
+    ).slice(0, 8); // máximo 8 resultados
+
+    if (resultados.length === 0) {
+      const tr = tx();
+      buscadorResultados.innerHTML = `<div class="buscador-vacio">${tr.buscadorSinResultados} "${texto}"</div>`;
+      buscadorResultados.style.display = 'block';
+      return;
+    }
+
+    buscadorResultados.innerHTML = resultados.map(l => `
+      <div class="buscador-item" onclick="seleccionarDesdeBuscador('${l.id}')">
+        <div class="buscador-dot" style="background:${catColor(l.categoria)};"></div>
+        <div class="buscador-info">
+          <div class="buscador-nombre">${resaltarTexto(l.nombre, q)}</div>
+          <div class="buscador-sub">${catIcono(l.categoria)} ${catTraducida(l.categoria)} · ${l.provincia || ''}</div>
+        </div>
+        <div class="buscador-arrow">›</div>
+      </div>
+    `).join('');
+    buscadorResultados.style.display = 'block';
+  };
+
+  function resaltarTexto(texto, query) {
+    const idx = texto.toLowerCase().indexOf(query);
+    if (idx === -1) return texto;
+    return texto.slice(0, idx) +
+      `<strong style="color:var(--coral);">${texto.slice(idx, idx + query.length)}</strong>` +
+      texto.slice(idx + query.length);
+  }
+
+  window.seleccionarDesdeBuscador = (id) => {
+    const lugar = todosLosLugares.find(l => l.id === id);
+    if (!lugar) return;
+
+    // Limpiar buscador
+    document.getElementById('buscador-global').value = '';
+    document.getElementById('buscador-resultados').style.display = 'none';
+
+    // Abrir directamente la ficha del lugar
+    abrirFicha(lugar);
+
+    // Si hay provincia, mostrar también el mapa de esa provincia de fondo
+    if (lugar.provincia) {
+      seleccionarProvincia(lugar.provincia);
+      document.getElementById('select-provincia').value = lugar.provincia;
+      // Centrar mapa en ese lugar
+      if (mapaInstancia && lugar.lat && lugar.lng) {
+        setTimeout(() => mapaInstancia.setView([lugar.lat, lugar.lng], 13), 300);
+      }
+    }
+  };
+
+  window.cerrarBuscador = () => {
+    document.getElementById('buscador-resultados').style.display = 'none';
+  };
+
+  // ── CHECK-INS ────────────────────────────────────────────────────
+  // Suscripción en tiempo real al contador de un lugar
+  function suscribirContadorCheckin(lugarId) {
+    if (unsubscribeCheckin) { unsubscribeCheckin(); unsubscribeCheckin = null; }
+
+    const q = query(collection(db, 'checkins'), where('lugarId', '==', lugarId), where('activo', '==', true));
+    unsubscribeCheckin = onSnapshot(q, (snap) => {
+      const ahora = new Date().toISOString();
+      const activos = snap.docs.filter(d => {
+        const data = d.data();
+        return !data.expiresAt || data.expiresAt > ahora;
+      });
+      const total = activos.length;
+      const tr = tx();
+      const el = document.getElementById('ficha-checkin-count');
+      if (!el) return;
+      if (total === 0) {
+        el.textContent = tr.checkinNadie;
+      } else {
+        el.textContent = `👥 ${total} ${total === 1 ? tr.checkinPersona : tr.checkinPersonas}`;
+      }
+
+      // Mostrar badge de ambiente del check-in más reciente
+      const badge = document.getElementById('ambiente-badge');
+      if (!badge) return;
+      if (activos.length === 0) {
+        badge.style.display = 'none';
+        return;
+      }
+      // Tomar el ambiente del check-in más reciente
+      const masReciente = activos.sort((a, b) => {
+        return (b.data().timestamp || '') > (a.data().timestamp || '') ? 1 : -1;
+      })[0]?.data()?.ambiente;
+
+      const ambienteMap = {
+        solo_nudistas:      { label: 'NUDISTA', bg: '#0F6E56', color: '#9FE1CB' },
+        mayoria_nudistas:   { label: 'MIXTA',   bg: '#185FA5', color: '#B5D4F4' },
+        bastantes_textiles: { label: 'TEXTIL',  bg: '#A32D2D', color: '#F7C1C1' },
+      };
+      const info = ambienteMap[masReciente];
+      if (info) {
+        badge.style.display = 'flex';
+        badge.style.alignItems = 'center';
+        badge.style.gap = '8px';
+        badge.innerHTML = `
+          <span style="font-size:12px;color:rgba(255,255,255,0.55);">Ambiente:</span>
+          <span style="background:${info.bg};color:${info.color};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">${info.label}</span>
+        `;
+      } else {
+        badge.style.display = 'none';
+      }
+    });
+  }
+
+  window.hacerCheckin = async (lugarId, lugarNombre) => {
+    const tr = tx();
+    if (!usuarioActual) {
+      alert(tr.checkinLogin);
+      return;
+    }
+
+    // Desplegable de ambiente antes de confirmar
+    const esES = document.documentElement.lang !== 'en';
+    const opciones = esES
+      ? ['🟢 Solo nudistas', '🟡 Mayoría nudistas, algún textil', '🔴 Bastantes textiles']
+      : ['🟢 Only nudists', '🟡 Mostly nudists, some textiles', '🔴 Many textiles'];
+    const valores = ['solo_nudistas', 'mayoria_nudistas', 'bastantes_textiles'];
+
+    const ambiente = await new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;';
+
+      function elegir(val) { document.body.removeChild(overlay); resolve(val); }
+      window.__checkinElegir = elegir;
+
+      overlay.innerHTML = `
+        <div style="background:#1F4D52;border-radius:20px;padding:28px 24px;max-width:340px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+          <div style="font-size:20px;font-weight:800;color:#F2C849;margin-bottom:6px;text-align:center;">¿Cómo está la playa?</div>
+          <div style="font-size:14px;color:rgba(255,255,255,0.6);text-align:center;margin-bottom:20px;">Ayuda a la comunidad con tu check-in</div>
+
+          <button onclick="window.__checkinElegir('solo_nudistas')"
+            style="width:100%;background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);color:white;
+            border-radius:12px;padding:13px 16px;margin-bottom:10px;font-size:15px;font-weight:600;
+            cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;"
+            onmouseover="this.style.background='rgba(255,255,255,0.12)'"
+            onmouseout="this.style.background='rgba(255,255,255,0.06)'">
+            <span style="background:#0F6E56;color:#9FE1CB;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;">NUDISTA</span>
+            Solo nudistas
+          </button>
+
+          <button onclick="window.__checkinElegir('mayoria_nudistas')"
+            style="width:100%;background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);color:white;
+            border-radius:12px;padding:13px 16px;margin-bottom:10px;font-size:15px;font-weight:600;
+            cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;"
+            onmouseover="this.style.background='rgba(255,255,255,0.12)'"
+            onmouseout="this.style.background='rgba(255,255,255,0.06)'">
+            <span style="background:#185FA5;color:#B5D4F4;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;">MIXTA</span>
+            Mayoría nudistas, algún textil
+          </button>
+
+          <button onclick="window.__checkinElegir('bastantes_textiles')"
+            style="width:100%;background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);color:white;
+            border-radius:12px;padding:13px 16px;margin-bottom:10px;font-size:15px;font-weight:600;
+            cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;"
+            onmouseover="this.style.background='rgba(255,255,255,0.12)'"
+            onmouseout="this.style.background='rgba(255,255,255,0.06)'">
+            <span style="background:#A32D2D;color:#F7C1C1;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;">TEXTIL</span>
+            Bastantes textiles
+          </button>
+
+          <button onclick="window.__checkinElegir(null)"
+            style="width:100%;background:transparent;border:none;color:rgba(255,255,255,0.35);
+            font-size:13px;cursor:pointer;margin-top:4px;padding:8px;">
+            ${esES ? 'Cancelar' : 'Cancel'}
+          </button>
+        </div>`;
+      document.body.appendChild(overlay);
+    });
+
+    if (ambiente === null) return; // cancelado
+
+    const uid = usuarioActual.uid;
+    const docId = `${uid}_${lugarId}`;
+    try {
+      await setDoc(doc(db, 'checkins', docId), {
+        usuarioId: uid,
+        lugarId,
+        lugarNombre,
+        timestamp: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
+        activo: true,
+        ambiente
+      });
+      // Actualizar botón
+      const btnCheckin = document.getElementById('btn-checkin');
+      if (btnCheckin) {
+        btnCheckin.textContent = tr.checkinSalir;
+        btnCheckin.onclick = () => salirCheckin(lugarId);
+        btnCheckin.style.background = '#2D6A4F';
+      }
+    } catch(e) {
+      console.error('Error check-in:', e);
+    }
+  };
+
+  window.salirCheckin = async (lugarId) => {
+    if (!usuarioActual) return;
+    const docId = `${usuarioActual.uid}_${lugarId}`;
+    try {
+      await updateDoc(doc(db, 'checkins', docId), {
+        activo: false,
+        salidaAt: new Date().toISOString()
+      });
+      const btnCheckin = document.getElementById('btn-checkin');
+      if (btnCheckin) {
+        const tr = tx();
+        btnCheckin.textContent = tr.checkinBtn;
+        btnCheckin.onclick = () => hacerCheckin(lugarId, document.getElementById('ficha-nombre').textContent);
+        btnCheckin.style.background = '#1A6B72';
+      }
+    } catch(e) {
+      console.error('Error salir check-in:', e);
+    }
+  };
+
+  // Comprobar si el usuario ya tiene check-in activo en este lugar
+  async function comprobarCheckinActivo(lugarId) {
+    if (!usuarioActual) return false;
+    const docId = `${usuarioActual.uid}_${lugarId}`;
+    try {
+      const { getDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+      const snap = await getDoc(doc(db, 'checkins', docId));
+      if (!snap.exists()) return false;
+      const data = snap.data();
+      if (!data.activo) return false;
+      if (data.expiresAt && data.expiresAt < new Date().toISOString()) {
+        // Caducado — marcar inactivo para conservar historico
+        await updateDoc(doc(db, 'checkins', docId), { activo: false, salidaAt: new Date().toISOString() });
+        return false;
+      }
+      return true;
+    } catch { return false; }
+  }
+
+  onAuthStateChanged(auth, (user) => {
+    usuarioActual = user;
+  });
+
+  window.addEventListener('load', cargarTodos);
+
+window.aplicarIdioma = aplicarIdioma; // expose global
+</script>
+
+<style>
+  :root {
+    --ocean: #0D3D42; --teal: #1A6B72; --coral: #D45F3C;
+    --sun: #F5C840; --sand: #F5EFE3; --white: #FDFAF5;
+    --text: #1A1A1A; --muted: #8A8A8A; --border: #E5E0D8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--sand); min-height: 100vh; display: flex; flex-direction: column; }
+
+  .header { background: var(--ocean); padding: 18px 16px 24px; position: relative; overflow: hidden; flex-shrink: 0; }
+  .header::before { content: ''; position: absolute; top: -60px; right: -60px; width: 180px; height: 180px; background: radial-gradient(circle, rgba(245,200,64,0.15) 0%, transparent 70%); border-radius: 50%; }
+  .header-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .back-btn { background: none; border: none; color: rgba(255,255,255,0.6); font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; }
+  .logo-small { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 18px; color: white; }
+  .logo-small span { color: var(--sun); }
+  .page-titulo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; color: white; margin-bottom: 14px; }
+
+  .select-wrap { position: relative; }
+
+  /* BUSCADOR GLOBAL */
+  .buscador-wrap { position: relative; margin-bottom: 10px; }
+  .buscador-input {
+    width: 100%; background: rgba(255,255,255,0.15);
+    border: 1.5px solid rgba(255,255,255,0.25);
+    border-radius: 14px; padding: 13px 16px;
+    font-size: 15px; color: white;
+    font-family: 'DM Sans', sans-serif; outline: none;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .buscador-input:focus {
+    border-color: rgba(255,255,255,0.5);
+    background: rgba(255,255,255,0.2);
+  }
+  .buscador-input::placeholder { color: rgba(255,255,255,0.45); }
+  .buscador-resultados {
+    position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+    background: white; border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    overflow: hidden; z-index: 200; max-height: 360px; overflow-y: auto;
+  }
+  .buscador-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 16px; border-bottom: 1px solid #F0EBE3;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .buscador-item:last-child { border-bottom: none; }
+  .buscador-item:active { background: #F5EFE3; }
+  .buscador-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .buscador-info { flex: 1; }
+  .buscador-nombre { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: #0D3D42; margin-bottom: 2px; }
+  .buscador-sub { font-size: 11px; color: #8A8A8A; }
+  .buscador-arrow { color: #8A8A8A; font-size: 18px; }
+  .buscador-vacio { padding: 20px 16px; text-align: center; color: #8A8A8A; font-size: 13px; font-family: 'DM Sans', sans-serif; }
+  .select-provincia {
+    width: 100%; background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.2);
+    border-radius: 14px; padding: 13px 16px; font-size: 15px; color: white;
+    font-family: 'DM Sans', sans-serif; outline: none; appearance: none;
+    cursor: pointer;
+  }
+  .select-provincia option { color: var(--text); background: white; }
+  .select-arrow { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.5); pointer-events: none; font-size: 18px; }
+
+  .btn-cercanos {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; margin-top: 10px;
+    background: var(--coral); color: white; border: none;
+    border-radius: 14px; padding: 13px 16px;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px;
+    cursor: pointer; box-shadow: 0 4px 14px rgba(212,95,60,0.35);
+    transition: transform 0.1s, box-shadow 0.2s;
+  }
+  .btn-cercanos:active { transform: scale(0.98); box-shadow: 0 2px 8px rgba(212,95,60,0.3); }
+
+  .radios-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;
+  }
+  .btn-radio {
+    background: var(--ocean); color: white; border: none;
+    border-radius: 14px; padding: 16px;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px;
+    cursor: pointer; transition: transform 0.1s, background 0.2s;
+  }
+  .btn-radio:active { transform: scale(0.96); background: var(--coral); }
+
+  .privacy-note {
+    background: var(--sand);
+    color: var(--ocean);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 12px;
+    line-height: 1.5;
+    font-family: 'DM Sans', sans-serif;
+    margin-bottom: 14px;
+    border: 1px solid var(--border);
+  }
+
+  .leyenda { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .leyenda-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: rgba(255,255,255,0.6); font-family: 'Space Grotesk', sans-serif; }
+  .leyenda-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  .wave { display: block; width: 100%; flex-shrink: 0; }
+
+  .main { flex: 1; padding: 0 14px 100px; }
+
+  #placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center; }
+  .placeholder-icon { font-size: 56px; margin-bottom: 16px; }
+  .placeholder-titulo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; color: var(--ocean); margin-bottom: 8px; }
+  .placeholder-sub { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+  #vista-lugares { display: none; }
+
+  .provincia-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 0 10px; }
+  .provincia-nombre { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: var(--ocean); }
+  .provincia-count { font-size: 12px; color: var(--muted); font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
+
+  .mapa-wrap { border-radius: 20px; overflow: hidden; height: 280px; margin-bottom: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+  #mapa-provincia { height: 100%; width: 100%; }
+
+  .lista-wrap { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); margin-bottom: 16px; }
+  .lugar-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; }
+  .lugar-item:last-child { border-bottom: none; }
+  .lugar-item:active { background: #f5f0ea; }
+  .lugar-cat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .lugar-info { flex: 1; }
+  .lugar-nombre { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: var(--ocean); margin-bottom: 2px; }
+  .lugar-cat { font-size: 11px; color: var(--muted); }
+  .lugar-arrow { color: var(--muted); font-size: 18px; }
+
+  .ficha-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: flex-end; justify-content: center; }
+  .ficha-box { background: white; border-radius: 24px 24px 0 0; width: 100%; max-width: 480px; padding: 20px; max-height: 85vh; overflow-y: auto; }
+  .ficha-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+  .ficha-cat-badge { display: inline-block; border-radius: 10px; padding: 4px 12px; font-size: 12px; font-family: 'Syne', sans-serif; font-weight: 700; margin-bottom: 10px; }
+  .ficha-nombre { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; color: var(--ocean); margin-bottom: 6px; line-height: 1.2; }
+  .ficha-provincia { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+  .ficha-desc { font-size: 14px; color: #3A3A3A; line-height: 1.6; margin-bottom: 18px; }
+  .ficha-btns { display: flex; flex-direction: column; gap: 10px; }
+  .btn-navegar {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    background: var(--coral); color: white; border: none; border-radius: 14px;
+    padding: 15px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px;
+    cursor: pointer; text-decoration: none;
+  }
+  .btn-ver-mapa {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: var(--ocean); color: white; border: none; border-radius: 14px;
+    padding: 13px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px;
+    cursor: pointer;
+  }
+  .btn-secundario {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: var(--sand); color: var(--ocean); border: none; border-radius: 14px;
+    padding: 12px; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 13px;
+    cursor: pointer; text-decoration: none;
+  }
+  .btn-cerrar-ficha { background: none; border: none; color: var(--muted); font-size: 13px; cursor: pointer; text-align: center; margin-top: 4px; font-family: 'Syne', sans-serif; font-weight: 700; }
+
+  /* AFORO */
+  .ficha-aforo {
+    background: rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .aforo-label { font-size: 13px; color: rgba(255,255,255,0.7); }
+  .aforo-semaforo { font-size: 13px; font-weight: 700; color: white; }
+
+  /* CONDICIONES */
+  .ficha-condiciones {
+    background: rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .condiciones-titulo {
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+  .condiciones-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .cond-item {
+    background: rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 8px 6px;
+    text-align: center;
+  }
+  .cond-icon { font-size: 16px; margin-bottom: 2px; }
+  .cond-info-btn { cursor: pointer; font-size: 13px; margin-left: 4px; opacity: 0.7; }
+  .cond-info-btn:hover { opacity: 1; }
+  .cond-info-box {
+    background: rgba(13,61,66,0.08);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    border-left: 3px solid #1A6B72;
+  }
+  .cond-info-box p {
+    font-size: 11px;
+    color: #1A6B72;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .cond-val { font-size: 13px; font-weight: 700; color: var(--ocean-deep, #0D3D42); }
+  .cond-lbl { font-size: 10px; color: var(--text-light, #94A3B8); margin-top: 1px; }
+  .cond-indice { background: rgba(245,200,64,0.15); border: 1px solid rgba(245,200,64,0.4); }
+  .cond-indice-num { font-size: 22px; font-weight: 800; color: #D4A017; }
+  .condiciones-titulo { font-size: 12px; font-weight: 700; color: var(--text-light, #94A3B8); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .cond-item { background: rgba(13,61,66,0.06); border-radius: 10px; padding: 8px 6px; text-align: center; }
+  .aforo-label { font-size: 13px; color: var(--text-light, #94A3B8); }
+  .aforo-semaforo { font-size: 13px; font-weight: 700; color: var(--ocean-deep, #0D3D42); }
+
+  .checkin-block {
+    background: var(--sand); border-radius: 16px; padding: 14px 16px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    border: 1px solid var(--border);
+  }
+  .checkin-count {
+    font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 14px;
+    color: var(--ocean); text-align: center;
+  }
+  .btn-checkin {
+    width: 100%; background: var(--teal); color: white; border: none;
+    border-radius: 12px; padding: 13px; font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 14px; cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn-checkin:active { transform: scale(0.97); }
+
+  .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid rgba(0,0,0,0.07); display: flex; padding: 8px 0 max(12px, env(safe-area-inset-bottom)); z-index: 100; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); text-decoration: none; cursor: pointer; background: none; border: none; opacity: 0.45; }
+  .nav-item.active { opacity: 1; }
+  .nav-icon { font-size: 20px; }
+  .nav-label { font-size: 9px; font-family: 'Space Grotesk', sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: var(--ocean); }
+  .nav-item.active .nav-label { color: var(--coral); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-nav">
+    <button class="back-btn" onclick="window.location.href='nudisol-home.html'"><span id="i18n-back">← Inicio</span></button>
+    <div class="logo-small">nudi<span>sol</span></div>
+  </div>
+  <div class="page-titulo"><span id="i18n-page-titulo">📍 Lugares naturistas</span></div>
+  <div class="buscador-wrap">
+    <input
+      class="buscador-input"
+      id="buscador-global"
+      type="text"
+      placeholder="🔍 Buscar playa, paraje, camping..."
+      oninput="buscarGlobal(this.value)"
+      autocomplete="off"
+      autocorrect="off"
+      spellcheck="false"
+    >
+    <div class="buscador-resultados" id="buscador-resultados" style="display:none;"></div>
+  </div>
+  <div class="select-wrap">
+    <select class="select-provincia" id="select-provincia" onchange="seleccionarProvincia(this.value)">
+      <option value="">Selecciona una ubicación...</option>
+    </select>
+    <div class="select-arrow">▾</div>
+  </div>
+  <button class="btn-cercanos" onclick="abrirModalCercanos()">
+    <span id="i18n-btn-cercanos">📍 Visitar lugares cercanos</span>
+  </button>
+  <div class="leyenda">
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#1A6B72;"></div><span id="i18n-cat-playa">Playa / Cala</span></div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#2D6A4F;"></div><span id="i18n-cat-paraje">Paraje</span></div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#E8A020;"></div><span id="i18n-cat-camping">Camping</span></div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#D45F3C;"></div><span id="i18n-cat-aloj">Alojamiento</span></div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#6B4F9E;"></div><span id="i18n-cat-piscina">Piscina / Spa</span></div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#C00;"></div><span id="i18n-cat-club">Club</span></div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#4A4A4A;"></div><span id="i18n-cat-urb">Urbanización</span></div>
+  </div>
+</div>
+
+<svg class="wave" viewBox="0 0 390 24" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+  <path d="M0 24 L0 12 Q30 0 60 10 Q90 20 120 8 Q150 0 180 10 Q210 20 240 8 Q270 0 300 10 Q330 20 360 8 Q375 4 390 8 L390 24 Z" fill="#F5EFE3"/>
+</svg>
+
+<div class="main">
+  <div id="placeholder">
+    <div class="placeholder-icon">🗺️</div>
+    <div class="placeholder-titulo"><span id="i18n-placeholder-titulo">Elige una provincia</span></div>
+    <div class="placeholder-sub"><span id="i18n-placeholder-sub">Selecciona una ubicación para ver todos los lugares naturistas disponibles con su ubicación en el mapa.</span></div>
+  </div>
+
+  <div id="vista-lugares">
+    <div class="provincia-header">
+      <div class="provincia-nombre" id="provincia-titulo">—</div>
+      <div class="provincia-count" id="provincia-count">—</div>
+    </div>
+    <div class="mapa-wrap">
+      <div id="mapa-provincia"></div>
+    </div>
+    <div class="lista-wrap">
+      <div id="lista-lugares"></div>
+    </div>
+  </div>
+</div>
+
+<div class="ficha-overlay" id="cercanos-overlay" onclick="if(event.target===this)cerrarModalCercanos()">
+  <div class="ficha-box">
+    <div class="ficha-handle"></div>
+    <div class="ficha-nombre" style="margin-bottom:8px;">📍 <span id="i18n-cercanos-titulo">Lugares cerca de ti</span></div>
+    <div class="ficha-desc" id="i18n-cercanos-sub" style="margin-bottom:16px;">Elige un radio de búsqueda. Te pediremos permiso para usar tu ubicación.</div>
+    <div id="cercanos-status" style="text-align:center;color:var(--coral);font-size:13px;font-family:'Space Grotesk',sans-serif;font-weight:700;margin-bottom:12px;min-height:18px;"></div>
+    <div class="privacy-note" id="i18n-privacidad">🔒 Tu ubicación se procesa solo en tu dispositivo. Nudisol no la guarda ni la comparte.</div>
+    <div id="cercanos-pedir" class="ficha-btns">
+      <button class="btn-navegar" onclick="pedirUbicacion()">📍 Activar mi ubicación</button>
+      <button class="btn-cerrar-ficha" onclick="cerrarModalCercanos()"><span id="i18n-btn-cerrar-cercanos">Cerrar</span></button>
+    </div>
+    <div id="cercanos-radios" class="radios-grid" style="display:none;">
+      <button class="btn-radio" onclick="buscarEnRadio(10)">10 km</button>
+      <button class="btn-radio" onclick="buscarEnRadio(25)">25 km</button>
+      <button class="btn-radio" onclick="buscarEnRadio(50)">50 km</button>
+      <button class="btn-radio" onclick="buscarEnRadio(100)">100 km</button>
+    </div>
+  </div>
+</div>
+
+<div class="ficha-overlay" id="ficha-overlay" onclick="if(event.target===this)cerrarFicha()">
+  <div class="ficha-box">
+    <div class="ficha-handle"></div>
+    <div class="ficha-cat-badge" id="ficha-cat"></div>
+    <div class="ficha-nombre" id="ficha-nombre"></div>
+    <div class="ficha-provincia" id="ficha-provincia"></div>
+    <div class="ficha-desc" id="ficha-desc"></div>
+
+    <!-- AFORO EN TIEMPO REAL -->
+    <div class="ficha-aforo" id="ficha-aforo">
+      <div class="aforo-label" id="aforo-label">👥 Aforo ahora <span class="cond-info-btn" onclick="toggleAforoInfo()">ℹ️</span></div>
+    <div id="aforo-info-box" style="display:none;width:100%;margin-top:8px;">
+      <div class="cond-info-box" style="margin-bottom:0;">
+        <p id="aforo-info-txt">Indica cuántas personas han hecho check-in en este lugar en las últimas 3 horas. 🟢 Tranquila = nadie o muy poca gente. 🟡 Moderada = entre 3 y 6 personas. 🔴 Concurrida = 7 o más personas.</p>
+      </div>
+    </div>
+      <div class="aforo-semaforo" id="aforo-semaforo">—</div>
+      <div id="ambiente-badge" style="display:none;margin-top:8px;"></div>
+    </div>
+
+    <!-- CONDICIONES PERFECTAS -->
+    <div class="ficha-condiciones" id="ficha-condiciones">
+      <div class="condiciones-titulo" id="cond-titulo">🌤️ Condiciones ahora <span class="cond-info-btn" onclick="toggleCondInfo()">ℹ️</span></div>
+      <div class="cond-info-box" id="cond-info-box" style="display:none;">
+        <p id="cond-info-txt">El índice del 1 al 10 se calcula combinando: temperatura del aire (ideal 25-35°C), temperatura del agua (ideal +22°C), viento (ideal menos de 15 km/h), altura de olas (ideal menos de 0.5m) y nivel UV (ideal 3-7). Cuanto más alto, mejores condiciones para disfrutar la playa.</p>
+      </div>
+      <div class="condiciones-grid" id="condiciones-grid">
+        <div class="cond-item"><div class="cond-icon">🌡️</div><div class="cond-val" id="cond-aire" style="color:#0D3D42;font-size:13px;font-weight:700;">25°C</div><div class="cond-lbl" id="cond-aire-lbl">Aire</div></div>
+        <div class="cond-item"><div class="cond-icon">💧</div><div class="cond-val" id="cond-agua" style="color:#0D3D42;font-size:13px;font-weight:700;">20°C</div><div class="cond-lbl" id="cond-agua-lbl">Agua</div></div>
+        <div class="cond-item"><div class="cond-icon">🌬️</div><div class="cond-val" id="cond-viento" style="color:#0D3D42;font-size:13px;font-weight:700;">18 km/h</div><div class="cond-lbl" id="cond-viento-lbl">Viento</div></div>
+        <div class="cond-item"><div class="cond-icon">🌊</div><div class="cond-val" id="cond-olas" style="color:#0D3D42;font-size:13px;font-weight:700;">0.5m</div><div class="cond-lbl" id="cond-olas-lbl">Olas</div></div>
+        <div class="cond-item"><div class="cond-icon">☀️</div><div class="cond-val" id="cond-uv" style="color:#0D3D42;font-size:13px;font-weight:700;">8</div><div class="cond-lbl">UV</div></div>
+        <div class="cond-item cond-indice"><div class="cond-indice-num" id="cond-indice" style="color:#D4A017;font-size:22px;font-weight:800;">6</div><div class="cond-lbl" id="cond-indice-lbl">/ 10</div></div>
+      </div>
+    </div>
+
+    <div class="ficha-btns">
+      <div class="checkin-block">
+        <div class="checkin-count" id="ficha-checkin-count">—</div>
+        <button class="btn-checkin" id="btn-checkin" onclick="hacerCheckin(this.dataset.id, this.dataset.nombre)">✅ Estoy aquí ahora</button>
+      </div>
+      <button class="btn-navegar" id="btn-navegar"><span id="i18n-btn-navegar">🚗 Cómo llegar — Google Maps</span></button>
+      <button class="btn-ver-mapa" id="btn-ver-mapa"><span id="i18n-btn-mapa">🗺️ Ver en el mapa</span></button>
+      <a class="btn-secundario" id="btn-web" href="#" target="_blank"><span id="i18n-btn-web">🌐 Ver web oficial</span></a>
+      <a class="btn-secundario" id="btn-tel" href="#" style="display:none;">📞 Llamar</a>
+      <button class="btn-cerrar-ficha" onclick="cerrarFicha()"><span id="i18n-btn-cerrar">Cerrar</span></button>
+    </div>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <button class="nav-item" onclick="window.location.href='nudisol-home.html'">
+    <span class="nav-icon">🏠</span><span class="nav-label" id="nlang-inicio">Inicio</span>
+  </button>
+  <button class="nav-item active">
+    <span class="nav-icon">📍</span><span class="nav-label" id="nlang-lugares">Lugares</span>
+  </button>
+  <button class="nav-item" onclick="window.location.href='nudisol-comunidad.html'">
+    <span class="nav-icon">💬</span><span class="nav-label" id="nlang-comunidad">Comunidad</span>
+  </button>
+  <button class="nav-item" onclick="window.location.href='nudisol-alojamiento.html'">
+    <span class="nav-icon">🏨</span><span class="nav-label" id="nlang-alojamiento">Alojamiento</span>
+  </button>
+  <button class="nav-item" onclick="window.location.href='nudisol-perfil.html'">
+    <span class="nav-icon">👤</span><span class="nav-label" id="nlang-perfil">Perfil</span>
+  </button>
+</nav>
+
+<script>
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
+</script>
+
+<script>
+function nudisol_applyPageLang(l) { if(typeof window.aplicarIdioma==="function") window.aplicarIdioma(); }
+</script>
+<script>
+(function(){
+  var NAV={es:{inicio:'Inicio',lugares:'Lugares',comunidad:'Comunidad',alojamiento:'Alojamiento',perfil:'Perfil'},
+            en:{inicio:'Home',lugares:'Places',comunidad:'Community',alojamiento:'Stay',perfil:'Profile'}};
+  function applyNav(l){
+    var n=NAV[l]||NAV.es;
+    var s=function(id,v){var e=document.getElementById(id);if(e)e.textContent=v;};
+    s('nlang-inicio',n.inicio);s('nlang-lugares',n.lugares);
+    s('nlang-comunidad',n.comunidad);s('nlang-alojamiento',n.alojamiento);s('nlang-perfil',n.perfil);
+    var es=document.getElementById('lang-es'),en=document.getElementById('lang-en');
+    if(es)es.style.opacity=l==='es'?'1':'0.4';
+    if(en)en.style.opacity=l==='en'?'1':'0.4';
+  }
+  window.nudisol_setLang=function(l){
+    localStorage.setItem('nudisol_lang',l);
+    applyNav(l);
+    if(typeof nudisol_applyPageLang==='function')nudisol_applyPageLang(l);
+  };
+  document.addEventListener('DOMContentLoaded',function(){
+    var l=localStorage.getItem('nudisol_lang')||'es';
+    applyNav(l);
+    if(typeof nudisol_applyPageLang==='function')nudisol_applyPageLang(l);
+  });
+})();
+</script>
+</body>
+</html>
