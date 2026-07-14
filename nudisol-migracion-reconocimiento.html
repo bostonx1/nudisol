@@ -34,6 +34,12 @@
   <div class="warn">⚠️ Esta acción escribe en Firestore. Revisa el número de "Analizar" antes de continuar.</div>
 </div>
 
+<div class="box">
+  <div style="margin-bottom:10px;font-size:13px;color:rgba(255,255,255,0.7);">Arreglo puntual: marca como "ya revisadas" las playas que pusiste en "Reconocida" con la versión antigua del clasificador (antes de que existiera el campo reconocimiento_revisado), para que no vuelvan a aparecer como pendientes.</div>
+  <button onclick="marcarReconocidasComoRevisadas()">3️⃣ Marcar "Reconocidas" existentes como revisadas</button>
+  <div id="resultado-fix" style="margin-top:12px;"></div>
+</div>
+
 <div id="log"></div>
 
 <script type="module">
@@ -122,6 +128,44 @@ window.aplicar = async () => {
   log(`\n✅ Migración completada: ${hechos} lugares actualizados.`);
   document.getElementById('resultado-analisis').innerHTML += `<br><b style="color:#F5C840;">✅ Migración aplicada.</b>`;
   btn.disabled = false;
+};
+
+window.marcarReconocidasComoRevisadas = async () => {
+  const resultado = document.getElementById('resultado-fix');
+  resultado.textContent = '⏳ Buscando lugares "Reconocida" sin marcar como revisados...';
+  log('\nBuscando lugares en "Playa nudista reconocida" sin reconocimiento_revisado...');
+
+  const snap = await getDocs(collection(db, 'lugares'));
+  const aArreglar = [];
+  snap.forEach(d => {
+    const data = d.data();
+    if (data.reconocimiento === 'Playa nudista reconocida' && data.reconocimiento_revisado !== true) {
+      aArreglar.push(d.id);
+    }
+  });
+
+  if (aArreglar.length === 0) {
+    resultado.textContent = '✅ No hay ninguno pendiente de arreglar. Todo en orden.';
+    log('Nada que arreglar.');
+    return;
+  }
+
+  resultado.textContent = `⏳ Arreglando ${aArreglar.length} lugares...`;
+  const CHUNK = 450;
+  let hechos = 0;
+  for (let i = 0; i < aArreglar.length; i += CHUNK) {
+    const trozo = aArreglar.slice(i, i + CHUNK);
+    const batch = writeBatch(db);
+    trozo.forEach(id => {
+      batch.update(doc(db, 'lugares', id), { reconocimiento_revisado: true });
+    });
+    await batch.commit();
+    hechos += trozo.length;
+    log(`Arreglados ${hechos}/${aArreglar.length}`);
+  }
+
+  resultado.innerHTML = `✅ Arreglados <b>${hechos}</b> lugares. Ya no volverán a salir como pendientes en el clasificador.`;
+  log(`\n✅ Arreglo completado: ${hechos} lugares.`);
 };
 </script>
 </body>
