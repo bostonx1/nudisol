@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Clasificar reconocimiento naturista</title>
+<style>
+  body { font-family: -apple-system, sans-serif; background: #0D3D42; color: #fff; padding: 20px; max-width: 560px; margin: 0 auto; }
+  h1 { font-size: 18px; margin-bottom: 4px; }
+  p.sub { color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 20px; }
+  #contador { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 14px; }
+  .card { background: #FDFAF5; color: #1A1A1A; border-radius: 16px; padding: 22px; margin-bottom: 16px; min-height: 160px; }
+  .card .nombre { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 19px; margin-bottom: 6px; }
+  .card .meta { color: #8A8A8A; font-size: 13px; margin-bottom: 12px; }
+  .card .desc { font-size: 14px; line-height: 1.5; }
+  .card .actual { display: inline-block; margin-top: 12px; font-size: 12px; padding: 3px 10px; border-radius: 20px; background: rgba(232,160,32,0.15); color: #a06b00; }
+  .actual.reconocida { background: rgba(60,160,90,0.15); color: #1a7a3e; }
+  .botones { display: flex; gap: 10px; }
+  button { flex: 1; border: none; border-radius: 12px; padding: 16px; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .btn-reconocida { background: #2E9E5B; color: white; }
+  .btn-zona { background: #F5C840; color: #0D3D42; }
+  .btn-saltar { background: rgba(255,255,255,0.1); color: white; flex: 0.5; }
+  .fila2 { display: flex; gap: 10px; margin-top: 10px; }
+  #estado { text-align:center; color: rgba(255,255,255,0.5); font-size: 13px; margin-top: 20px; }
+  select#filtro { width: 100%; padding: 10px; border-radius: 8px; margin-bottom: 16px; background: rgba(255,255,255,0.08); color: white; border: 1px solid rgba(255,255,255,0.2); }
+</style>
+</head>
+<body>
+<h1>🌿 Clasificar reconocimiento naturista</h1>
+<p class="sub">Revisa lugar por lugar y decide si es una playa nudista reconocida o una zona de uso naturista sin reconocimiento oficial. Se guarda al instante en cada pulsación.</p>
+
+<select id="filtro" onchange="cargar()">
+  <option value="pendientes">Pendientes de revisar (nunca revisados)</option>
+  <option value="reconocidas">Ya marcadas como "Reconocida"</option>
+  <option value="zona-revisada">Ya confirmadas como "Zona de uso" (revisadas)</option>
+  <option value="todas">Todos los lugares</option>
+</select>
+
+<div id="contador">Cargando...</div>
+<div style="margin-bottom:14px;"><a href="#" onclick="recargarSinCache();return false;" style="color:rgba(255,255,255,0.5);font-size:12px;text-decoration:underline;">🔄 Forzar recarga (usar tras ejecutar la migración)</a></div>
+<div class="card" id="card">
+  <div class="nombre" id="c-nombre">—</div>
+  <div class="meta" id="c-meta">—</div>
+  <div class="desc" id="c-desc">—</div>
+  <div id="c-actual"></div>
+</div>
+
+<div class="botones">
+  <button class="btn-zona" onclick="clasificar('Zona de uso naturista')">🌿 Zona de uso</button>
+  <button class="btn-reconocida" onclick="clasificar('Playa nudista reconocida')">✅ Reconocida</button>
+</div>
+<div class="fila2">
+  <button class="btn-saltar" onclick="siguiente()">⏭️ Saltar sin cambiar</button>
+</div>
+
+<div id="estado"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, doc, updateDoc, query, where, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let lista = [];
+let idx = 0;
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    document.getElementById('estado').textContent = `Sesión: ${user.email || user.uid}`;
+    cargar();
+  } else {
+    document.getElementById('estado').textContent = '❌ Inicia sesión en nudisol.app en este navegador y recarga.';
+  }
+});
+
+window.cargar = async () => {
+  document.getElementById('contador').textContent = '⏳ Cargando lugares...';
+  const filtro = document.getElementById('filtro').value;
+
+  // Caché de sesión: si ya cargamos este filtro en esta pestaña, no volvemos a leer Firestore
+  const cacheKey = 'nudisol_clasif_' + filtro;
+  const cached = sessionStorage.getItem(cacheKey);
+  if (cached) {
+    lista = JSON.parse(cached);
+    idx = 0;
+    mostrar();
+    return;
+  }
+
+  lista = [];
+
+  if (filtro === 'pendientes') {
+    // Consulta directa: solo trae los que de verdad están pendientes (máx. 200 de golpe)
+    const q = query(collection(db, 'lugares'), where('reconocimiento_revisado', '==', false), limit(200));
+    const snap = await getDocs(q);
+    snap.forEach(d => lista.push({ id: d.id, ...d.data() }));
+  } else {
+    // Resto de filtros: sigue haciendo falta traer todo, pero solo una vez por sesión gracias a la caché
+    const snap = await getDocs(collection(db, 'lugares'));
+    snap.forEach(d => {
+      const data = d.data();
+      const revisado = data.reconocimiento_revisado === true;
+      if (filtro === 'reconocidas' && data.reconocimiento !== 'Playa nudista reconocida') return;
+      if (filtro === 'zona-revisada' && !(revisado && data.reconocimiento === 'Zona de uso naturista')) return;
+      lista.push({ id: d.id, ...data });
+    });
+  }
+
+  sessionStorage.setItem(cacheKey, JSON.stringify(lista));
+  idx = 0;
+  mostrar();
+};
+
+function mostrar() {
+  document.getElementById('contador').textContent = `Lugar ${idx + 1} de ${lista.length}`;
+  if (idx >= lista.length) {
+    document.getElementById('c-nombre').textContent = '🎉 ¡Completado!';
+    document.getElementById('c-meta').textContent = '';
+    document.getElementById('c-desc').textContent = 'No quedan más lugares en este filtro.';
+    document.getElementById('c-actual').innerHTML = '';
+    return;
+  }
+  const l = lista[idx];
+  document.getElementById('c-nombre').textContent = l.nombre || '(sin nombre)';
+  document.getElementById('c-meta').textContent = `📍 ${l.provincia || '—'} · ${l.categoria || '—'}`;
+  document.getElementById('c-desc').textContent = l.descripcion || '(sin descripción guardada)';
+  const actual = l.reconocimiento;
+  const revisado = l.reconocimiento_revisado === true;
+  const badge = document.getElementById('c-actual');
+  if (actual === 'Playa nudista reconocida') {
+    badge.innerHTML = '<span class="actual reconocida">✅ Actualmente: Reconocida</span>';
+  } else if (revisado && actual === 'Zona de uso naturista') {
+    badge.innerHTML = '<span class="actual">🌿 Actualmente: Zona de uso (ya revisada)</span>';
+  } else if (actual === 'Zona de uso naturista') {
+    badge.innerHTML = '<span class="actual">⚪ Zona de uso (por defecto, sin revisar aún)</span>';
+  } else {
+    badge.innerHTML = '<span class="actual">⚪ Sin clasificar</span>';
+  }
+}
+
+window.siguiente = () => {
+  idx++;
+  mostrar();
+};
+
+window.clasificar = async (valor) => {
+  if (idx >= lista.length) return;
+  const l = lista[idx];
+  try {
+    await updateDoc(doc(db, 'lugares', l.id), { reconocimiento: valor, reconocimiento_revisado: true });
+    lista[idx].reconocimiento = valor;
+    lista[idx].reconocimiento_revisado = true;
+    const filtro = document.getElementById('filtro').value;
+    sessionStorage.setItem('nudisol_clasif_' + filtro, JSON.stringify(lista));
+  } catch (e) {
+    alert('Error guardando: ' + e.message);
+    return;
+  }
+  idx++;
+  mostrar();
+};
+
+window.recargarSinCache = () => {
+  ['pendientes', 'reconocidas', 'zona-revisada', 'todas'].forEach(f => sessionStorage.removeItem('nudisol_clasif_' + f));
+  cargar();
+};
+</script>
+</body>
+</html>
