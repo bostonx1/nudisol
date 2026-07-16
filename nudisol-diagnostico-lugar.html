@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Diagnóstico de lugar</title>
+<style>
+  body { font-family: -apple-system, sans-serif; background: #0D3D42; color: #fff; padding: 24px; max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  p.sub { color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 20px; }
+  input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: white; font-size: 14px; margin-bottom: 10px; }
+  button { background: #F5C840; color: #0D3D42; border: none; border-radius: 10px; padding: 14px 22px; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .resultado { background: rgba(255,255,255,0.06); border-radius: 12px; padding: 16px; margin-top: 16px; font-family: monospace; font-size: 13px; white-space: pre-wrap; }
+  #estado { margin-top: 10px; color: rgba(255,255,255,0.6); font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>🔍 Diagnóstico de lugar</h1>
+<p class="sub">Busca por nombre (o parte del nombre) y te muestra exactamente qué hay guardado en Firestore para cada coincidencia, sin necesidad de usar la consola de Firebase directamente.</p>
+
+<div id="estado">⏳ Inicia sesión en nudisol.app en este navegador antes de continuar.</div>
+
+<input id="q" placeholder="Ej: Costa Teguise" />
+<button onclick="buscar()">Buscar</button>
+
+<div id="resultado"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+  authDomain: "nudisol.firebaseapp.com",
+  projectId: "nudisol",
+  storageBucket: "nudisol.firebasestorage.app",
+  messagingSenderId: "222881387953",
+  appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+let todos = [];
+
+onAuthStateChanged(auth, async (user) => {
+  const estado = document.getElementById('estado');
+  if (user) {
+    estado.textContent = `⏳ Sesión OK (${user.email || user.uid}). Cargando lugares para poder buscar...`;
+    const snap = await getDocs(collection(db, 'lugares'));
+    todos = [];
+    snap.forEach(d => todos.push({ id: d.id, ...d.data() }));
+    estado.textContent = `✅ Listo. ${todos.length} lugares cargados. Ya puedes buscar.`;
+  } else {
+    estado.textContent = '❌ No has iniciado sesión. Abre nudisol.app en otra pestaña, inicia sesión, y recarga esta página.';
+  }
+});
+
+window.buscar = () => {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const resultado = document.getElementById('resultado');
+  if (!q) { resultado.textContent = 'Escribe algo para buscar.'; return; }
+  if (!todos.length) { resultado.textContent = 'Todavía no se han cargado los lugares, espera al mensaje "Listo".'; return; }
+
+  const coincidencias = todos.filter(l => (l.nombre || '').toLowerCase().includes(q));
+
+  if (coincidencias.length === 0) {
+    resultado.innerHTML = `<div class="resultado">No se encontró ningún lugar cuyo nombre contenga "${q}".</div>`;
+    return;
+  }
+
+  let html = `<div class="resultado"><b>${coincidencias.length} coincidencia(s) encontrada(s):</b>\n\n`;
+  coincidencias.forEach((l, i) => {
+    html += `--- Resultado ${i + 1} ---\n`;
+    html += `ID del documento: ${l.id}\n`;
+    html += `nombre: ${l.nombre}\n`;
+    html += `provincia: ${l.provincia || '(vacío)'}\n`;
+    html += `categoria: ${l.categoria || '(vacío)'}\n`;
+    html += `reconocimiento: ${l.reconocimiento === undefined ? '(campo no existe)' : l.reconocimiento}\n`;
+    html += `reconocimiento_revisado: ${l.reconocimiento_revisado === undefined ? '(campo no existe)' : l.reconocimiento_revisado}\n\n`;
+  });
+  html += `</div>`;
+  resultado.innerHTML = html;
+};
+</script>
+</body>
+</html>
