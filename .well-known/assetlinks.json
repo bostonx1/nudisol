@@ -3,6 +3,6 @@
       "target": {
         "namespace": "android_app",
         "package_name": "app.nudisol.twa",
-        "sha256_cert_fingerprints": ["6E:DA:EE:20:B3:3F:17:EA:9F:40:68:41:79:4C:75:E7:9E:0C:DB:5E:ED:91:64:ED:72:E1:AA:7D:C7:0A:4D:FA"]
+        "sha256_cert_fingerprints": ["43:50:4C:BA:12:40:E8:68:58:7E:A0:F9:A6:ED:5C:A8:9B:F4:20:0E:72:76:65:A5:B1:E4:38:5F:85:63:38:59"]
       }
     }]
