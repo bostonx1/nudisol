@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nudisol — Extractor Newsletter</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0e2426; color: #F8F1E4; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; }
+  .card { background: #1F4D52; border-radius: 16px; padding: 40px; max-width: 560px; width: 100%; text-align: center; }
+  h1 { font-size: 24px; margin-bottom: 8px; color: #F2C849; }
+  p { font-size: 14px; color: rgba(248,241,228,0.6); margin-bottom: 32px; line-height: 1.6; }
+  button { background: #F2C849; color: #0e2426; border: none; padding: 14px 36px; border-radius: 50px; font-size: 15px; font-weight: 700; cursor: pointer; margin: 8px; }
+  button:hover { opacity: 0.9; }
+  button.secondary { background: transparent; border: 1px solid rgba(248,241,228,0.3); color: #F8F1E4; }
+  #status { margin: 24px 0; font-size: 14px; color: rgba(248,241,228,0.7); min-height: 20px; }
+  #tabla { margin-top: 24px; text-align: left; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: rgba(242,200,73,0.15); color: #F2C849; padding: 10px 12px; text-align: left; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+  td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); color: rgba(248,241,228,0.85); }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; background: rgba(242,200,73,0.15); color: #F2C849; border-radius: 20px; padding: 2px 10px; font-size: 11px; font-weight: 600; margin-left: 8px; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>☀️ Extractor Newsletter</h1>
+  <p>Carga los suscriptores activos de Firestore y descarga el CSV listo para importar en Brevo.</p>
+
+  <button onclick="cargarSuscriptores()">Cargar suscriptores</button>
+  <button class="secondary" onclick="descargarCSV()" id="btnCSV" style="display:none">⬇ Descargar CSV</button>
+
+  <div id="status"></div>
+  <div id="tabla"></div>
+</div>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB3jsPPuKLPEj3B3y-PsIpXCyZXHxY81aQ",
+    authDomain: "nudisol.firebaseapp.com",
+    projectId: "nudisol",
+    storageBucket: "nudisol.appspot.com",
+    messagingSenderId: "222881387953",
+    appId: "1:222881387953:web:4299a66c2dcb6b5c941990"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  let suscriptores = [];
+
+  window.cargarSuscriptores = async function() {
+    const status = document.getElementById('status');
+    const tabla = document.getElementById('tabla');
+    status.textContent = 'Conectando con Firebase...';
+
+    try {
+      await signInAnonymously(auth);
+      status.textContent = 'Cargando suscriptores...';
+
+      const snapshot = await getDocs(collection(db, 'newsletter'));
+      suscriptores = [];
+
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        if (d.email) {
+          suscriptores.push({
+            email: d.email,
+            nombre: d.nombre || d.name || '',
+            fecha: d.timestamp ? new Date(d.timestamp.seconds * 1000).toLocaleDateString('es-ES') : 'N/D'
+          });
+        }
+      });
+
+      status.innerHTML = `✅ ${suscriptores.length} suscriptores encontrados <span class="badge">${suscriptores.length}</span>`;
+
+      // Renderizar tabla
+      let html = '<table><tr><th>#</th><th>Email</th><th>Nombre</th><th>Fecha</th></tr>';
+      suscriptores.forEach((s, i) => {
+        html += `<tr><td>${i+1}</td><td>${s.email}</td><td>${s.nombre || '—'}</td><td>${s.fecha}</td></tr>`;
+      });
+      html += '</table>';
+      tabla.innerHTML = html;
+
+      document.getElementById('btnCSV').style.display = 'inline-block';
+
+    } catch(e) {
+      status.textContent = '❌ Error: ' + e.message;
+      console.error(e);
+    }
+  };
+
+  window.descargarCSV = function() {
+    if (!suscriptores.length) return;
+    let csv = 'Email;Nombre;Fecha suscripcion\n';
+    suscriptores.forEach(s => {
+      csv += `${s.email};${s.nombre};${s.fecha}\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `nudisol-newsletter-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  };
+</script>
+
+</body>
+</html>
