@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nudisol-v95';
+const CACHE_NAME = 'nudisol-v96';
 const ASSETS = [
   '/',
   '/index.html',
